@@ -1,0 +1,268 @@
+<organic food consumption, reduces, pesticide exposure in humans>
+<organic food consumption, affects, immune system responsiveness>
+<organic food consumption, reduces, incidence of metabolic syndrome>
+<organic food consumption, reduces, incidence of cancer>
+<organic food consumption, reduces, incidence of eczema>
+<organic farming practices, supports, food quality>
+<organic farming practices, supports, human health>
+<whole-grain, increases, human health>
+<fruit and vegetables, increases, human health>
+<reducing red-meat consumption, supports, human health>
+<organic farming standards, reduces, synthetic chemical pesticides>
+<organic farming standards, reduces, Nitrogen fertilizers>
+<organic farming standards, reduces, synthetic chemical cropprotection products>
+<organic farming standards, reduces, antibiotics>
+<organic farming standards, supports, diverse crop rotations>
+<organic fertilizers, increases, soil fertility>
+<legume crops, increases, Nitrogen-levels in the soil>
+<manure, supports, soil fertility>
+<composts, supports, soil fertility>
+<healthy soils, produces, healthy crops>
+<healthy crops, produces, healthy humans>
+<organic farming, supports, food security>
+<Ley phase, reduces, weed pressure>
+<Grassland management, supports, soil fertility>
+<Cover crops, reduces, nutrient losses>
+<Ley phase, reduces, disease propagules>
+<Grass-clover leys, reduces, Septoria severity>
+<Wheat after wheat, increases, Septoria severity>
+<Manure, affects, Septoria severity>
+<Grass-clover leys, increases, wireworm populations>
+<Wireworm populations, affects, yield losses>
+<Legume crops, supports, fertility management>
+<Organic rotations, reduces, pest populations>
+<Monoculture, increases, Fusarium mycotoxin load>
+<Faba bean cover crops, increases, mineral and protein concentrations>
+<Organic farming systems, supports, closed nutrient cycles>
+<Manure, supports, nutrient cycles>
+<Legume crops, affects, Nitrogen-losses>
+<Biogas units, reduces, Nitrogen-losses>
+<Organic fertilization regimes, supports, nutrient supply>
+<Organic fertilizers, reduces, lodging>
+<Organic fertilizers, reduces, foliar disease severity>
+<Mineral Nitrogen Phosphorus, increases, powdery mildew severity>
+<Nitrogen-availability, reduces, phenolic compounds>
+<Nitrogen-availability, reduces, resistance against biotropic diseases>
+<Dietary intake of phenolics, reduces, cardiovascular disease risk>
+<Dietary intake of phenolics, reduces, type-2 diabetes risk>
+<Dietary intake of phenolics, reduces, cancer risk>
+<Mycorrhizal fungal associations, supports, uptake efficiency of Phosphorus>
+<Mycorrhizal fungal associations, supports, uptake efficiency of micronutrients>
+<Mycorrhizal fungal associations, increases, resistance against soil-borne diseases>
+<Mycorrhizal fungal associations, increases, tolerance against abiotic stress>
+<Organic crop management, increases, mycorrhizal fungal inocula density>
+<Mineral Nitrogen Phosphorus, increases, cadmium concentration>
+<Fertilization, affects, Cd accumulation in crops>
+<Reducing mineral Phosphorus-inputs, reduces, Cd exposure>
+<synthetic chemical pesticides, affects, cadmium concentrations>
+<mineral Nitrogen Phosphorus, affects, cadmium concentrations>
+<manure, affects, cadmium concentrations>
+<conventional Nitrogen Phosphorus-fertilized backgrounds, reduces, functional mycorrhizas capacity>
+<reduced mycorrhizas capacity, affects, micronutrient uptake>
+<reduced mycorrhizas capacity, affects, toxic metal uptake>
+<Rhizobium inocula, supports, Nitrogen fixation>
+<VA-mycorrhizal fungi, supports, nutrient uptake>
+<Rhizobium inocula, increases, soil Nitrogen>
+<Rhizobium inocula, increases, mycorrhizal development>
+<Rhizobium inocula, increases, yield>
+<Rhizobium inocula, increases, protein concentration>
+<high C:N ratio compost, increases, Nitrogen fixation>
+<manure-fertilized organic system, reduces, Vitamin C levels>
+<organic matter inputs, increases, biological activity>
+<organic matter inputs, increases, microbial biodiversity>
+<organic matter inputs, increases, structural stability>
+<composts, increases, soil suppressiveness>
+<organic matter/compost inputs, increases, disease suppressiveness>
+<soil chemical disinfection, reduces, disease suppressiveness>
+<organic waste materials, reduces, pathogen development>
+<Brassica cover crops, reduces, parasitic nematodes>
+<soil amendments, increases, phenolic concentrations>
+<soil amendments, increases, antioxidant activity>
+<companion plants, reduces, pest damage>
+<managed field margins, supports, natural enemy populations>
+<manure, affects, ground beetle abundance>
+<insecticide applications, reduces, ground beetle abundance>
+<Chitin, increases, defense responses>
+<Chitosan, increases, defense responses>
+<defense responses, increases, antioxidant activity>
+<manure fertilization, increases, antioxidant activity>
+<Biological control products, reduces, pesticide residues in food>
+<Biological control products, reduces, pesticide use>
+<Biological control products, reduces, negative health impacts>
+<Bacterial antagonists, supports, organic farming>
+<Fungal antagonists, supports, organic farming>
+<Insect-proof screens, increases, relative humidity>
+<Insect-proof screens, reduces, solar radiation>
+<Insect-proof screens, reduces, air velocity>
+<Environmental changes, affects, crop growth>
+<Environmental changes, affects, crop yield>
+<Environmental changes, affects, quality parameters>
+<Organic crop protection regimes, reduces, folate concentration>
+<Organic crop protection regimes, reduces, glucosinolate concentration>
+<Mass-trapping methods, reduces, natural enemy populations>
+<Barrier methods, reduces, pesticide use>
+<Thermal soil disinfection, increases, fossil fuel use>
+<Cu-fungicides, increases, Cu-concentration in crops>
+<Cu-fungicides, affects, negative environmental impacts>
+<Concentrated Cu solutions, affects, farmer health>
+<Spinosad, reduces, natural enemy populations>
+<Organic food consumption, reduces, dietary exposure to pesticides>
+<Organic food, reduces, pesticide residues>
+<Conventional food, increases, pesticide residues>
+<wheat species, affects, pesticide residue concentrations>
+<whole-grain flour, reduces, pesticide exposure>
+<Organic food consumption, reduces, pesticide exposure>
+<wholegrain flour, reduces, pesticide exposure>
+<common wheat, reduces, pesticide exposure>
+<UK, reduces, pesticide exposure>
+<whole-grain cereal products, increases, pesticide residue levels>
+<environmental conditions, affects, pesticide concentrations in crops>
+<manure-fertilized plots, increases, chlormequat levels>
+<manure, affects, earlier wheat grain maturity>
+<earlier wheat grain maturity, reduces, metabolism period>
+<manure-fertilized crops, increases, chlormequat concentrations>
+<microbial activity, reduces, aldicarb>
+<soil organic matter, reduces, soil-applied herbicides and insecticides>
+<herbicides, reduces, photosynthesis>
+<herbicides, reduces, energy metabolism>
+<herbicides, reduces, root growth>
+<herbicides, reduces, nutrient uptake from soil>
+<negative effects of herbicides, reduces, micronutrients>
+<manure-fertilized soils, increases, microbial metabolism>
+<traditional long-straw varieties, contains, mineral micronutrients>
+<modern short-straw varieties, contains, mineral micronutrients>
+<foliar phenolic concentrations, affects, disease severity>
+<spelta, contains, phenolic levels>
+<longer-straw wheat varieties, contains, mineral micronutrients>
+<manure, reduces, lodging>
+<longer-straw varieties, increases, competitiveness against weeds>
+<herbicides, reduces, weed competition>
+<Organic production, increases, phenolic levels>
+<Organic production, increases, antioxidant activity>
+<butternut squash, organic management, increases, Zinc>
+<butternut squash, organic management, increases, Manganese>
+<butternut squash, organic management, increases, tocopherol>
+<butternut squash, organic management, reduces, folate>
+<butternut squash, organic management, reduces, β-carotene>
+<grape type, affects, antioxidant activity>
+<soil factor, affects, nutritional composition profiles>
+<climatic conditions, affects, crop composition>
+<organic fertilization regimes, increases, phenolic concentrations>
+<conventional fertilization regimes, reduces, phenolic concentrations>
+<high Nitrogen availability, reduces, phenolic concentrations>
+<grass-clover ley pre-crops, reduces, phenolic concentrations>
+<organic crops, reduces, pesticide concentrations>
+<organic crops, reduces, cadmium concentrations>
+<organic crops, increases, antioxidant capacity>
+<organic whole-grain, increases, mineral micronutrients>
+<organic whole-grain, reduces, Fusarium mycotoxins>
+<mineral micronutrients, supports, health benefits>
+<whole-grain, fruit and vegetables, supports, public health>
+<maternal dietary factors, affects, epigenetic programming>
+<EDCs, affects, epigenetic programming>
+<catechins, reduces, DNA methylation levels>
+<EDCs, increases, increased incidence of diseases>
+<chronic pesticide exposure, affects, negative health impacts>
+<whole-grain, fruit and vegetables, supports, nutrient intake>
+<organic food consumption, reduces, overweight/obesity>
+<organic food consumption, reduces, metabolic syndrome>
+<organic food consumption, reduces, certain cancers>
+<organic food consumption, reduces, non-Hodgkin lymphoma>
+<triazine herbicides metabolites, increases, middle ear infections>
+<low pesticide exposure, supports, reproductive health>
+<high organic food consumption, reduces, breast cancer>
+<unbalanced Western diets, increases, metabolic syndrome>
+<increasing fruits, vegetables, whole-grain consumption, increases, fibre>
+<whole-grain consumption, increases, dietary intake of pesticides>
+<F&V consumption, increases, dietary intake of pesticides>
+<whole-grain, F&V consumption, increases, phytochemicals>
+<low pesticide loads, reduces, coronary heart disease>
+<reducing red meat consumption, reduces, deforestation>
+<organic crop production, supports, reduced dependence on non-renewable agrochemical inputs>
+<mineral fertilizers, decreases, crop yields>
+<organic farming, supports, healthy soils>
+<organic farming, reduces, nitrate leaching>
+<organic farming, reduces, Phosphorus run-off>
+<organic farming, reduces, greenhouse gas emissions>
+<organic farming practices, increases, soil carbon>
+<organic farming practices, increases, biodiversity>
+<monoculture, increases, pest and disease pressure>
+<mineral Phosphorus fertilizer, reduces, mycorrhizal development>
+<mineral Nitrogen fertilizer, reduces, crop resistance>
+<synthetic chemical pesticides, reduces, phytochemicals>
+<synthetic chemical pesticides, reduces, mineral micronutrients>
+<Concentrate feeds, reduces, omega-3 fatty acids>
+<Concentrate feeds, reduces, CLA>
+<Concentrate feeds, reduces, carotenoids>
+<Concentrate feeds, reduces, vitamin E>
+<Concentrate feeds, increases, saturated fatty acids>
+<Organic food consumption, affects, disease incidence>
+<Organic food consumption, reduces, obesity>
+<Organic food consumption, reduces, cancer>
+<Conventional fruit/vegetable/whole-grain consumption, increases, pesticide exposure>
+<Organic food consumption, reduces, pesticide exposure>
+<Organic food consumption, increases, sperm count>
+<Organic farming, supports, environmental benefits>
+<Government expenditure, reduces, negative environmental impacts>
+<Organic farming, reduces, mycotoxin contamination>
+<Organic farming, reduces, Fusarium infestation>
+<Cover crops, increases, yield>
+<Cover crops, increases, nutrient concentration>
+<Digestate, supports, soil properties>
+<Nitrogen supply, affects, pathogen resistance>
+<Organic crops, increases, antioxidant activity>
+<Organic crops, reduces, pesticide residues>
+<Fertilizer impacts, affects, cadmium availability>
+<Rhizobium strains, supports, dry bean yield>
+<Organic farming, supports, soil fertility>
+<Organic farming, increases, top soil carbon stocks>
+<Suppressive composts, supports, healthy plants>
+<Organic farming, increases, soil suppression>
+<Uncomposted materials, reduces, pest and disease incidence>
+<Chitosan biopolymer, increases, yield>
+<Companion Plants, supports, Aphid Pest Management>
+<Organic farming, affects, yields>
+<Biological control agents, affects, powdery mildew>
+<Elicitors, reduces, Powdery Mildew>
+<Fungal Antagonists, reduces, Fungal Plant Pathogens>
+<Eco-Friendly Nets, reduces, Pest Infestation>
+<Low temperature steaming, reduces, soil-borne pathogens>
+<Fungicides, affects, vineyard soils>
+<Endocrine disrupting chemicals, affects, disease susceptibility>
+<Endocrine disruptors, affects, lymphoma risk>
+<Organic foods, increases, health>
+<Organic food, affects, human health>
+<Soil organic matter, affects, herbicide phytotoxicity>
+<Organic matter input, affects, soil biological activity>
+<Organic farming, increases, soil microbial abundance>
+<Glyphosate, affects, plant physiology>
+<Glyphosate, affects, crop health>
+<Glyphosate, reduces, micronutrient concentration>
+<Glyphosate-based herbicides, affects, disease resistance>
+<Mediterranean diet, increases, life expectancy>
+<Gut microbial metabolites, affects, epigenome>
+<Dietary polyphenols, affects, DNA methylation>
+<Soy isoflavones, affects, epigenome>
+<Chronic pesticide exposure, affects, Cancer and Neurotoxicity>
+<Endocrine Disruptors, affects, Obesity>
+<Dietary pesticide exposure profiles, affects, breast-cancer risk>
+<Nitrite, reduces, Helicobacter pylori>
+<Organic milk, contains, PUFA>
+<Organic milk, contains, CLA>
+<Organic milk, contains, alpha-tocopherol>
+<Dietary nitrate, affects, human health>
+<Organic food consumption, reduces, pesticide concentrations>
+<Organic diet intervention, reduces, glyphosate levels>
+<Organic diet intervention, reduces, pesticide levels>
+<Nutrition, affects, cancer development>
+<Western diet, affects, health implications>
+<Organic farming, increases, mycorrhizal fungal communities>
+<Organic farming, reduces, environmental impacts>
+<Organic farming, affects, biodiversity>
+<Intensification practices, affects, milk yield>
+<Increased production, reduces, Omega-3 content>
+<Forage-based rations, increases, milk quality>
+<Feeding intensity, affects, milk components>
+<Dairy management, affects, milk quality>
+<Low-input management, affects, CLA isomer concentrations>
+<Organic systems, affects, antioxidant concentrations>

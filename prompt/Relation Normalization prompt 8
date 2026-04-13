@@ -1,0 +1,14 @@
+Normalize relations.
+
+RULES:
+
+Use ONLY these relations:
+affects, increases, decreases, supports, contains, produces, reduces
+Convert all variations into these
+Relation MUST be single word
+
+INPUT:
+{TRIPLETS}
+
+OUTPUT:
+cleaned triplets only, one per line, in format: <subject, relation, object>

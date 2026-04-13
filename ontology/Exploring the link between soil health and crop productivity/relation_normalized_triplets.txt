@@ -1,0 +1,194 @@
+<soil properties, affects, crop growth>
+<soil texture, affects, water retention>
+<crop root systems, supports, soil aggregates>
+<soil properties, affects, crop productivity>
+<Soil Microorganism, supports, nutrient cycling>
+<nitrogen-fixing bacteria, supports, nutrient cycles>
+<microbial fertilizers, increases, crop resistance>
+<soil bacteria, affects, nutrient absorption>
+<soil bacteria, affects, disease resistance>
+<soil texture, affects, aeration>
+<clayey soils, increases, water adsorption>
+<waterlogging, reduces, root respiration>
+<sandy soils, affects, nutrient leaching>
+<organic fertilizers, supports, soil structure>
+<soil loosening, increases, aeration>
+<soil properties, affects, crop yield>
+<soil texture, supports, nutrient availability>
+<soil texture, supports, soil health>
+<soil texture, increases, crop productivity>
+<Nitrogen, supports, crop growth>
+<excessive Nitrogen fertilization, affects, soil acidification>
+<soil acidification, affects, microbial communities>
+<soil acidification, reduces, beneficial microorganisms>
+<soil acidification, affects, nutrient cycling>
+<soil acidification, affects, toxic metals>
+<toxic metals, reduces, root growth>
+<over-application of Phosphorus, affects, eutrophication>
+<organic matter, supports, nutrient retention>
+<organic matter, reduces, reliance on synthetic fertilizers>
+<excess Nitrogen, increases, vigorous crop growth>
+<excess Nitrogen, affects, reduced yield>
+<excess Nitrogen, affects, soil acidification>
+<excess Nitrogen, affects, soil structure>
+<excess Phosphorus, reduces, root development>
+<excess Phosphorus, affects, water and nutrient absorption>
+<excess Phosphorus, affects, water stress>
+<excess Phosphorus, reduces, soil respiration>
+<Nitrogen and Phosphorus overabundance, affects, Soil Microorganism>
+<Nitrogen and Phosphorus overabundance, reduces, beneficial microbes>
+<Nitrogen and Phosphorus overabundance, increases, harmful microbes>
+<drought stress, affects, reduced stomatal opening>
+<reduced stomatal opening, increases, water absorption capacity>
+<mulching techniques, reduces, soil water evaporation>
+<mulching techniques, increases, water use efficiency>
+<fertilization, increases, soil organic matter>
+<fertilization, supports, soil structure>
+<drip irrigation, reduces, water>
+<drip irrigation, increases, crop yields>
+<deep root systems, supports, drought resistance>
+<small leaves, reduces, water evaporation>
+<crop diversity, supports, soil health>
+<crop diversity, increases, nutrient use efficiency>
+<crop diversity, reduces, dependence on chemical fertilizers>
+<crop diversity, increases, soil fertility>
+<crop diversity, supports, Soil Microorganism>
+<crop diversity, increases, soil organic carbon>
+<root exudates, supports, soil structure>
+<root exudates, increases, organic matter content>
+<root exudates, supports, Soil Microorganism>
+<rhizobia, supports, nitrogen content>
+<rhizobia, increases, nitrogen cycle>
+<monoculture, increases, soil pathogens>
+<monoculture, affects, crop health>
+<crop diversity, reduces, incidence of parasites>
+<crop diversity, supports, nutrient cycling>
+<Root secretions, supports, nutrient mineralization>
+<Microorganisms, increases, nutrient supply>
+<Monoculture management, affects, disease spread>
+<Crop diversity, supports, microbial diversity>
+<Microbial diversity, reduces, pathogens>
+<Crop root secretions, supports, Soil Microorganism>
+<Crop rotation, reduces, pest occurrence>
+<Intercropping, reduces, pest occurrence>
+<Crops, contains, pest suppressive components>
+<Fertilizers, supports, nutrient content>
+<Crop root exudates, affects, Soil Microorganism>
+<Microbial diversity, supports, nutrient cycling>
+<Microorganisms, increases, nutrients>
+<Multiple plant species, affects, pathogen life cycle>
+<crop diversity, increases, nutrient use efficiency>
+<Soil Microorganism, supports, soil structure>
+<Soil Microorganism, supports, soil aggregation>
+<Root exudates, increases, soil porosity>
+<Fungal hyphae, increases, aggregate stability>
+<Microbial diversity, supports, soil resilience>
+<Rhizosphere microbial communities, supports, nutrient cycling efficiency>
+<Nitrogen-fixing bacteria, increases, nitrogen resources>
+<Nitrifying bacteria, affects, ammonia nitrogen>
+<Denitrifying bacteria, affects, soil nitrogen content>
+<Microorganisms, increases, nutrient availability>
+<Microorganisms, supports, root growth>
+<Mycorrhizal fungi, supports, nutrient uptake>
+<Nitrogen-fixing bacteria, increases, essential nutrients>
+<Microbial activity, supports, soil structure>
+<Microbial activity, increases, water retention capacity>
+<Biofertilizers, supports, nutrient utilization>
+<Microorganisms, supports, plant resistance>
+<Microorganisms, reduces, pathogen growth>
+<Microorganisms, supports, plant growth>
+<Microorganisms, supports, crop immune system>
+<Microorganisms, increases, resistance to pathogens>
+<Microorganisms, supports, plant defense system>
+<Microorganisms, produces, anti-disease proteins>
+<Microorganisms, increases, nutrient absorption capacity>
+<Monoculture cropping pattern, reduces, soil microbial diversity>
+<Excessive application of fertilizers, reduces, microbial diversity>
+<Traditional tillage practices, reduces, Soil Microorganism>
+<No-till practices, supports, soil microbial diversity>
+<Organic fertilizers, increases, microbial activity>
+<Over-irrigation, increases, salt accumulation>
+<Conservation tillage, reduces, soil erosion>
+<Conservation tillage, supports, soil structure and quality>
+<Organic agriculture, increases, soil biodiversity>
+<Gene editing technology, produces, crop resistance to pests>
+<Crop cultivation, affects, soil properties>
+<Crop diversity, increases, microbial diversity>
+<Microorganisms, supports, crop growth>
+<Microorganisms, supports, nitrogen fixation>
+<Microorganisms, supports, phosphorus solubilization>
+<Climate change, increases, demand for soil nutrients>
+<Microorganisms, affects, disease resistance>
+<Crop cover practices, affects, soil protection>
+<Microbial communities, supports, crop resilience>
+<Soil organic carbon sequestration, reduces, environmental impacts>
+<Rhizobium-legume symbiosis, reduces, climate change>
+<Biochar, increases, water holding capacity>
+<Root exudates, affects, soil microbial diversity>
+<Root exudates, affects, heavy metals biogeochemistry>
+<Microbial composts, supports, stress resilience in plants>
+<Rhizobacteria, supports, sustainable agricultural production>
+<Biochar, supports, heavy metal contaminated soil>
+<Iron, increases, plant growth>
+<Organic fertilizers, increases, soil fertility>
+<Organic fertilizer, increases, microbial community>
+<Land use change, affects, soil erosion>
+<Conservation agriculture, supports, soil health>
+<Crop rotation, supports, soil health>
+<Crop rotation, supports, crop productivity>
+<Intensive cropping, decreases, soil potassium depletion>
+<Mulching, increases, water>
+<Mulching, supports, soil>
+<Microbial inoculants, increases, plant growth>
+<Rhizobia, increases, plant growth>
+<Fungal and oomycete pathogens, affects, food security>
+<Cut-off irrigation, increases, water-use efficiency>
+<Intercropping, supports, agricultural resiliency>
+<Nitrogen-fixing bacteria, supports, environmental sustainability>
+<Nutrient-induced acidification, affects, soil biodiversity>
+<Root exudate compounds, affects, rhizosphere microbial community>
+<Microorganisms, supports, abiotic stress tolerance>
+<Conservation tillage, supports, soil physicochemical properties>
+<Conservation tillage, supports, crop yield>
+<Geobacter, affects, greenhouse gas cycling>
+<Rhizosphere prokaryotic communities, affects, Nitrogen uptake>
+<Root-induced changes, affects, soil hydraulic properties>
+<Cover crop, supports, soil water use efficiency>
+<Microbial interactions, affects, plant defense system>
+<Microbial interactions, affects, soil-borne plant disease>
+<Beneficial microorganisms, supports, soil quality>
+<Beneficial microorganisms, supports, plant health>
+<Silicon supplementation, reduces, potassium deficiency stress>
+<Microbial communities, affects, soil properties>
+<Slow-release fertilizer, produces, nutrient release>
+<Soil quality, increases, crop production>
+<Soil quality, supports, climate resilience>
+<Rhizosphere microbes compounds, increases, plant growth>
+<Microbes, increases, organic matter decomposition>
+<Microbes, increases, carbon release>
+<Eco-friendly agricultural practices, increases, wheat crop yield>
+<Sustainable agricultural practices, supports, food security>
+<Novel agronomic approaches, increases, soil health>
+<Soil management practices, affects, soil culturable bacteriota>
+<Soil quality and fertility, supports, sustainable agriculture>
+<Crop diversity, increases, productivity>
+<Organic fertilization, increases, crop productivity>
+<Organic fertilization, affects, soil aggregation>
+<Nitrogen fertilizer and mulch, affects, soil environment>
+<C: N: P stoichiometry, increases, organic carbon accumulation>
+<Biochar, increases, soil water retention capacity>
+<Microbial fertilizers, increases, soil health>
+<Microbial fertilizers, increases, plant growth>
+<Wheat yellow mosaic disease, increases, microbial taxa enrichment>
+<Cellulase and Lactiplantibacillus plantarum, affects, fermentation parameters>
+<Cellulase and Lactiplantibacillus plantarum, affects, nutrients>
+<Beneficial soil microbiomes, increases, nutrient cycling>
+<Beneficial soil microbiomes, increases, nutrient uptake>
+<Crop rotation, supports, climate resilience>
+<Crop residue return, reduces, Verticillium wilt>
+<Crop residue return, affects, potassium nutrition>
+<Conservation tillage rotation, increases, soil structure>
+<Conservation tillage rotation, increases, soil nutrients>
+<Nitrogen application and mulching, increases, soil quality>
+<Soil properties, affects, microbial communities>
+<Root exudation, affects, microbial communities>

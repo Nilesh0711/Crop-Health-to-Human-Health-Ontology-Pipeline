@@ -1,0 +1,11 @@
+<Ustilaginoidea virens, affects, rice>
+<Water and nutrient stresses, reduces, economic access>
+<Increased rainfall levels, affects, coffee yield>
+<Reduced temperature amplitude, affects, coffee yield>
+<Water and nutrient stresses, affects, primary production>
+<Magnaporthe oryzae, reduces, yield>
+<False smut balls, affects, rice>
+<Temperature stress, affects, chickpea>
+<Soil moisture stress, affects, chickpea>
+<Ustiloxin, affects, human disease>
+<ustilaginoidins, affects, human disease>

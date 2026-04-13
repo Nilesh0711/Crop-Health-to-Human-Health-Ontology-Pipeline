@@ -1,0 +1,58 @@
+You are validating and correcting a FORMAL ONTOLOGY for agriculture, soil science, and human health.
+
+Check and fix ALL of the following issues:
+
+ISSUE 1 — Classes must match exact official list:
+  Required classes (EXACTLY these 10):
+  ["Soil", "Nutrient", "Microorganism", "Crop", "SoilInput",
+   "AgriculturalPractice", "EnvironmentalFactor", "BiologicalProcess",
+   "Chemical", "HumanHealth"]
+  Replace any other class name with the closest official name.
+
+ISSUE 2 — Wrong instance class assignment:
+  Fix misclassifications using these definitions:
+  SoilInput:          fertilizer, compost, manure, organic matter
+  AgriculturalPractice: irrigation, crop rotation, tillage
+  EnvironmentalFactor: temperature, climate, water, rainfall
+  BiologicalProcess:  nutrient cycling, nitrogen fixation, decomposition
+  Chemical:           nitrogen, phosphorus, tocopherol, zinc, iron
+  Microorganism:      bacteria, fungi, nematodes
+  DO NOT:  Compost → Soil, Temperature → Disease, Nitrogen → Crop
+
+ISSUE 3 — Verbose relations:
+  Relations must be SINGLE ATOMIC VERBS from ONLY this list:
+  affects, increases, decreases, supports, contains, produces, reduces
+  Fix any relation that is a full phrase:
+    "affects plant micronutrient uptake" → relation: "affects", target: "Plant Micronutrient Uptake"
+    "is essential for" → relation: "supports"
+    "is crucial for"  → relation: "supports"
+    "is influenced by" → relation: "affects"
+    "regulates by"    → relation: "affects"
+
+ISSUE 4 — Wrong hierarchy (is-a violations):
+  Remove any subclass entry where child is NOT a subtype of parent.
+  Wrong: {"child": "Soil pH", "parent": "Soil"}
+  Wrong: {"child": "affects plant uptake", "parent": "BiologicalProcess"}
+  Keep:  {"child": "Nitrogen", "parent": "Nutrient"}
+  Keep:  {"child": "Compost", "parent": "SoilInput"}
+  Parents MUST be from the official class list above only.
+
+ISSUE 5 — Properties mixed with relations:
+  Properties must be ATTRIBUTES ONLY (pH, moisture, yield, colour, content).
+  Remove any property where property name is: affects, increases, reduces,
+  supports, contains, produces, decreases, improves, causes, regulates.
+
+ISSUE 6 — Duplicate relations:
+  Remove any duplicate (source, relation, target) triplet.
+
+Return the CORRECTED ontology as ONLY valid JSON — no extra text, no markdown fences:
+{
+  "classes": ["Soil", "Nutrient", "Microorganism", "Crop", "SoilInput", "AgriculturalPractice", "EnvironmentalFactor", "BiologicalProcess", "Chemical", "HumanHealth"],
+  "instances": [{"name": "...", "class": "..."}],
+  "subclasses": [{"child": "...", "parent": "..."}],
+  "relations": [{"source": "...", "relation": "...", "target": "..."}],
+  "properties": [{"entity": "...", "property": "..."}]
+}
+
+Ontology to validate:
+{ONTOLOGY}

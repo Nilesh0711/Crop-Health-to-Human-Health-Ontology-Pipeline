@@ -1,0 +1,791 @@
+{
+  "classes": [
+    "Soil",
+    "Nutrient",
+    "Microorganism",
+    "Crop",
+    "SoilInput",
+    "AgriculturalPractice",
+    "EnvironmentalFactor",
+    "BiologicalProcess",
+    "Chemical",
+    "HumanHealth"
+  ],
+  "instances": [
+    {
+      "name": "Climate change",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "nutrients",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Fusarium head blight",
+      "class": "Disease"
+    },
+    {
+      "name": "wheat",
+      "class": "Crop"
+    },
+    {
+      "name": "Fusarium graminearum",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Mycotoxins",
+      "class": "Chemical"
+    },
+    {
+      "name": "infected grains",
+      "class": "Crop"
+    },
+    {
+      "name": "Ustilaginoidea virens",
+      "class": "Microorganism"
+    },
+    {
+      "name": "false smut",
+      "class": "Disease"
+    },
+    {
+      "name": "rice",
+      "class": "Crop"
+    },
+    {
+      "name": "Cochliobolus miyabeanus",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Water",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "nutrient stresses",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Brown spot",
+      "class": "Disease"
+    },
+    {
+      "name": "Hemileia vastatrix",
+      "class": "Microorganism"
+    },
+    {
+      "name": "coffee",
+      "class": "Crop"
+    },
+    {
+      "name": "Increased rainfall levels",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Reduced temperature amplitude",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Leaf rust epidemics",
+      "class": "Disease"
+    },
+    {
+      "name": "Mycotoxin contamination",
+      "class": "Chemical"
+    },
+    {
+      "name": "grain",
+      "class": "Crop"
+    },
+    {
+      "name": "Brown spot epidemics",
+      "class": "Disease"
+    },
+    {
+      "name": "Coffee rust epidemic",
+      "class": "Disease"
+    },
+    {
+      "name": "Wheat rusts",
+      "class": "Disease"
+    },
+    {
+      "name": "Late blight",
+      "class": "Disease"
+    },
+    {
+      "name": "Maize",
+      "class": "Crop"
+    },
+    {
+      "name": "fumonisins",
+      "class": "Chemical"
+    },
+    {
+      "name": "ochratoxins",
+      "class": "Chemical"
+    },
+    {
+      "name": "Groundnut",
+      "class": "Crop"
+    },
+    {
+      "name": "aflatoxins",
+      "class": "Chemical"
+    },
+    {
+      "name": "Toxins",
+      "class": "Chemical"
+    },
+    {
+      "name": "Magnaporthe oryzae",
+      "class": "Microorganism"
+    },
+    {
+      "name": "rice blast",
+      "class": "Disease"
+    },
+    {
+      "name": "Irish potato famine fungus",
+      "class": "Microorganism"
+    },
+    {
+      "name": "nutrition security",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "Chickpea",
+      "class": "Crop"
+    },
+    {
+      "name": "Ustiloxin",
+      "class": "Chemical"
+    },
+    {
+      "name": "ustilaginoidins",
+      "class": "Chemical"
+    },
+    {
+      "name": "Temperature stress",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Soil moisture stress",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Fungal pathogens",
+      "class": "Microorganism"
+    }
+  ],
+  "subclasses": [
+    {
+      "child": "Climate change",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "nutrients",
+      "parent": "Nutrient"
+    },
+    {
+      "child": "wheat",
+      "parent": "Crop"
+    },
+    {
+      "child": "Fusarium graminearum",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Mycotoxins",
+      "parent": "Chemical"
+    },
+    {
+      "child": "infected grains",
+      "parent": "Crop"
+    },
+    {
+      "child": "Ustilaginoidea virens",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "rice",
+      "parent": "Crop"
+    },
+    {
+      "child": "Cochliobolus miyabeanus",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Water",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "nutrient stresses",
+      "parent": "Nutrient"
+    },
+    {
+      "child": "Hemileia vastatrix",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "coffee",
+      "parent": "Crop"
+    },
+    {
+      "child": "Increased rainfall levels",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "Reduced temperature amplitude",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "Mycotoxin contamination",
+      "parent": "Chemical"
+    },
+    {
+      "child": "grain",
+      "parent": "Crop"
+    },
+    {
+      "child": "Maize",
+      "parent": "Crop"
+    },
+    {
+      "child": "fumonisins",
+      "parent": "Chemical"
+    },
+    {
+      "child": "ochratoxins",
+      "parent": "Chemical"
+    },
+    {
+      "child": "Groundnut",
+      "parent": "Crop"
+    },
+    {
+      "child": "aflatoxins",
+      "parent": "Chemical"
+    },
+    {
+      "child": "Toxins",
+      "parent": "Chemical"
+    },
+    {
+      "child": "Magnaporthe oryzae",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Irish potato famine fungus",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "nutrition security",
+      "parent": "HumanHealth"
+    },
+    {
+      "child": "Chickpea",
+      "parent": "Crop"
+    },
+    {
+      "child": "Ustiloxin",
+      "parent": "Chemical"
+    },
+    {
+      "child": "ustilaginoidins",
+      "parent": "Chemical"
+    },
+    {
+      "child": "Temperature stress",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "Soil moisture stress",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "Fungal pathogens",
+      "parent": "Microorganism"
+    }
+  ],
+  "relations": [
+    {
+      "source": "Climate change",
+      "relation": "affects",
+      "target": "disease threats"
+    },
+    {
+      "source": "Inadequate balance of nutrients",
+      "relation": "reduces",
+      "target": "food value"
+    },
+    {
+      "source": "Food security",
+      "relation": "contains",
+      "target": "nutritional value"
+    },
+    {
+      "source": "Stem rust",
+      "relation": "affects",
+      "target": "leaf sheaths"
+    },
+    {
+      "source": "Fusarium head blight",
+      "relation": "affects",
+      "target": "wheat"
+    },
+    {
+      "source": "Fusarium graminearum",
+      "relation": "affects",
+      "target": "FHB"
+    },
+    {
+      "source": "Mycotoxins",
+      "relation": "affects",
+      "target": "infected grains"
+    },
+    {
+      "source": "Ustilaginoidea virens",
+      "relation": "affects",
+      "target": "false smut"
+    },
+    {
+      "source": "False smut",
+      "relation": "affects",
+      "target": "rice"
+    },
+    {
+      "source": "Mycotoxins",
+      "relation": "affects",
+      "target": "animals"
+    },
+    {
+      "source": "Cochliobolus miyabeanus",
+      "relation": "affects",
+      "target": "brown spot"
+    },
+    {
+      "source": "Water and nutrient stresses",
+      "relation": "affects",
+      "target": "Brown spot"
+    },
+    {
+      "source": "Water and nutrient stresses",
+      "relation": "reduces",
+      "target": "rice yield"
+    },
+    {
+      "source": "Hemileia vastatrix",
+      "relation": "affects",
+      "target": "coffee rust"
+    },
+    {
+      "source": "Coffee rust",
+      "relation": "affects",
+      "target": "coffee yield"
+    },
+    {
+      "source": "Increased rainfall levels",
+      "relation": "affects",
+      "target": "coffee rust epidemics"
+    },
+    {
+      "source": "Reduced temperature amplitude",
+      "relation": "affects",
+      "target": "coffee rust epidemics"
+    },
+    {
+      "source": "Successive epidemics",
+      "relation": "affects",
+      "target": "food availability"
+    },
+    {
+      "source": "Cereal rusts",
+      "relation": "reduces",
+      "target": "food production"
+    },
+    {
+      "source": "Leaf rust epidemics",
+      "relation": "affects",
+      "target": "wheat stockpiles"
+    },
+    {
+      "source": "Fusarium head blight",
+      "relation": "reduces",
+      "target": "food production"
+    },
+    {
+      "source": "Mycotoxin contamination",
+      "relation": "affects",
+      "target": "grain use"
+    },
+    {
+      "source": "False smut",
+      "relation": "affects",
+      "target": "rice availability"
+    },
+    {
+      "source": "Brown spot",
+      "relation": "affects",
+      "target": "primary production"
+    },
+    {
+      "source": "Brown spot epidemics",
+      "relation": "affects",
+      "target": "local economy"
+    },
+    {
+      "source": "Brown spot",
+      "relation": "reduces",
+      "target": "economic access"
+    },
+    {
+      "source": "Coffee rust epidemic",
+      "relation": "reduces",
+      "target": "economic access"
+    },
+    {
+      "source": "Cash crops",
+      "relation": "affects",
+      "target": "food dependence"
+    },
+    {
+      "source": "Wheat rusts",
+      "relation": "reduces",
+      "target": "food production"
+    },
+    {
+      "source": "Late blight",
+      "relation": "affects",
+      "target": "food production"
+    },
+    {
+      "source": "Epidemics",
+      "relation": "affects",
+      "target": "food security components"
+    },
+    {
+      "source": "Epidemics",
+      "relation": "reduces",
+      "target": "nutritive value of crops"
+    },
+    {
+      "source": "Maize",
+      "relation": "contains",
+      "target": "fumonisins"
+    },
+    {
+      "source": "Maize",
+      "relation": "contains",
+      "target": "ochratoxins"
+    },
+    {
+      "source": "Groundnut production",
+      "relation": "contains",
+      "target": "aflatoxins"
+    },
+    {
+      "source": "Toxins",
+      "relation": "affects",
+      "target": "major health risks"
+    },
+    {
+      "source": "Chronic epidemics",
+      "relation": "affects",
+      "target": "local economies"
+    },
+    {
+      "source": "Chronic epidemics",
+      "relation": "affects",
+      "target": "physical infrastructures"
+    },
+    {
+      "source": "Magnaporthe oryzae",
+      "relation": "affects",
+      "target": "rice blast"
+    },
+    {
+      "source": "Rice blast",
+      "relation": "reduces",
+      "target": "yield"
+    },
+    {
+      "source": "Yield losses",
+      "relation": "affects",
+      "target": "storage systems"
+    },
+    {
+      "source": "Climate change",
+      "relation": "affects",
+      "target": "food systems"
+    },
+    {
+      "source": "Irish potato famine fungus",
+      "relation": "affects",
+      "target": "potato"
+    },
+    {
+      "source": "Climate change",
+      "relation": "affects",
+      "target": "food security"
+    },
+    {
+      "source": "Climate change",
+      "relation": "affects",
+      "target": "crop protection"
+    },
+    {
+      "source": "Food system metrics",
+      "relation": "supports",
+      "target": "nutrition security"
+    },
+    {
+      "source": "False smut disease",
+      "relation": "affects",
+      "target": "rice"
+    },
+    {
+      "source": "Chickpea",
+      "relation": "contains",
+      "target": "nutritional quality"
+    },
+    {
+      "source": "Chickpea",
+      "relation": "supports",
+      "target": "health benefits"
+    },
+    {
+      "source": "False smut balls",
+      "relation": "contains",
+      "target": "Ustiloxin"
+    },
+    {
+      "source": "Ustiloxin",
+      "relation": "affects",
+      "target": "rice"
+    },
+    {
+      "source": "Ustilaginoidea virens",
+      "relation": "affects",
+      "target": "hybrid rice"
+    },
+    {
+      "source": "Coffee rust",
+      "relation": "affects",
+      "target": "coffee"
+    },
+    {
+      "source": "Fusarium head blight",
+      "relation": "affects",
+      "target": "wheat and barley"
+    },
+    {
+      "source": "False smut balls",
+      "relation": "contains",
+      "target": "ustilaginoidins"
+    },
+    {
+      "source": "Temperature stress",
+      "relation": "affects",
+      "target": "dry root rot"
+    },
+    {
+      "source": "Soil moisture stress",
+      "relation": "affects",
+      "target": "dry root rot"
+    },
+    {
+      "source": "Dry root rot",
+      "relation": "affects",
+      "target": "chickpea"
+    },
+    {
+      "source": "stripe rust",
+      "relation": "affects",
+      "target": "wheat"
+    },
+    {
+      "source": "Mycotoxins",
+      "relation": "affects",
+      "target": "human disease"
+    },
+    {
+      "source": "Fungal pathogens",
+      "relation": "affects",
+      "target": "wheat head blight"
+    }
+  ],
+  "properties": [
+    {
+      "entity": "Climate change",
+      "property": "disease threats"
+    },
+    {
+      "entity": "Inadequate balance of nutrients",
+      "property": "food value"
+    },
+    {
+      "entity": "Food security",
+      "property": "nutritional value"
+    },
+    {
+      "entity": "Stem rust",
+      "property": "leaf sheaths"
+    },
+    {
+      "entity": "Fusarium head blight",
+      "property": "wheat"
+    },
+    {
+      "entity": "Fusarium graminearum",
+      "property": "FHB"
+    },
+    {
+      "entity": "Mycotoxins",
+      "property": "infected grains"
+    },
+    {
+      "entity": "Ustilaginoidea virens",
+      "property": "false smut"
+    },
+    {
+      "entity": "False smut",
+      "property": "rice"
+    },
+    {
+      "entity": "Mycotoxins",
+      "property": "animals"
+    },
+    {
+      "entity": "Cochliobolus miyabeanus",
+      "property": "brown spot"
+    },
+    {
+      "entity": "Water and nutrient stresses",
+      "property": "Brown spot"
+    },
+    {
+      "entity": "Water and nutrient stresses",
+      "property": "rice yield"
+    },
+    {
+      "entity": "Hemileia vastatrix",
+      "property": "coffee rust"
+    },
+    {
+      "entity": "Coffee rust",
+      "property": "coffee yield"
+    },
+    {
+      "entity": "Increased rainfall levels",
+      "property": "coffee rust epidemics"
+    },
+    {
+      "entity": "Reduced temperature amplitude",
+      "property": "coffee rust epidemics"
+    },
+    {
+      "entity": "Successive epidemics",
+      "property": "food availability"
+    },
+    {
+      "entity": "Cereal rusts",
+      "property": "food production"
+    },
+    {
+      "entity": "Leaf rust epidemics",
+      "property": "wheat stockpiles"
+    },
+    {
+      "entity": "Fusarium head blight",
+      "property": "food production"
+    },
+    {
+      "entity": "Mycotoxin contamination",
+      "property": "grain use"
+    },
+    {
+      "entity": "False smut",
+      "property": "rice availability"
+    },
+    {
+      "entity": "Brown spot",
+      "property": "primary production"
+    },
+    {
+      "entity": "Brown spot epidemics",
+      "property": "local economy"
+    },
+    {
+      "entity": "Brown spot",
+      "property": "economic access"
+    },
+    {
+      "entity": "Coffee rust epidemic",
+      "property": "economic access"
+    },
+    {
+      "entity": "Cash crops",
+      "property": "food dependence"
+    },
+    {
+      "entity": "Wheat rusts",
+      "property": "food production"
+    },
+    {
+      "entity": "Late blight",
+      "property": "food production"
+    },
+    {
+      "entity": "Epidemics",
+      "property": "food security components"
+    },
+    {
+      "entity": "Epidemics",
+      "property": "nutritive value of crops"
+    },
+    {
+      "entity": "Maize",
+      "property": "fumonisins"
+    },
+    {
+      "entity": "Maize",
+      "property": "ochratoxins"
+    },
+    {
+      "entity": "Groundnut production",
+      "property": "aflatoxins"
+    },
+    {
+      "entity": "Toxins",
+      "property": "major health risks"
+    },
+    {
+      "entity": "Chronic epidemics",
+      "property": "local economies"
+    },
+    {
+      "entity": "Chronic epidemics",
+      "property": "physical infrastructures"
+    },
+    {
+      "entity": "Magnaporthe oryzae",
+      "property": "rice blast"
+    },
+    {
+      "entity": "Rice blast",
+      "property": "yield"
+    },
+    {
+      "entity": "Chickpea",
+      "property": "nutritional quality"
+    },
+    {
+      "entity": "False smut balls",
+      "property": "Ustiloxin"
+    },
+    {
+      "entity": "False smut balls",
+      "property": "ustilaginoidins"
+    }
+  ]
+}

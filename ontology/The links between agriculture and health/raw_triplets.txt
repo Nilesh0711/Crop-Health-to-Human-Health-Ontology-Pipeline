@@ -1,0 +1,53 @@
+<agriculture, causes, malnutrition>
+<agriculture, causes, foodborne illnesses>
+<agriculture, causes, chronic diseases>
+<agriculture, produces, medicinal plants>
+<poor health, reduces, income>
+<poor health, reduces, productivity>
+<water, affects, human health>
+<soil, affects, human health>
+<wastewater, causes, pathogens>
+<pathogens, causes, foodborne illnesses>
+<aflatoxins, contains, staple crops>
+<irrigation, increases, food yields>
+<irrigation, improves, income>
+<water resources, promotes, insect vectors>
+<water resources, promotes, disease transmission>
+<income, affects, nutrition>
+<malnutrition, affects, livelihood>
+<poor health, affects, ability to work>
+<water resources, affects, malaria>
+<water resources, affects, schistosomiasis>
+<water resources, affects, Japanese encephalitis>
+<rice irrigation, increases, local malaria vector prevalence>
+<rice irrigation, reduces, malaria prevalence>
+<malaria, reduces, ability to work>
+<malaria, leads_to, absences from work>
+<absences from work, leads_to, reduced overall yields>
+<agricultural water management, reduces, malaria morbidity>
+<wet crop/dry crop rotation, reduces, vector breeding>
+<cattle, reduces, disease transmission>
+<fungus, produces, aflatoxins>
+<aflatoxins, causes, acute aflatoxicosis>
+<aflatoxins, causes, stunting>
+<aflatoxins, causes, hepatocellular cancer>
+<aflatoxins in maize and groundnuts, causes, impairment of child growth>
+<low-cost agricultural interventions, reduces, aflatoxin exposure>
+<agriculture, promotes, disease spread>
+<agriculture, promotes, disease prevention>
+<poor health, reduces, work performance>
+<Agriculture, causes, Poor nutrition>
+<Agriculture, causes, Malaria>
+<Agriculture, causes, Foodborne diseases>
+<Agriculture, causes, Chronic diseases>
+<Poor health, reduces, Agricultural productivity>
+<Environmental change, affects, Food production>
+<Environmental change, affects, Human nutrition>
+<Environmental change, affects, Health>
+<Agriculture, affects, Malaria>
+<Environmental management, reduces, Malaria burden>
+<New irrigation methods, promotes, Malaria control>
+<Dietary aflatoxin exposure, causes, Impaired growth>
+<Aflatoxin, affects, Impaired growth>
+<Postweaning exposure to aflatoxin, causes, Impaired child growth>
+<Postharvest intervention measures, reduces, Aflatoxin exposure>

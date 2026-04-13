@@ -1,0 +1,340 @@
+{
+  "subclasses": [
+    {
+      "child": "clayey soils",
+      "parent": "Soil"
+    },
+    {
+      "child": "sandy soils",
+      "parent": "Soil"
+    },
+    {
+      "child": "Nitrogen",
+      "parent": "Nutrient"
+    },
+    {
+      "child": "excess Nitrogen",
+      "parent": "Nutrient"
+    },
+    {
+      "child": "excess Phosphorus",
+      "parent": "Nutrient"
+    },
+    {
+      "child": "Nitrogen and Phosphorus overabundance",
+      "parent": "Nutrient"
+    },
+    {
+      "child": "potassium",
+      "parent": "Nutrient"
+    },
+    {
+      "child": "Iron",
+      "parent": "Nutrient"
+    },
+    {
+      "child": "Soil Microorganism",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "nitrogen-fixing bacteria",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "soil bacteria",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "microbial communities",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "beneficial microorganisms",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "beneficial microbes",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "harmful microbes",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Lactiplantibacillus plantarum",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Beneficial soil microbiomes",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Rhizobacteria",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Rhizobia",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Fungal and oomycete pathogens",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Geobacter",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Rhizosphere prokaryotic communities",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Rhizosphere microbes",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "soil culturable bacteriota",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "Cover crop",
+      "parent": "Crop"
+    },
+    {
+      "child": "wheat",
+      "parent": "Crop"
+    },
+    {
+      "child": "microbial fertilizers",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "organic fertilizers",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "excessive Nitrogen fertilization",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "over-application of Phosphorus",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "synthetic fertilizers",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "Nitrogen fertilizer",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "Organic fertilizer",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "Microbial composts",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "Microbial inoculants",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "Silicon supplementation",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "Slow-release fertilizer",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "mulch",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "Nitrogen application",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "Biochar",
+      "parent": "SoilInput"
+    },
+    {
+      "child": "aeration",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "waterlogging",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "soil acidification",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "eutrophication",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "climate",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "water stress",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "yellow mosaic disease",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "Verticillium wilt",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "Land use change",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "nutrient absorption",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "root respiration",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "nutrient leaching",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "nutrient retention",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "water and nutrient absorption",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "soil respiration",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "Root exudation",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "soil organic carbon sequestration",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "Rhizobium-legume symbiosis",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "microbial interactions",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "organic matter decomposition",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "nutrient uptake",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "Root-induced changes",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "Nutrient-induced acidification",
+      "parent": "BiologicalProcess"
+    },
+    {
+      "child": "toxic metals",
+      "parent": "Chemical"
+    },
+    {
+      "child": "Root exudates",
+      "parent": "Chemical"
+    },
+    {
+      "child": "C: N: P stoichiometry",
+      "parent": "Chemical"
+    },
+    {
+      "child": "organic carbon",
+      "parent": "Chemical"
+    },
+    {
+      "child": "Cellulase",
+      "parent": "Chemical"
+    },
+    {
+      "child": "Root exudate compounds",
+      "parent": "Chemical"
+    },
+    {
+      "child": "food security",
+      "parent": "HumanHealth"
+    },
+    {
+      "child": "soil loosening",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Cover practices",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Conservation agriculture",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Crop rotation",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Intensive cropping",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Mulching",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Eco-friendly agricultural practices",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Sustainable agricultural practices",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Novel agronomic approaches",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Soil management practices",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Conservation tillage",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Cut-off irrigation",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Intercropping",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Conservation tillage rotation",
+      "parent": "AgriculturalPractice"
+    }
+  ]
+}

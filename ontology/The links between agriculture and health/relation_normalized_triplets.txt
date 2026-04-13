@@ -1,0 +1,26 @@
+<water, affects, human health>
+<soil, affects, human health>
+<wastewater, contains, pathogens>
+<irrigation, increases, food yields>
+<irrigation, increases, income>
+<water resources, supports, insect vectors>
+<water resources, supports, disease transmission>
+<income, affects, nutrition>
+<malnutrition, affects, livelihood>
+<water resources, affects, malaria>
+<water resources, affects, schistosomiasis>
+<water resources, affects, Japanese encephalitis>
+<rice irrigation, increases, local malaria vector prevalence>
+<rice irrigation, reduces, malaria prevalence>
+<malaria, reduces, ability to work>
+<malaria, reduces, work performance>
+<wet crop/dry crop rotation, reduces, vector breeding>
+<cattle, reduces, disease transmission>
+<fungus, produces, aflatoxins>
+<low-cost agricultural interventions, reduces, aflatoxin exposure>
+<Environmental change, affects, Food production>
+<Environmental change, affects, Human nutrition>
+<Environmental change, affects, Health>
+<Environmental management, reduces, Malaria burden>
+<New irrigation methods, affects, Malaria control>
+<Dietary aflatoxin exposure, affects, Impaired growth>

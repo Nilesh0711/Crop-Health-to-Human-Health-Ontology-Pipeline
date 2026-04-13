@@ -1,0 +1,28 @@
+Extract properties.
+
+RULES:
+
+Properties are attributes, NOT actions
+Examples:
+Soil → pH
+Soil → nutrient content
+Crop → yield
+
+DO NOT include:
+
+affects
+increases
+reduces
+supports
+contains
+produces
+
+INPUT:
+{TRIPLETS}
+
+OUTPUT:
+{
+"properties": [
+{"entity": "entity_name", "property": "property_name"}
+]
+}

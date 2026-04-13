@@ -1,0 +1,768 @@
+{
+  "instances": [
+    {
+      "name": "organic food consumption",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "organic farming practices",
+      "class": "Crop"
+    },
+    {
+      "name": "whole-grain",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "fruit and vegetables",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "reducing red-meat consumption",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "organic farming standards",
+      "class": "Chemical"
+    },
+    {
+      "name": "organic fertilizers",
+      "class": "Soil"
+    },
+    {
+      "name": "legume crops",
+      "class": "Nutrient"
+    },
+    {
+      "name": "manure",
+      "class": "Soil"
+    },
+    {
+      "name": "composts",
+      "class": "Soil"
+    },
+    {
+      "name": "healthy soils",
+      "class": "Crop"
+    },
+    {
+      "name": "healthy crops",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "organic farming",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "Ley phase",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Grassland management",
+      "class": "Soil"
+    },
+    {
+      "name": "Cover crops",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Grass-clover leys",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Wheat after wheat",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Wireworm populations",
+      "class": "Crop"
+    },
+    {
+      "name": "Organic rotations",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Monoculture",
+      "class": "Chemical"
+    },
+    {
+      "name": "Faba bean cover crops",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Organic farming systems",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "Biogas units",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Organic fertilization regimes",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Mineral Nitrogen Phosphorus",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Nitrogen-availability",
+      "class": "Chemical"
+    },
+    {
+      "name": "Dietary intake of phenolics",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "Mycorrhizal fungal associations",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Organic crop management",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Fertilization",
+      "class": "Crop"
+    },
+    {
+      "name": "Reducing mineral Phosphorus-inputs",
+      "class": "Chemical"
+    },
+    {
+      "name": "synthetic chemical pesticides",
+      "class": "Chemical"
+    },
+    {
+      "name": "conventional Nitrogen Phosphorus-fertilized backgrounds",
+      "class": "Microorganism"
+    },
+    {
+      "name": "reduced mycorrhizas capacity",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Rhizobium inocula",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "VA-mycorrhizal fungi",
+      "class": "Nutrient"
+    },
+    {
+      "name": "high C:N ratio compost",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "manure-fertilized organic system",
+      "class": "Chemical"
+    },
+    {
+      "name": "organic matter inputs",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "organic matter/compost inputs",
+      "class": "Soil"
+    },
+    {
+      "name": "soil chemical disinfection",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "organic waste materials",
+      "class": "SoilInput"
+    },
+    {
+      "name": "Brassica cover crops",
+      "class": "Crop"
+    },
+    {
+      "name": "soil amendments",
+      "class": "SoilInput"
+    },
+    {
+      "name": "companion plants",
+      "class": "Crop"
+    },
+    {
+      "name": "managed field margins",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "insecticide applications",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Chitin",
+      "class": "Chemical"
+    },
+    {
+      "name": "Chitosan",
+      "class": "Chemical"
+    },
+    {
+      "name": "defense responses",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "manure fertilization",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Biological control products",
+      "class": "SoilInput"
+    },
+    {
+      "name": "Bacterial antagonists",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Fungal antagonists",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Insect-proof screens",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Environmental changes",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Organic crop protection regimes",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Mass-trapping methods",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Barrier methods",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Thermal soil disinfection",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Cu-fungicides",
+      "class": "SoilInput"
+    },
+    {
+      "name": "Concentrated Cu solutions",
+      "class": "Chemical"
+    },
+    {
+      "name": "Spinosad",
+      "class": "Chemical"
+    },
+    {
+      "name": "Organic food",
+      "class": "Crop"
+    },
+    {
+      "name": "Conventional food",
+      "class": "Crop"
+    },
+    {
+      "name": "wheat species",
+      "class": "Crop"
+    },
+    {
+      "name": "whole-grain flour",
+      "class": "Crop"
+    },
+    {
+      "name": "common wheat",
+      "class": "Crop"
+    },
+    {
+      "name": "whole-grain cereal products",
+      "class": "Crop"
+    },
+    {
+      "name": "environmental conditions",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "manure-fertilized plots",
+      "class": "Soil"
+    },
+    {
+      "name": "earlier wheat grain maturity",
+      "class": "Crop"
+    },
+    {
+      "name": "manure-fertilized crops",
+      "class": "Crop"
+    },
+    {
+      "name": "microbial activity",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "soil organic matter",
+      "class": "Soil"
+    },
+    {
+      "name": "herbicides",
+      "class": "Chemical"
+    },
+    {
+      "name": "negative effects of herbicides",
+      "class": "Chemical"
+    },
+    {
+      "name": "manure-fertilized soils",
+      "class": "Soil"
+    },
+    {
+      "name": "traditional long-straw varieties",
+      "class": "Crop"
+    },
+    {
+      "name": "modern short-straw varieties",
+      "class": "Crop"
+    },
+    {
+      "name": "foliar phenolic concentrations",
+      "class": "Chemical"
+    },
+    {
+      "name": "spelta",
+      "class": "Crop"
+    },
+    {
+      "name": "longer-straw wheat varieties",
+      "class": "Crop"
+    },
+    {
+      "name": "Organic production",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "butternut squash",
+      "class": "Crop"
+    },
+    {
+      "name": "organic management",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "grape type",
+      "class": "Crop"
+    },
+    {
+      "name": "soil factor",
+      "class": "Soil"
+    },
+    {
+      "name": "climatic conditions",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "conventional fertilization regimes",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "phenolic concentrations",
+      "class": "Chemical"
+    },
+    {
+      "name": "Nitrogen",
+      "class": "Nutrient"
+    },
+    {
+      "name": "grass-clover ley pre-crops",
+      "class": "Crop"
+    },
+    {
+      "name": "organic crops",
+      "class": "Crop"
+    },
+    {
+      "name": "pesticide concentrations",
+      "class": "Chemical"
+    },
+    {
+      "name": "cadmium concentrations",
+      "class": "Chemical"
+    },
+    {
+      "name": "antioxidant capacity",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "organic whole-grain",
+      "class": "Crop"
+    },
+    {
+      "name": "mineral micronutrients",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Fusarium mycotoxins",
+      "class": "Chemical"
+    },
+    {
+      "name": "human health",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "whole-grain, fruit and vegetables",
+      "class": "Crop"
+    },
+    {
+      "name": "public health",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "maternal dietary factors",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "epigenetic programming",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "EDCs",
+      "class": "Chemical"
+    },
+    {
+      "name": "catechins",
+      "class": "Chemical"
+    },
+    {
+      "name": "DNA methylation levels",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "chronic pesticide exposure",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "overweight/obesity",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "metabolic syndrome",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "certain cancers",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "non-Hodgkin lymphoma",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "triazine herbicides metabolites",
+      "class": "Chemical"
+    },
+    {
+      "name": "low pesticide exposure",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "high organic food consumption",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "breast cancer",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "unbalanced Western diets",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "fruits, vegetables, whole-grain consumption",
+      "class": "Crop"
+    },
+    {
+      "name": "fibre",
+      "class": "Nutrient"
+    },
+    {
+      "name": "whole-grain consumption",
+      "class": "Crop"
+    },
+    {
+      "name": "pesticides",
+      "class": "Chemical"
+    },
+    {
+      "name": "F&V consumption",
+      "class": "Crop"
+    },
+    {
+      "name": "whole-grain, F&V consumption",
+      "class": "Crop"
+    },
+    {
+      "name": "phytochemicals",
+      "class": "Chemical"
+    },
+    {
+      "name": "low pesticide loads",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "reducing red meat consumption",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "deforestation",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "organic crop production",
+      "class": "Crop"
+    },
+    {
+      "name": "non-renewable agrochemical inputs",
+      "class": "Chemical"
+    },
+    {
+      "name": "mineral fertilizers",
+      "class": "SoilInput"
+    },
+    {
+      "name": "soil",
+      "class": "Soil"
+    },
+    {
+      "name": "nitrate leaching",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Phosphorus run-off",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "greenhouse gas emissions",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "biodiversity",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "pest and disease pressure",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "mineral Phosphorus fertilizer",
+      "class": "SoilInput"
+    },
+    {
+      "name": "mycorrhizal development",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "mineral Nitrogen fertilizer",
+      "class": "SoilInput"
+    },
+    {
+      "name": "Nutrient",
+      "class": "Nutrient"
+    },
+    {
+      "name": "crop resistance",
+      "class": "Crop"
+    },
+    {
+      "name": "Concentrate feeds",
+      "class": "SoilInput"
+    },
+    {
+      "name": "omega-3 fatty acids",
+      "class": "Chemical"
+    },
+    {
+      "name": "CLA",
+      "class": "Chemical"
+    },
+    {
+      "name": "carotenoids",
+      "class": "Chemical"
+    },
+    {
+      "name": "vitamin E",
+      "class": "Chemical"
+    },
+    {
+      "name": "saturated fatty acids",
+      "class": "Chemical"
+    },
+    {
+      "name": "environmental factor",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "government expenditure",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "negative environmental impacts",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Chemical",
+      "class": "Chemical"
+    },
+    {
+      "name": "EnvironmentalFactor",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Digestate",
+      "class": "SoilInput"
+    },
+    {
+      "name": "BiologicalProcess",
+      "class": "BiologicalProcess"
+    },
+    {
+      "name": "Fertilizer impacts",
+      "class": "SoilInput"
+    },
+    {
+      "name": "Rhizobium strains",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Suppressive composts",
+      "class": "SoilInput"
+    },
+    {
+      "name": "Crop",
+      "class": "Crop"
+    },
+    {
+      "name": "Uncomposted materials",
+      "class": "SoilInput"
+    },
+    {
+      "name": "Chitosan biopolymer",
+      "class": "Chemical"
+    },
+    {
+      "name": "AgriculturalPractice",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Biological control agents",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Elicitors",
+      "class": "Chemical"
+    },
+    {
+      "name": "Low temperature steaming",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Fungicides",
+      "class": "Chemical"
+    },
+    {
+      "name": "Endocrine disrupting chemicals",
+      "class": "Chemical"
+    },
+    {
+      "name": "Endocrine disruptors",
+      "class": "Chemical"
+    },
+    {
+      "name": "Organic foods",
+      "class": "Crop"
+    },
+    {
+      "name": "Organic matter input",
+      "class": "SoilInput"
+    },
+    {
+      "name": "Glyphosate",
+      "class": "Chemical"
+    },
+    {
+      "name": "Glyphosate-based herbicides",
+      "class": "Chemical"
+    },
+    {
+      "name": "Gut microbial metabolites",
+      "class": "Chemical"
+    },
+    {
+      "name": "Dietary polyphenols",
+      "class": "Chemical"
+    },
+    {
+      "name": "Soy isoflavones",
+      "class": "Chemical"
+    },
+    {
+      "name": "Dietary pesticide exposure profiles",
+      "class": "Chemical"
+    },
+    {
+      "name": "Nitrite",
+      "class": "Chemical"
+    },
+    {
+      "name": "PUFA",
+      "class": "Nutrient"
+    },
+    {
+      "name": "alpha-tocopherol",
+      "class": "Chemical"
+    },
+    {
+      "name": "Dietary nitrate",
+      "class": "Nutrient"
+    },
+    {
+      "name": "Organic diet intervention",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Nutrition",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "Western diet",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "mycorrhizal fungal communities",
+      "class": "Microorganism"
+    },
+    {
+      "name": "Intensification practices",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Forage-based rations",
+      "class": "SoilInput"
+    },
+    {
+      "name": "Feeding intensity",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Dairy management",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Low-input management",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Organic systems",
+      "class": "AgriculturalPractice"
+    }
+  ]
+}

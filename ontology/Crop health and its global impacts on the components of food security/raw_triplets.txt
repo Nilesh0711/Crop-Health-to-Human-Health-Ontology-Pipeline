@@ -1,0 +1,84 @@
+<Plant pathogens, reduces, crop performances>
+<Plant pathogens, affects, food security>
+<Plant pathogens, affects, plant physiology>
+<Climate change, affects, disease threats>
+<Pesticide residues, affects, food safety>
+<Poor cooking quality, reduces, nutritional value>
+<Inadequate balance of nutrients, reduces, food value>
+<Food security, contains, nutritional value>
+<Plant disease epidemics, affects, food security>
+<Phytophthora infestans, causes, famine>
+<Potato blight, affects, Irish population>
+<Pathogen, increases, aggressiveness>
+<Puccinia graminis f. sp. tritici, causes, stem rust>
+<Stem rust, affects, leaf sheaths>
+<New stripe rust strains, adapted to, higher temperatures>
+<Fusarium head blight, affects, wheat>
+<Fusarium graminearum, causes, FHB>
+<Mycotoxins, affects, infected grains>
+<Ustilaginoidea virens, causes, false smut>
+<False smut, affects, rice>
+<Mycotoxins, toxic to, animals>
+<Cochliobolus miyabeanus, causes, brown spot>
+<Brown spot, occurs during, water and nutrient stresses>
+<Water and nutrient stresses, reduces, rice yield>
+<Hemileia vastatrix, causes, coffee rust>
+<Coffee rust, affects, coffee yield>
+<Increased rainfall levels, affects, coffee rust epidemics>
+<Reduced temperature amplitude, affects, coffee rust epidemics>
+<potato late blight, affects, food production>
+<successive epidemics, affects, food availability>
+<cereal rusts, reduces, food production>
+<leaf rust epidemics, affects, wheat stockpiles>
+<Fusarium head blight, reduces, food production>
+<Mycotoxin contamination, affects, grain use>
+<False smut, affects, rice availability>
+<pathogen toxins, affects, rice eating quality>
+<brown spot, affects, primary production>
+<brown spot epidemics, affects, local economy>
+<brown spot, reduces, economic access>
+<coffee rust epidemic, reduces, economic access>
+<cash crops, leads_to, food dependence>
+<wheat rusts, reduces, food production>
+<late blight, affects, food production>
+<epidemics, affects, food security components>
+<Epidemics, reduces, nutritive value of crops>
+<Epidemics, causes, accumulation of toxins in food>
+<Plant disease epidemics, reduces, nutritional value>
+<Maize, contains, fumonisins>
+<Maize, contains, ochratoxins>
+<Groundnut production, contains, aflatoxins>
+<Toxins, causes, major health risks>
+<Chronic epidemics, affects, local economies>
+<Chronic epidemics, affects, physical infrastructures>
+<Acute epidemics, causes, food shortages>
+<Acute epidemics, causes, damaged infrastructures>
+<Magnaporthe oryzae, causes, rice blast>
+<Rice blast, reduces, yield>
+<Yield losses, affects, storage systems>
+<Climate change, affects, food systems>
+<Rhizoctonia bataticola, causes, dry root rot of chickpea>
+<Dry root rot of chickpea, affects, plant proteins>
+<Irish potato famine fungus, causes, potato>
+<Phytophthora infestans, affects, metalaxyl resistance>
+<Climate change, affects, food security>
+<Pest, affects, food security>
+<Pathogen, affects, food security>
+<Climate change, affects, crop protection>
+<Food system metrics, promotes, nutrition security>
+<False smut disease, affects, rice>
+<Chickpea, contains, nutritional quality>
+<Chickpea, promotes, health benefits>
+<False smut balls, contains, Ustiloxin>
+<Ustiloxin, affects, rice>
+<Ustilaginoidea virens, affects, hybrid rice>
+<Coffee rust, affects, coffee>
+<Fusarium head blight, affects, wheat and barley>
+<False smut balls, contains, ustilaginoidins>
+<Temperature stress, affects, dry root rot>
+<Soil moisture stress, affects, dry root rot>
+<Dry root rot, affects, chickpea>
+<Puccinia striiformis, causes, stripe rust>
+<stripe rust, affects, wheat>
+<Mycotoxins, affects, human disease>
+<Fungal pathogens, causes, wheat head blight>

@@ -1,0 +1,303 @@
+{
+  "classes": [
+    "Soil",
+    "Nutrient",
+    "Microorganism",
+    "Crop",
+    "SoilInput",
+    "AgriculturalPractice",
+    "EnvironmentalFactor",
+    "BiologicalProcess",
+    "Chemical",
+    "HumanHealth"
+  ],
+  "instances": [
+    {
+      "name": "water",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "soil",
+      "class": "Soil"
+    },
+    {
+      "name": "wastewater",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "pathogens",
+      "class": "Microorganism"
+    },
+    {
+      "name": "irrigation",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "water resources",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "insect vectors",
+      "class": "Microorganism"
+    },
+    {
+      "name": "malnutrition",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "malaria",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "schistosomiasis",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "Japanese encephalitis",
+      "class": "HumanHealth"
+    },
+    {
+      "name": "rice irrigation",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "wet crop/dry crop rotation",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "fungus",
+      "class": "Microorganism"
+    },
+    {
+      "name": "aflatoxins",
+      "class": "Chemical"
+    },
+    {
+      "name": "low-cost agricultural interventions",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Environmental change",
+      "class": "EnvironmentalFactor"
+    },
+    {
+      "name": "Environmental management",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "New irrigation methods",
+      "class": "AgriculturalPractice"
+    },
+    {
+      "name": "Dietary aflatoxin exposure",
+      "class": "Chemical"
+    }
+  ],
+  "subclasses": [
+    {
+      "child": "water",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "wastewater",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "pathogens",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "irrigation",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "water resources",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "insect vectors",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "malnutrition",
+      "parent": "HumanHealth"
+    },
+    {
+      "child": "malaria",
+      "parent": "HumanHealth"
+    },
+    {
+      "child": "schistosomiasis",
+      "parent": "HumanHealth"
+    },
+    {
+      "child": "Japanese encephalitis",
+      "parent": "HumanHealth"
+    },
+    {
+      "child": "rice irrigation",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "wet crop/dry crop rotation",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "fungus",
+      "parent": "Microorganism"
+    },
+    {
+      "child": "aflatoxins",
+      "parent": "Chemical"
+    },
+    {
+      "child": "low-cost agricultural interventions",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "Environmental change",
+      "parent": "EnvironmentalFactor"
+    },
+    {
+      "child": "Environmental management",
+      "parent": "AgriculturalPractice"
+    },
+    {
+      "child": "New irrigation methods",
+      "parent": "AgriculturalPractice"
+    }
+  ],
+  "relations": [
+    {
+      "source": "water",
+      "relation": "affects",
+      "target": "human health"
+    },
+    {
+      "source": "soil",
+      "relation": "affects",
+      "target": "human health"
+    },
+    {
+      "source": "wastewater",
+      "relation": "contains",
+      "target": "pathogens"
+    },
+    {
+      "source": "irrigation",
+      "relation": "increases",
+      "target": "food yields"
+    },
+    {
+      "source": "irrigation",
+      "relation": "increases",
+      "target": "income"
+    },
+    {
+      "source": "water resources",
+      "relation": "supports",
+      "target": "insect vectors"
+    },
+    {
+      "source": "water resources",
+      "relation": "supports",
+      "target": "disease transmission"
+    },
+    {
+      "source": "income",
+      "relation": "affects",
+      "target": "nutrition"
+    },
+    {
+      "source": "malnutrition",
+      "relation": "affects",
+      "target": "livelihood"
+    },
+    {
+      "source": "water resources",
+      "relation": "affects",
+      "target": "malaria"
+    },
+    {
+      "source": "water resources",
+      "relation": "affects",
+      "target": "schistosomiasis"
+    },
+    {
+      "source": "water resources",
+      "relation": "affects",
+      "target": "Japanese encephalitis"
+    },
+    {
+      "source": "rice irrigation",
+      "relation": "increases",
+      "target": "local malaria vector prevalence"
+    },
+    {
+      "source": "rice irrigation",
+      "relation": "reduces",
+      "target": "malaria prevalence"
+    },
+    {
+      "source": "malaria",
+      "relation": "reduces",
+      "target": "ability to work"
+    },
+    {
+      "source": "malaria",
+      "relation": "reduces",
+      "target": "work performance"
+    },
+    {
+      "source": "wet crop/dry crop rotation",
+      "relation": "reduces",
+      "target": "vector breeding"
+    },
+    {
+      "source": "cattle",
+      "relation": "reduces",
+      "target": "disease transmission"
+    },
+    {
+      "source": "fungus",
+      "relation": "produces",
+      "target": "aflatoxins"
+    },
+    {
+      "source": "low-cost agricultural interventions",
+      "relation": "reduces",
+      "target": "aflatoxin exposure"
+    },
+    {
+      "source": "Environmental change",
+      "relation": "affects",
+      "target": "Food production"
+    },
+    {
+      "source": "Environmental change",
+      "relation": "affects",
+      "target": "Human nutrition"
+    },
+    {
+      "source": "Environmental change",
+      "relation": "affects",
+      "target": "Health"
+    },
+    {
+      "source": "Environmental management",
+      "relation": "reduces",
+      "target": "Malaria burden"
+    },
+    {
+      "source": "New irrigation methods",
+      "relation": "affects",
+      "target": "Malaria control"
+    },
+    {
+      "source": "Dietary aflatoxin exposure",
+      "relation": "affects",
+      "target": "Impaired growth"
+    }
+  ],
+  "properties": []
+}

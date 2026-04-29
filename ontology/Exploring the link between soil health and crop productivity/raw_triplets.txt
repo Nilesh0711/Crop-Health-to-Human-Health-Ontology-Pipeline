@@ -1,247 +1,69 @@
-<soil properties, affects, crop growth>
-<soil texture, affects, water retention>
-<acidic soils, limits, crop growth>
-<crop root systems, promotes, soil aggregates>
-<soil properties, determines, crop productivity>
-<soil microorganisms, promotes, nutrient cycling>
-<phosphate-solubilizing bacteria, promotes, nutrient cycles>
-<nitrogen-fixing bacteria, promotes, nutrient cycles>
-<microbial fertilizers, increases, crop resistance>
-<soil bacteria, facilitates, nutrient absorption>
-<soil bacteria, enhances, disease resistance>
-<diverse planting methods, promotes, soil microbial diversity>
-<soil texture, determines, aeration>
-<clayey soils, enhances, water adsorption>
-<waterlogging, impairs, root respiration>
-<sandy soils, leads to, nutrient leaching>
-<organic fertilizers, improves, soil structure>
-<soil loosening, enhances, aeration>
-<soil properties, influences, crop yield>
-<soil texture, improves, nutrient availability>
-<soil texture, improves, soil health>
-<soil texture, enhances, crop productivity>
-<N, supports, crop growth>
-<P, supports, crop growth>
-<K, supports, crop growth>
-<excessive nitrogen fertilization, causes, soil acidification>
-<soil acidification, alters, microbial communities>
-<soil acidification, reduces, beneficial microorganisms>
-<soil acidification, disrupts, nutrient cycling>
-<soil acidification, mobilizes, toxic metals>
-<toxic metals, inhibits, root growth>
-<P, contains, nucleic acids>
-<P, contains, phospholipids>
-<P deficiency, leads_to, stunted growth>
-<P deficiency, leads_to, poor root development>
-<over-application of phosphorus, causes, eutrophication>
-<K, promotes, photosynthesis>
-<K, promotes, protein synthesis>
-<K, enhances, water use efficiency>
-<K, enhances, disease resistance>
-<organic matter, improves, nutrient retention>
-<organic matter, reduces, reliance on synthetic fertilizers>
-<excess N, promotes, vigorous crop growth>
-<excess N, leads_to, reduced yield>
-<excess N, causes, soil acidification>
-<excess N, disrupts, soil structure>
-<excess P, impedes, root development>
-<excess P, affects, water and nutrient absorption>
-<excess P, leads_to, water stress>
-<excess P, reduces, soil respiration>
-<N and P overabundance, alters, soil microorganisms>
-<N and P overabundance, suppresses, beneficial microbes>
-<N and P overabundance, promotes, harmful microbes>
-<drought stress, causes, reduced stomatal opening>
-<reduced stomatal opening, increases, water absorption capacity>
-<antioxidants, protects, cells>
-<mulching techniques, reduces, soil water evaporation>
-<mulching techniques, improves, water use efficiency>
-<fertilization, increases, soil organic matter>
-<fertilization, enhances, soil structure>
-<drip irrigation, conserves, water>
-<drip irrigation, increases, crop yields>
-<deep root systems, enhances, drought resistance>
-<small leaves, minimizes, water evaporation>
-<crop diversity, improves, soil health>
-<crop diversity, improves, nutrient use efficiency>
-<crop diversity, reduces, dependence on chemical fertilizers>
-<crop diversity, promotes, soil fertility>
-<crop diversity, optimizes, soil microbial communities>
-<crop diversity, increases, soil organic carbon>
-<root exudates, enhances, soil structure>
-<root exudates, boosts, organic matter content>
-<root exudates, supports, soil microorganisms>
-<rhizobia, enhances, nitrogen content>
-<rhizobia, promotes, nitrogen cycle>
-<monoculture, increases, soil pathogens>
-<monoculture, poses, threat to crop health>
-<crop diversity, mitigates, incidence of parasites>
-<diverse root structures, enhances, organic matter>
-<crop diversity, improves, nutrient cycling>
-<Root secretions, promotes, nutrient mineralization>
-<Microorganisms, increases, nutrient supply>
-<Monoculture management, causes, disease spread>
-<Crop diversity, enhances, microbial diversity>
-<Microbial diversity, inhibits, pathogens>
-<Crop root secretions, promotes, beneficial microorganisms>
-<Crop diversity, improves, soil health>
-<Crop rotation, reduces, pest occurrence>
-<Intercropping, reduces, pest occurrence>
-<Crops, contains, pest suppressive components>
-<Fertilizers, balances, nutrient content>
-<Diverse cropping systems, improves, soil structure>
-<Diverse cropping systems, increases, soil permeability>
-<Diverse cropping systems, enhances, water-holding capacity>
-<Crop root exudates, supports, soil microbial community>
-<Microbial diversity, promotes, nutrient cycling>
-<Microorganisms, mobilizes, nutrients>
-<Diverse microbial community, suppresses, soil pathogens>
-<Diverse microbial community, reduces, soil-borne disease incidence>
-<Multiple plant species, disrupts, pathogen life cycle>
-<Crop diversity, enhances, nutrient use efficiency>
-<Soil organisms, improves, soil structure>
-<Soil organisms, promotes, soil aggregation>
-<Plant roots, promotes, soil aggregate formation>
-<Root exudates, increases, soil porosity>
-<Fungal hyphae, increases, aggregate stability>
-<Plant residues, maintains, soil organic matter>
-<Microbial diversity, enhances, soil resilience>
-<Rhizosphere microbial communities, enhances, nutrient cycling efficiency>
-<Nitrogen-fixing bacteria, enriches, nitrogen resources>
-<Nitrifying bacteria, converts, ammonia nitrogen>
-<Denitrifying bacteria, regulates, soil nitrogen content>
-<Microorganisms, makes, nutrients accessible>
-<Microorganisms, promotes, root growth>
-<Mycorrhizal fungi, enhances, nutrient uptake>
-<Nitrogen-fixing bacteria, provides, essential nutrients>
-<Microbial activity, improves, soil structure>
-<Microbial activity, enhances, water retention capacity>
-<Biofertilizers, enhances, nutrient utilization>
-<Microorganisms, enhances, plant resistance>
-<Microorganisms, inhibits, pathogen growth>
-<Microorganisms, promotes, plant growth>
-<Microorganisms, promotes, crop immune system>
-<Microorganisms, increases, resistance to pathogens>
-<Microorganisms, activates, plant defense system>
-<Microorganisms, induces, anti-disease proteins>
-<Microorganisms, promotes, nutrient absorption capacity>
-<Monoculture cropping pattern, reduces, soil microbial diversity>
-<Plant root exudates, promotes, microbial diversity>
-<Diversified planting patterns, enhance, soil microbial diversity>
-<High nutrient requirements of crops, affects, soil microbial community>
-<Excessive application of fertilizers, reduces, microbial diversity>
-<Traditional tillage practices, diminishes, soil microbes>
-<No-till practices, preserve, soil microbial diversity>
-<Organic fertilizers, enhance, microbial activity>
-<Organic fertilizers, improve, soil structure>
-<Organic matter content, improves, soil capacity to retain moisture>
-<Over-irrigation, causes, salt accumulation>
-<Conservation tillage, reduces, soil erosion>
-<Conservation tillage, enhances, soil structure and quality>
-<Organic agriculture, promotes, soil biodiversity>
-<Gene editing technology, enables, crop resistance to pests>
-<Crop cultivation, affects, soil properties>
-<Crop diversity, promotes, microbial diversity>
-<Organic substances released by crop roots, promotes, growth of soil microbes>
-<Microorganisms, promotes, crop growth>
-<Microorganisms, promotes, nitrogen fixation>
-<Microorganisms, promotes, phosphorus solubilization>
-<Climate change, increases, demand for soil nutrients>
-<Microorganisms, influences, disease resistance>
-<Diverse cropping systems, enhances, soil structure>
-<Diverse cropping systems, sustains, soil fertility>
-<Diverse cropping systems, mitigates, pests and diseases>
-<Crop cover practices, affects, soil protection>
-<Microbial communities, enhances, crop resilience>
-<Soil organic carbon sequestration, mitigates, environmental impacts>
-<Rhizobium-legume symbiosis, mitigates, climate change>
-<Biochar, improves, water holding capacity>
-<Root exudates, affects, soil microbial diversity>
-<Root exudates, affects, heavy metals biogeochemistry>
-<Microbial composts, improves, stress resilience in plants>
-<Rhizobacteria, promotes, sustainable agricultural production>
-<Biochar, solidifies, heavy metal contaminated soil>
-<Fertilizers, mitigates, soil factors constraining nitrogen efficiency>
-<Iron, promotes, plant growth>
-<Phosphorus, promotes, plant growth>
-<Organic fertilizers, improves, soil fertility>
-<Organic fertilizer, improves, microbial community>
-<Land use change, affects, soil erosion>
-<Conservation agriculture, improves, soil health>
-<Crop rotation, improves, soil health>
-<Crop rotation, improves, crop productivity>
-<Intensive cropping, causes, soil potassium depletion>
-<Plant-soil-microbes interaction, promotes, nutrient acquisition>
-<Plant-soil-microbes interaction, promotes, plant growth>
-<Mulching, saves, water>
-<Mulching, saves, soil>
-<Microbial inoculants, promotes, plant growth>
-<Rhizobia, promotes, plant growth>
-<Fungal and oomycete pathogens, threatens, food security>
-<Cut-off irrigation, increases, water-use efficiency>
-<Intercropping, improves, agricultural resiliency>
-<Organic fertilizer, improves, soil fertility>
-<Nitrogen-fixing bacteria, promotes, environmental sustainability>
-<Plant microbial symbionts, improves, plant health>
-<Nutrient-induced acidification, modulates, soil biodiversity>
-<Root exudate compounds, affects, rhizosphere microbial community>
-<Phosphate solubilizing microorganisms, promotes, sustainable agriculture>
-<Microorganisms, promotes, abiotic stress tolerance>
-<Conservation tillage, improves, soil physicochemical properties>
-<Conservation tillage, improves, crop yield>
-<Geobacter, regulates, greenhouse gas cycling>
-<Rhizosphere prokaryotic communities, affects, nitrogen uptake>
-<Diversifying crop rotations, enhances, agroecosystem services>
-<Nitrogen and chemical control management, improves, maize yield>
-<Nitrogen and chemical control management, promotes, nutrient absorption>
-<Root-induced changes, affects, soil hydraulic properties>
-<Temperature, pH, and oxygen availability, affects, Nitrososphaeria differentiation>
-<Soil and crop management practices, reduces, waterlogging impact>
-<Agrochemicals, affects, soil microbiota>
-<Arbuscular mycorrhizal fungi, promotes, rice growth>
-<Arbuscular mycorrhizal fungi, enhances, phosphorus use efficiency>
-<Cover crop, improves, soil water use efficiency>
-<Soil pH and heavy metals, affects, soil microbial community>
-<Microbial interactions, modulates, plant defense system>
-<Microbial interactions, affects, soil-borne plant disease>
-<Beneficial microorganisms, improves, soil quality>
-<Beneficial microorganisms, improves, plant health>
-<Silicon supplementation, alleviates, potassium deficiency stress>
-<Microbial communities, affects, soil properties>
-<Slow-release fertilizer, provides, nutrient release>
-<Soil quality, increases, crop production>
-<Soil quality, improves, climate resilience>
-<Rhizosphere microbes compounds, promotes, plant growth>
-<Microbes, promotes, organic matter decomposition>
-<Microbes, promotes, carbon release>
-<Eco-friendly agricultural practices, improves, wheat crop yield>
-<Sustainable agricultural practices, supports, food security>
-<Ameliorating dense clay subsoils, increases, rain-fed crop yield>
-<Novel agronomic approaches, improves, soil health>
-<Phytohormone signalling, modulates, root system architecture>
-<Soil management practices, affects, soil culturable bacteriota>
-<Soil quality and fertility, supports, sustainable agriculture>
-<Crop diversity, promotes, productivity>
-<Organic fertilization, promotes, crop productivity>
-<Organic fertilization, changes, soil aggregation>
-<Nitrogen fertilizer and mulch, affects, soil environment>
-<C: N: P stoichiometry, stimulates, organic carbon accumulation>
-<Biochar, improves, soil water retention capacity>
-<Microbial fertilizers, enhances, soil health>
-<Microbial fertilizers, enhances, plant growth>
-<Wheat yellow mosaic disease, causes, microbial taxa enrichment>
-<Cellulase and Lactiplantibacillus plantarum, affects, fermentation parameters>
-<Cellulase and Lactiplantibacillus plantarum, affects, nutrients>
-<Advanced irrigation techniques, enhances, water use efficiency>
-<Advanced irrigation techniques, enhances, fruit quality>
-<Beneficial soil microbiomes, promotes, nutrient cycling>
-<Beneficial soil microbiomes, promotes, nutrient uptake>
-<Crop rotation, improves, climate resilience>
-<Crop residue return, reduces, Verticillium wilt>
-<Crop residue return, alters, potassium nutrition>
-<Conservation tillage rotation, enhances, soil structure>
-<Conservation tillage rotation, enhances, soil nutrients>
-<Rainwater harvesting and drip irrigation, improves, water use efficiency>
-<Nitrogen application and mulching, improves, soil quality>
-<Soil properties, determines, microbial communities>
-<Root exudation, determines, microbial communities>
+<Soil texture, affects, Crop growth, SoilCondition, Crop, 0.95>
+<Soil moisture, affects, Crop growth, SoilCondition, Crop, 0.95>
+<Soil pH, affects, Crop growth, SoilCondition, Crop, 0.94>
+<Nutrient availability, affects, Crop growth, SoilCondition, Crop, 0.95>
+<Sandy soil, causes, Drought stress, SoilCondition, ClimateFactor, 0.9>
+<Acidic soil, reduces, Crop growth, SoilCondition, Crop, 0.92>
+<Soil compaction, reduces, Root growth, SoilCondition, Crop, 0.93>
+<Waterlogging, causes, Root rot, SoilCondition, PlantDisease, 0.91>
+<Clay soil, leads_to, Waterlogging, SoilCondition, SoilCondition, 0.9>
+<Sandy soil, reduces, Nutrient retention, SoilCondition, SoilCondition, 0.92>
+<Sandy soil, leads_to, Nutrient leaching, SoilCondition, SoilCondition, 0.93>
+<Loamy soil, increases, Crop growth, SoilCondition, Crop, 0.95>
+<Soil microorganisms, increases, Nutrient cycling, AgriculturalPractice, SoilCondition, 0.9>
+<Nitrogen-fixing bacteria, increases, Nitrogen, AgriculturalPractice, Nutrient, 0.95>
+<Phosphate-solubilizing bacteria, increases, Phosphorus, AgriculturalPractice, Nutrient, 0.94>
+<Microbial fertilizers, increases, Crop resistance, AgriculturalPractice, Crop, 0.9>
+<Organic fertilizers, increases, Soil fertility, AgriculturalPractice, SoilCondition, 0.95>
+<Organic fertilizers, increases, Soil organic matter, AgriculturalPractice, SoilCondition, 0.95>
+<Conservation tillage, reduces, Soil erosion, AgriculturalPractice, SoilCondition, 0.94>
+<Conservation tillage, increases, Soil quality, AgriculturalPractice, SoilCondition, 0.93>
+<Crop rotation, reduces, PlantDisease, AgriculturalPractice, PlantDisease, 0.93>
+<Crop rotation, increases, Soil fertility, AgriculturalPractice, SoilCondition, 0.94>
+<Intercropping, increases, Soil microbial diversity, AgriculturalPractice, SoilCondition, 0.94>
+<Monoculture, increases, PlantDisease, AgriculturalPractice, PlantDisease, 0.92>
+<Monoculture, reduces, Soil microbial diversity, AgriculturalPractice, SoilCondition, 0.92>
+<Drought stress, reduces, Crop growth, ClimateFactor, Crop, 0.95>
+<Drought stress, causes, Oxidative stress, ClimateFactor, ClimateFactor, 0.9>
+<Mulching, reduces, Soil evaporation, AgriculturalPractice, SoilCondition, 0.94>
+<Mulching, increases, Water use efficiency, AgriculturalPractice, SoilCondition, 0.95>
+<Drip irrigation, increases, Crop yield, AgriculturalPractice, Crop, 0.95>
+<Drip irrigation, reduces, Water waste, AgriculturalPractice, SoilCondition, 0.93>
+<Excess nitrogen, causes, Soil acidification, Nutrient, SoilCondition, 0.95>
+<Soil acidification, reduces, Microbial diversity, SoilCondition, SoilCondition, 0.94>
+<Excess nitrogen, reduces, Crop yield, Nutrient, Crop, 0.9>
+<Excess phosphorus, reduces, Root development, Nutrient, Crop, 0.92>
+<Potassium deficiency, causes, Chlorosis, Nutrient, PlantDisease, 0.94>
+<Potassium deficiency, reduces, Crop yield, Nutrient, Crop, 0.93>
+<Phosphorus deficiency, reduces, Root development, Nutrient, Crop, 0.94>
+<Phosphorus deficiency, reduces, Crop growth, Nutrient, Crop, 0.94>
+<Nitrogen, increases, Crop growth, Nutrient, Crop, 0.95>
+<Phosphorus, increases, Crop growth, Nutrient, Crop, 0.95>
+<Potassium, increases, Crop growth, Nutrient, Crop, 0.95>
+<Crop, has_nutrient, Nitrogen, Crop, Nutrient, 0.9>
+<Crop, has_nutrient, Phosphorus, Crop, Nutrient, 0.9>
+<Crop, has_nutrient, Potassium, Crop, Nutrient, 0.9>
+<Soil erosion, reduces, Crop productivity, SoilCondition, Crop, 0.94>
+<Soil degradation, reduces, Crop yield, SoilCondition, Crop, 0.95>
+<Over-irrigation, causes, Soil salinity, AgriculturalPractice, SoilCondition, 0.92>
+<Poor drainage, reduces, Root oxygen supply, SoilCondition, Crop, 0.93>
+<Soil salinity, reduces, Crop growth, SoilCondition, Crop, 0.93>
+<Soil microorganisms, reduces, PlantDisease, AgriculturalPractice, PlantDisease, 0.9>
+<Biofertilizers, increases, Nutrient availability, AgriculturalPractice, Nutrient, 0.95>
+<Biofertilizers, reduces, PlantDisease, AgriculturalPractice, PlantDisease, 0.93>
+<Soil biodiversity, increases, Crop productivity, SoilCondition, Crop, 0.94>
+<Crop diversity, reduces, PlantDisease, AgriculturalPractice, PlantDisease, 0.95>
+<Crop diversity, increases, Soil fertility, AgriculturalPractice, SoilCondition, 0.95>
+<Crop diversity, increases, Nutrient use efficiency, AgriculturalPractice, SoilCondition, 0.94>
+<Soil nutrient imbalance, reduces, Crop growth, SoilCondition, Crop, 0.94>
+<Nutrient deficiency, deficiency_causes, Anemia, Nutrient, HumanDisease, 0.85>
+<Nutrient deficiency, deficiency_causes, Malnutrition, Nutrient, HumanDisease, 0.9>
+<Soil contamination, causes, Human disease, SoilCondition, HumanDisease, 0.85>
+<Heavy metals, causes, Kidney damage, Nutrient, HumanDisease, 0.85>
+<Crop consumption, leads_to, Human nutrition, Crop, HumanDisease, 0.8>
+<Low nutrient crops, leads_to, Malnutrition, Crop, HumanDisease, 0.85>
+<Agricultural practices, affects, Nutrient content, AgriculturalPractice, Nutrient, 0.9>
+<Organic farming, increases, Nutrient content, AgriculturalPractice, Nutrient, 0.9>
+<Organic farming, reduces, Soil pollution, AgriculturalPractice, SoilCondition, 0.92>
+<Pesticide use, causes, Human disease, AgriculturalPractice, HumanDisease, 0.85>
+<Soil health, associated_with, Crop productivity, SoilCondition, Crop, 0.95> 

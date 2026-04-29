@@ -1,53 +1,63 @@
-<agriculture, causes, malnutrition>
-<agriculture, causes, foodborne illnesses>
-<agriculture, causes, chronic diseases>
-<agriculture, produces, medicinal plants>
-<poor health, reduces, income>
-<poor health, reduces, productivity>
-<water, affects, human health>
-<soil, affects, human health>
-<wastewater, causes, pathogens>
-<pathogens, causes, foodborne illnesses>
-<aflatoxins, contains, staple crops>
-<irrigation, increases, food yields>
-<irrigation, improves, income>
-<water resources, promotes, insect vectors>
-<water resources, promotes, disease transmission>
-<income, affects, nutrition>
-<malnutrition, affects, livelihood>
-<poor health, affects, ability to work>
-<water resources, affects, malaria>
-<water resources, affects, schistosomiasis>
-<water resources, affects, Japanese encephalitis>
-<rice irrigation, increases, local malaria vector prevalence>
-<rice irrigation, reduces, malaria prevalence>
-<malaria, reduces, ability to work>
-<malaria, leads_to, absences from work>
-<absences from work, leads_to, reduced overall yields>
-<agricultural water management, reduces, malaria morbidity>
-<wet crop/dry crop rotation, reduces, vector breeding>
-<cattle, reduces, disease transmission>
-<fungus, produces, aflatoxins>
-<aflatoxins, causes, acute aflatoxicosis>
-<aflatoxins, causes, stunting>
-<aflatoxins, causes, hepatocellular cancer>
-<aflatoxins in maize and groundnuts, causes, impairment of child growth>
-<low-cost agricultural interventions, reduces, aflatoxin exposure>
-<agriculture, promotes, disease spread>
-<agriculture, promotes, disease prevention>
-<poor health, reduces, work performance>
-<Agriculture, causes, Poor nutrition>
-<Agriculture, causes, Malaria>
-<Agriculture, causes, Foodborne diseases>
-<Agriculture, causes, Chronic diseases>
-<Poor health, reduces, Agricultural productivity>
-<Environmental change, affects, Food production>
-<Environmental change, affects, Human nutrition>
-<Environmental change, affects, Health>
-<Agriculture, affects, Malaria>
-<Environmental management, reduces, Malaria burden>
-<New irrigation methods, promotes, Malaria control>
-<Dietary aflatoxin exposure, causes, Impaired growth>
-<Aflatoxin, affects, Impaired growth>
-<Postweaning exposure to aflatoxin, causes, Impaired child growth>
-<Postharvest intervention measures, reduces, Aflatoxin exposure>
+<agriculture, affects, malnutrition, AgriculturalPractice, HumanDisease, 0.95>
+<agriculture, affects, malaria, AgriculturalPractice, HumanDisease, 0.92>
+<agriculture, affects, foodborne illness, AgriculturalPractice, HumanDisease, 0.93>
+<agriculture, affects, HIV/AIDS, AgriculturalPractice, HumanDisease, 0.9>
+<agriculture, affects, chronic disease, AgriculturalPractice, HumanDisease, 0.9>
+<agriculture, affects, occupational illness, AgriculturalPractice, HumanDisease, 0.91>
+<malnutrition, reduces, agricultural productivity, HumanDisease, AgriculturalPractice, 0.88>
+<poor health, reduces, income, HumanDisease, AgriculturalPractice, 0.87>
+<poor health, reduces, productivity, HumanDisease, AgriculturalPractice, 0.87>
+<agriculture, increases, food availability, AgriculturalPractice, Crop, 0.9>
+<food availability, affects, nutrition, Crop, HumanDisease, 0.85>
+<agriculture, associated_with, livelihood, AgriculturalPractice, AgriculturalPractice, 0.86>
+<irrigation, increases, crop yield, AgriculturalPractice, Crop, 0.93>
+<irrigation, causes, malaria, AgriculturalPractice, HumanDisease, 0.92>
+<water resource development, causes, vector breeding, AgriculturalPractice, ClimateFactor, 0.9>
+<vector breeding, leads_to, malaria, ClimateFactor, HumanDisease, 0.92>
+<malaria, reduces, labour productivity, HumanDisease, AgriculturalPractice, 0.9>
+<malaria, reduces, crop yield, HumanDisease, Crop, 0.88>
+<aflatoxin, causes, liver cancer, Nutrient, HumanDisease, 0.95>
+<aflatoxin, affects, child growth impairment, Nutrient, HumanDisease, 0.94>
+<aflatoxin, associated_with, underweight, Nutrient, HumanDisease, 0.9>
+<fungal contamination, causes, aflatoxin, PlantDisease, Nutrient, 0.93>
+<crop storage conditions, affects, aflatoxin levels, SoilCondition, Nutrient, 0.9>
+<improved storage, reduces, aflatoxin exposure, AgriculturalPractice, Nutrient, 0.92>
+<aflatoxin exposure, leads_to, hepatocellular cancer, Nutrient, HumanDisease, 0.95>
+<contaminated food, causes, foodborne illness, Crop, HumanDisease, 0.94>
+<wastewater irrigation, causes, pathogen contamination, AgriculturalPractice, PlantDisease, 0.9>
+<pathogen contamination, leads_to, foodborne illness, PlantDisease, HumanDisease, 0.92>
+<crop, has_nutrient, nutrient, Crop, Nutrient, 0.99>
+<plant disease, reduces, nutrient content, PlantDisease, Nutrient, 0.93>
+<nutrient deficiency, deficiency_causes, malnutrition, Nutrient, HumanDisease, 0.95>
+<nutrient deficiency, deficiency_causes, anemia, Nutrient, HumanDisease, 0.96>
+<nutrient deficiency, deficiency_causes, stunting, Nutrient, HumanDisease, 0.94>
+<soil quality, affects, crop yield, SoilCondition, Crop, 0.92>
+<soil contamination, affects, crop safety, SoilCondition, Crop, 0.9>
+<crop safety, affects, human health, Crop, HumanDisease, 0.9>
+<livestock farming, causes, zoonotic disease, AgriculturalPractice, HumanDisease, 0.93>
+<zoonotic disease, affects, human health, HumanDisease, HumanDisease, 0.9>
+<dairy cattle exposure, causes, brucellosis, AgriculturalPractice, HumanDisease, 0.94>
+<sheep exposure, causes, brucellosis, AgriculturalPractice, HumanDisease, 0.94>
+<pesticide exposure, causes, poisoning, AgriculturalPractice, HumanDisease, 0.95>
+<pesticide exposure, leads_to, chronic illness, AgriculturalPractice, HumanDisease, 0.9>
+<dehydration, affects, agricultural workers, HumanDisease, AgriculturalPractice, 0.85>
+<agricultural labour, affects, nutritional status, AgriculturalPractice, HumanDisease, 0.88>
+<energy expenditure, affects, nutrition, ClimateFactor, HumanDisease, 0.86>
+<income, affects, food access, AgriculturalPractice, Crop, 0.9>
+<food access, affects, nutrition, Crop, HumanDisease, 0.92>
+<agriculture, produces, medicinal plants, AgriculturalPractice, Crop, 0.9>
+<medicinal plants, affects, disease treatment, Crop, HumanDisease, 0.88>
+<crop diversity, increases, nutritional quality, Crop, Nutrient, 0.9>
+<nutritional quality, affects, chronic disease, Nutrient, HumanDisease, 0.9>
+<food price, affects, diet choice, Crop, HumanDisease, 0.87>
+<diet choice, affects, chronic disease, HumanDisease, HumanDisease, 0.9>
+<agricultural policy, affects, food production, AgriculturalPractice, Crop, 0.88>
+<food production, affects, health outcomes, Crop, HumanDisease, 0.9>
+<environmental change, affects, disease transmission, ClimateFactor, HumanDisease, 0.92>
+<water environment, affects, vector population, ClimateFactor, ClimateFactor, 0.9>
+<vector population, increases, malaria transmission, ClimateFactor, HumanDisease, 0.93>
+<irrigated agriculture, increases, income, AgriculturalPractice, AgriculturalPractice, 0.9>
+<increased income, reduces, disease risk, AgriculturalPractice, HumanDisease, 0.85>
+<poverty, increases, malnutrition, SoilCondition, HumanDisease, 0.9>
+<poverty, reduces, access to healthcare, SoilCondition, AgriculturalPractice, 0.88>
+<reduced healthcare access, increases, disease burden, AgriculturalPractice, HumanDisease, 0.9> 

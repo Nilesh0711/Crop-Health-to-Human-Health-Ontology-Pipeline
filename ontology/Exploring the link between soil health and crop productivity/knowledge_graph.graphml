@@ -1,0 +1,435 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"><key id="d2" for="edge" attr.name="relation" attr.type="string"/>
+<key id="d1" for="node" attr.name="type" attr.type="string"/>
+<key id="d0" for="node" attr.name="label" attr.type="string"/>
+<graph edgedefault="directed"><node id="soil texture">
+  <data key="d0">Soil texture</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="crop growth">
+  <data key="d0">Crop growth</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="soil moisture">
+  <data key="d0">Soil moisture</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="soil ph">
+  <data key="d0">Soil pH</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="nutrient availability">
+  <data key="d0">Nutrient availability</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="waterlogging">
+  <data key="d0">Waterlogging</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="root rot">
+  <data key="d0">Root rot</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="soil microorganisms">
+  <data key="d0">Soil microorganisms</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="nutrient cycling">
+  <data key="d0">Nutrient cycling</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="nitrogen-fixing bacteria">
+  <data key="d0">Nitrogen-fixing bacteria</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="nitrogen">
+  <data key="d0">Nitrogen</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="phosphate-solubilizing bacteria">
+  <data key="d0">Phosphate-solubilizing bacteria</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="phosphorus">
+  <data key="d0">Phosphorus</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="microbial fertilizers">
+  <data key="d0">Microbial fertilizers</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="crop resistance">
+  <data key="d0">Crop resistance</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="organic fertilizers">
+  <data key="d0">Organic fertilizers</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="soil fertility">
+  <data key="d0">Soil fertility</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="soil organic matter">
+  <data key="d0">Soil organic matter</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="conservation tillage">
+  <data key="d0">Conservation tillage</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="soil erosion">
+  <data key="d0">Soil erosion</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="soil quality">
+  <data key="d0">Soil quality</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="crop rotation">
+  <data key="d0">Crop rotation</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="plantdisease">
+  <data key="d0">PlantDisease</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="intercropping">
+  <data key="d0">Intercropping</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="soil microbial diversity">
+  <data key="d0">Soil microbial diversity</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="monoculture">
+  <data key="d0">Monoculture</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="drought stress">
+  <data key="d0">Drought stress</data>
+  <data key="d1">ClimateFactor</data>
+</node>
+<node id="mulching">
+  <data key="d0">Mulching</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="soil evaporation">
+  <data key="d0">Soil evaporation</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="water use efficiency">
+  <data key="d0">Water use efficiency</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="drip irrigation">
+  <data key="d0">Drip irrigation</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="crop yield">
+  <data key="d0">Crop yield</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="water waste">
+  <data key="d0">Water waste</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="crop">
+  <data key="d0">Crop</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="potassium">
+  <data key="d0">Potassium</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="over-irrigation">
+  <data key="d0">Over-irrigation</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="soil salinity">
+  <data key="d0">Soil salinity</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="biofertilizers">
+  <data key="d0">Biofertilizers</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="crop diversity">
+  <data key="d0">Crop diversity</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="nutrient use efficiency">
+  <data key="d0">Nutrient use efficiency</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="nutrient deficiency">
+  <data key="d0">Nutrient deficiency</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="anemia">
+  <data key="d0">Anemia</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="malnutrition">
+  <data key="d0">Malnutrition</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="heavy metals">
+  <data key="d0">Heavy metals</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="kidney damage">
+  <data key="d0">Kidney damage</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="agricultural practices">
+  <data key="d0">Agricultural practices</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="nutrient content">
+  <data key="d0">Nutrient content</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="organic farming">
+  <data key="d0">Organic farming</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="soil pollution">
+  <data key="d0">Soil pollution</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<edge source="soil texture" target="crop growth">
+  <data key="d2">affects</data>
+</edge>
+<edge source="crop growth" target="soil texture">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="crop growth" target="soil moisture">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="crop growth" target="soil ph">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="crop growth" target="nutrient availability">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="crop growth" target="drought stress">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="soil moisture" target="crop growth">
+  <data key="d2">affects</data>
+</edge>
+<edge source="soil ph" target="crop growth">
+  <data key="d2">affects</data>
+</edge>
+<edge source="nutrient availability" target="crop growth">
+  <data key="d2">affects</data>
+</edge>
+<edge source="nutrient availability" target="biofertilizers">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="waterlogging" target="root rot">
+  <data key="d2">causes</data>
+</edge>
+<edge source="root rot" target="waterlogging">
+  <data key="d2">caused_by</data>
+</edge>
+<edge source="soil microorganisms" target="nutrient cycling">
+  <data key="d2">increases</data>
+</edge>
+<edge source="soil microorganisms" target="plantdisease">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="nutrient cycling" target="soil microorganisms">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="nitrogen-fixing bacteria" target="nitrogen">
+  <data key="d2">increases</data>
+</edge>
+<edge source="nitrogen" target="nitrogen-fixing bacteria">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="nitrogen" target="crop">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="phosphate-solubilizing bacteria" target="phosphorus">
+  <data key="d2">increases</data>
+</edge>
+<edge source="phosphorus" target="phosphate-solubilizing bacteria">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="phosphorus" target="crop">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="microbial fertilizers" target="crop resistance">
+  <data key="d2">increases</data>
+</edge>
+<edge source="crop resistance" target="microbial fertilizers">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="organic fertilizers" target="soil fertility">
+  <data key="d2">increases</data>
+</edge>
+<edge source="organic fertilizers" target="soil organic matter">
+  <data key="d2">increases</data>
+</edge>
+<edge source="soil fertility" target="organic fertilizers">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="soil fertility" target="crop rotation">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="soil fertility" target="crop diversity">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="soil organic matter" target="organic fertilizers">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="conservation tillage" target="soil erosion">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="conservation tillage" target="soil quality">
+  <data key="d2">increases</data>
+</edge>
+<edge source="soil erosion" target="conservation tillage">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="soil quality" target="conservation tillage">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="crop rotation" target="plantdisease">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="crop rotation" target="soil fertility">
+  <data key="d2">increases</data>
+</edge>
+<edge source="plantdisease" target="crop rotation">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="plantdisease" target="monoculture">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="plantdisease" target="soil microorganisms">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="plantdisease" target="biofertilizers">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="plantdisease" target="crop diversity">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="intercropping" target="soil microbial diversity">
+  <data key="d2">increases</data>
+</edge>
+<edge source="soil microbial diversity" target="intercropping">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="soil microbial diversity" target="monoculture">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="monoculture" target="plantdisease">
+  <data key="d2">increases</data>
+</edge>
+<edge source="monoculture" target="soil microbial diversity">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="drought stress" target="crop growth">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="mulching" target="soil evaporation">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="mulching" target="water use efficiency">
+  <data key="d2">increases</data>
+</edge>
+<edge source="soil evaporation" target="mulching">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="water use efficiency" target="mulching">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="drip irrigation" target="crop yield">
+  <data key="d2">increases</data>
+</edge>
+<edge source="drip irrigation" target="water waste">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="crop yield" target="drip irrigation">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="water waste" target="drip irrigation">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="crop" target="nitrogen">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="crop" target="phosphorus">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="crop" target="potassium">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="potassium" target="crop">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="over-irrigation" target="soil salinity">
+  <data key="d2">causes</data>
+</edge>
+<edge source="soil salinity" target="over-irrigation">
+  <data key="d2">caused_by</data>
+</edge>
+<edge source="biofertilizers" target="nutrient availability">
+  <data key="d2">increases</data>
+</edge>
+<edge source="biofertilizers" target="plantdisease">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="crop diversity" target="plantdisease">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="crop diversity" target="soil fertility">
+  <data key="d2">increases</data>
+</edge>
+<edge source="crop diversity" target="nutrient use efficiency">
+  <data key="d2">increases</data>
+</edge>
+<edge source="nutrient use efficiency" target="crop diversity">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="nutrient deficiency" target="anemia">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="nutrient deficiency" target="malnutrition">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="anemia" target="nutrient deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="malnutrition" target="nutrient deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="heavy metals" target="kidney damage">
+  <data key="d2">causes</data>
+</edge>
+<edge source="kidney damage" target="heavy metals">
+  <data key="d2">caused_by</data>
+</edge>
+<edge source="agricultural practices" target="nutrient content">
+  <data key="d2">affects</data>
+</edge>
+<edge source="nutrient content" target="agricultural practices">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="nutrient content" target="organic farming">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="organic farming" target="nutrient content">
+  <data key="d2">increases</data>
+</edge>
+<edge source="organic farming" target="soil pollution">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="soil pollution" target="organic farming">
+  <data key="d2">reduced_by</data>
+</edge>
+</graph></graphml>

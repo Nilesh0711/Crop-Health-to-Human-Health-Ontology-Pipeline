@@ -1,0 +1,2558 @@
+======================================================================
+MULTI-HOP REASONING PATHS
+Total unique paths: 540
+======================================================================
+
+
+────────────────────────────────────────────────────────────
+TARGET: HIV/AIDS (10 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      HIV/AIDS
+
+  Path 2:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      HIV/AIDS
+
+  Path 3:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      HIV/AIDS
+
+  Path 4:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      HIV/AIDS
+
+  Path 5:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      HIV/AIDS
+
+  Path 6:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      HIV/AIDS
+
+  Path 7:
+    agriculture
+      --(affects)-->
+      HIV/AIDS
+
+  Path 8:
+    vector breeding
+      --(leads_to)-->
+      malaria
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      HIV/AIDS
+
+  Path 9:
+    income
+      --(affects)-->
+      food access
+      --(affects)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      HIV/AIDS
+
+  Path 10:
+    income
+      --(affects)-->
+      food access
+      --(affects)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      HIV/AIDS
+
+────────────────────────────────────────────────────────────
+TARGET: Kidney damage (28 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  Path 2:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  Path 3:
+    poor soil fertility
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  Path 4:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  Path 5:
+    susceptible cultivars
+      --(increases)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  Path 6:
+    Crop rotation
+      --(reduces)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  Path 7:
+    Agricultural practices
+      --(affects)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  Path 8:
+    Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(associated_with)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  Path 9:
+    Organic farming
+      --(increases)-->
+      phenolics
+      --(reduced_by)-->
+      mineral NPK fertilizer
+      --(increases)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  Path 10:
+    Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      Kidney damage
+
+  ... and 18 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: anemia (5 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      anemia
+
+  Path 2:
+    mineral nitrogen fertilizer
+      --(increases)-->
+      nitrate
+      --(associated_with)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      anemia
+
+  Path 3:
+    mineral nitrogen fertilizer
+      --(increases)-->
+      nitrite
+      --(associated_with)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      anemia
+
+  Path 4:
+    agriculture
+      --(affects)-->
+      malnutrition
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      anemia
+
+  Path 5:
+    vector breeding
+      --(leads_to)-->
+      malaria
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malnutrition
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      anemia
+
+────────────────────────────────────────────────────────────
+TARGET: cadmium exposure (46 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    soil marginality
+      --(affects)-->
+      crop yield
+      --(reduced_by)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  Path 2:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  Path 3:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  Path 4:
+    poor soil fertility
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  Path 5:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  Path 6:
+    conservation tillage
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  Path 7:
+    wheat-maize rotation
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  Path 8:
+    susceptible cultivars
+      --(increases)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  Path 9:
+    Nitrogen-fixing bacteria
+      --(increases)-->
+      Nitrogen
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  Path 10:
+    Phosphate-solubilizing bacteria
+      --(increases)-->
+      Phosphorus
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium exposure
+
+  ... and 36 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: cancer (60 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+
+  Path 2:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+
+  Path 3:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+
+  Path 4:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+
+  Path 5:
+    poor soil fertility
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+
+  Path 6:
+    poor soil fertility
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+
+  Path 7:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+
+  Path 8:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+
+  Path 9:
+    conservation tillage
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      cancer
+
+  Path 10:
+    wheat-maize rotation
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      cancer
+
+  ... and 50 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: cardiovascular disease (42 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  Path 2:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  Path 3:
+    poor soil fertility
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  Path 4:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  Path 5:
+    conservation tillage
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  Path 6:
+    wheat-maize rotation
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  Path 7:
+    susceptible cultivars
+      --(increases)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  Path 8:
+    Soil erosion
+      --(reduced_by)-->
+      conservation tillage
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  Path 9:
+    Soil quality
+      --(increased_by)-->
+      conservation tillage
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  Path 10:
+    Crop rotation
+      --(reduces)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cardiovascular disease
+
+  ... and 32 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: chronic disease (43 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  Path 2:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  Path 3:
+    poor soil fertility
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  Path 4:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  Path 5:
+    susceptible cultivars
+      --(increases)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  Path 6:
+    Soil microorganisms
+      --(reduces)-->
+      PlantDisease
+      --(reduced_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  Path 7:
+    Nutrient cycling
+      --(increased_by)-->
+      Soil microorganisms
+      --(reduces)-->
+      PlantDisease
+      --(reduced_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  Path 8:
+    Nitrogen-fixing bacteria
+      --(increases)-->
+      Nitrogen
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  Path 9:
+    Phosphate-solubilizing bacteria
+      --(increases)-->
+      Phosphorus
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  Path 10:
+    Organic fertilizers
+      --(increases)-->
+      Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+
+  ... and 33 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: disease burden (1 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    reduced healthcare access
+      --(increases)-->
+      disease burden
+
+────────────────────────────────────────────────────────────
+TARGET: disease risk (1 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    increased income
+      --(reduces)-->
+      disease risk
+
+────────────────────────────────────────────────────────────
+TARGET: economic loss (65 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    soil marginality
+      --(affects)-->
+      crop yield
+      --(reduced_by)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  Path 2:
+    water stress
+      --(causes)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  Path 3:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  Path 4:
+    poor soil fertility
+      --(reduces)-->
+      nutrient content
+      --(reduced_by)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  Path 5:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  Path 6:
+    conservation tillage
+      --(increases)-->
+      Soil quality
+      --(affects)-->
+      crop yield
+      --(reduced_by)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  Path 7:
+    susceptible cultivars
+      --(increases)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  Path 8:
+    Soil texture
+      --(affects)-->
+      Crop growth
+      --(affected_by)-->
+      nutrient availability
+      --(reduced_by)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  Path 9:
+    Soil moisture
+      --(affects)-->
+      Crop growth
+      --(affected_by)-->
+      nutrient availability
+      --(reduced_by)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  Path 10:
+    Soil pH
+      --(affects)-->
+      Crop growth
+      --(affected_by)-->
+      nutrient availability
+      --(reduced_by)-->
+      plant disease
+      --(leads_to)-->
+      economic loss
+
+  ... and 55 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: eczema (10 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+  Path 2:
+    Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+  Path 3:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+  Path 4:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+  Path 5:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+  Path 6:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+  Path 7:
+    mineral NPK fertilizer
+      --(increases)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+  Path 8:
+    mineral NPK fertilizer
+      --(reduces)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+  Path 9:
+    manure fertilization
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+  Path 10:
+    chitin
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      eczema
+
+────────────────────────────────────────────────────────────
+TARGET: foodborne illness (10 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      foodborne illness
+
+  Path 2:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      foodborne illness
+
+  Path 3:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      foodborne illness
+
+  Path 4:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      foodborne illness
+
+  Path 5:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      foodborne illness
+
+  Path 6:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      foodborne illness
+
+  Path 7:
+    agriculture
+      --(affects)-->
+      foodborne illness
+
+  Path 8:
+    vector breeding
+      --(leads_to)-->
+      malaria
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      foodborne illness
+
+  Path 9:
+    income
+      --(affects)-->
+      food access
+      --(affects)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      foodborne illness
+
+  Path 10:
+    income
+      --(affects)-->
+      food access
+      --(affects)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      foodborne illness
+
+────────────────────────────────────────────────────────────
+TARGET: health outcomes (1 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    agricultural policy
+      --(affects)-->
+      food production
+      --(affects)-->
+      health outcomes
+
+────────────────────────────────────────────────────────────
+TARGET: hepatocellular cancer (1 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    improved storage
+      --(reduces)-->
+      aflatoxin exposure
+      --(leads_to)-->
+      hepatocellular cancer
+
+────────────────────────────────────────────────────────────
+TARGET: human disease (18 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    conservation tillage
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(affected_by)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  Path 2:
+    wheat-maize rotation
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(affected_by)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  Path 3:
+    Soil microorganisms
+      --(reduces)-->
+      PlantDisease
+      --(increased_by)-->
+      Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  Path 4:
+    Crop rotation
+      --(reduces)-->
+      PlantDisease
+      --(increased_by)-->
+      Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  Path 5:
+    Intercropping
+      --(increases)-->
+      Soil microbial diversity
+      --(reduced_by)-->
+      Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  Path 6:
+    Soil microbial diversity
+      --(reduced_by)-->
+      Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  Path 7:
+    Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  Path 8:
+    Biofertilizers
+      --(reduces)-->
+      PlantDisease
+      --(increased_by)-->
+      Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  Path 9:
+    Crop diversity
+      --(reduces)-->
+      PlantDisease
+      --(increased_by)-->
+      Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  Path 10:
+    Organic farming
+      --(increases)-->
+      phenolics
+      --(nutrient_of)-->
+      wheat
+      --(affected_by)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+
+  ... and 8 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: human health (1 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    soil contamination
+      --(affects)-->
+      crop safety
+      --(affects)-->
+      human health
+
+────────────────────────────────────────────────────────────
+TARGET: infections (10 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+  Path 2:
+    Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+  Path 3:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+  Path 4:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+  Path 5:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+  Path 6:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+  Path 7:
+    mineral NPK fertilizer
+      --(increases)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+  Path 8:
+    mineral NPK fertilizer
+      --(reduces)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+  Path 9:
+    manure fertilization
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+  Path 10:
+    chitin
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      infections
+
+────────────────────────────────────────────────────────────
+TARGET: malaria (10 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      malaria
+
+  Path 2:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malaria
+
+  Path 3:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      malaria
+
+  Path 4:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malaria
+
+  Path 5:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      malaria
+
+  Path 6:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malaria
+
+  Path 7:
+    agriculture
+      --(affects)-->
+      malaria
+
+  Path 8:
+    vector breeding
+      --(leads_to)-->
+      malaria
+
+  Path 9:
+    income
+      --(affects)-->
+      food access
+      --(affects)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      malaria
+
+  Path 10:
+    income
+      --(affects)-->
+      food access
+      --(affects)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malaria
+
+────────────────────────────────────────────────────────────
+TARGET: malnutrition (13 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      malnutrition
+
+  Path 2:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malnutrition
+
+  Path 3:
+    Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      malnutrition
+
+  Path 4:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      malnutrition
+
+  Path 5:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malnutrition
+
+  Path 6:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      malnutrition
+
+  Path 7:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malnutrition
+
+  Path 8:
+    mineral nitrogen fertilizer
+      --(increases)-->
+      nitrate
+      --(associated_with)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      malnutrition
+
+  Path 9:
+    mineral nitrogen fertilizer
+      --(increases)-->
+      nitrite
+      --(associated_with)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      malnutrition
+
+  Path 10:
+    agriculture
+      --(affects)-->
+      malnutrition
+
+  ... and 3 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: metabolic syndrome (10 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+  Path 2:
+    Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+  Path 3:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+  Path 4:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+  Path 5:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+  Path 6:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+  Path 7:
+    mineral NPK fertilizer
+      --(increases)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+  Path 8:
+    mineral NPK fertilizer
+      --(reduces)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+  Path 9:
+    manure fertilization
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+  Path 10:
+    chitin
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      metabolic syndrome
+
+────────────────────────────────────────────────────────────
+TARGET: nutrition (72 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    soil marginality
+      --(affects)-->
+      crop yield
+      --(reduced_by)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+
+  Path 2:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+
+  Path 3:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduced_by)-->
+      Crop rotation
+      --(reduces)-->
+      PlantDisease
+      --(reduced_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+
+  Path 4:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduced_by)-->
+      Crop rotation
+      --(increases)-->
+      Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+
+  Path 5:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+
+  Path 6:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduced_by)-->
+      Crop rotation
+      --(reduces)-->
+      PlantDisease
+      --(reduced_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+
+  Path 7:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduced_by)-->
+      Crop rotation
+      --(increases)-->
+      Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+
+  Path 8:
+    poor soil fertility
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+
+  Path 9:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(nutrient_of)-->
+      crop
+      --(has_nutrient)-->
+      nutrition
+
+  Path 10:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(reduced_by)-->
+      Crop rotation
+      --(reduces)-->
+      PlantDisease
+      --(reduced_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+
+  ... and 62 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: nutritional status (1 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    agricultural labour
+      --(affects)-->
+      nutritional status
+
+────────────────────────────────────────────────────────────
+TARGET: obesity (10 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+  Path 2:
+    Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+  Path 3:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+  Path 4:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+  Path 5:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+  Path 6:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+  Path 7:
+    mineral NPK fertilizer
+      --(increases)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+  Path 8:
+    mineral NPK fertilizer
+      --(reduces)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+  Path 9:
+    manure fertilization
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+  Path 10:
+    chitin
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      obesity
+
+────────────────────────────────────────────────────────────
+TARGET: occupational illness (10 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      occupational illness
+
+  Path 2:
+    Soil fertility
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      occupational illness
+
+  Path 3:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      occupational illness
+
+  Path 4:
+    Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      occupational illness
+
+  Path 5:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      occupational illness
+
+  Path 6:
+    Nutrient use efficiency
+      --(increased_by)-->
+      Crop diversity
+      --(increases)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      occupational illness
+
+  Path 7:
+    agriculture
+      --(affects)-->
+      occupational illness
+
+  Path 8:
+    vector breeding
+      --(leads_to)-->
+      malaria
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      occupational illness
+
+  Path 9:
+    income
+      --(affects)-->
+      food access
+      --(affects)-->
+      nutrition
+      --(affected_by)-->
+      food availability
+      --(increased_by)-->
+      agriculture
+      --(affects)-->
+      occupational illness
+
+  Path 10:
+    income
+      --(affects)-->
+      food access
+      --(affects)-->
+      nutrition
+      --(affects)-->
+      chronic disease
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      occupational illness
+
+────────────────────────────────────────────────────────────
+TARGET: pre-eclampsia (10 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+  Path 2:
+    Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+  Path 3:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+  Path 4:
+    Soil pollution
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+  Path 5:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+  Path 6:
+    pesticide exposure
+      --(reduced_by)-->
+      Organic farming
+      --(reduces)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+  Path 7:
+    mineral NPK fertilizer
+      --(increases)-->
+      cadmium
+      --(associated_with)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+  Path 8:
+    mineral NPK fertilizer
+      --(reduces)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+  Path 9:
+    manure fertilization
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+  Path 10:
+    chitin
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      cancer
+      --(reduced_by)-->
+      organic food consumption
+      --(reduces)-->
+      pre-eclampsia
+
+────────────────────────────────────────────────────────────
+TARGET: stunting (5 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      stunting
+
+  Path 2:
+    mineral nitrogen fertilizer
+      --(increases)-->
+      nitrate
+      --(associated_with)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      stunting
+
+  Path 3:
+    mineral nitrogen fertilizer
+      --(increases)-->
+      nitrite
+      --(associated_with)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      stunting
+
+  Path 4:
+    agriculture
+      --(affects)-->
+      malnutrition
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      stunting
+
+  Path 5:
+    vector breeding
+      --(leads_to)-->
+      malaria
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malnutrition
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(deficiency_causes)-->
+      stunting
+
+────────────────────────────────────────────────────────────
+TARGET: type-2 diabetes (42 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    water stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  Path 2:
+    nutrient stress
+      --(causes)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  Path 3:
+    poor soil fertility
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  Path 4:
+    agricultural practice
+      --(affects)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  Path 5:
+    conservation tillage
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  Path 6:
+    wheat-maize rotation
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  Path 7:
+    susceptible cultivars
+      --(increases)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  Path 8:
+    Soil erosion
+      --(reduced_by)-->
+      conservation tillage
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  Path 9:
+    Soil quality
+      --(increased_by)-->
+      conservation tillage
+      --(increases)-->
+      fusarium head blight
+      --(affects)-->
+      wheat
+      --(has_nutrient)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  Path 10:
+    Crop rotation
+      --(reduces)-->
+      plant disease
+      --(reduces)-->
+      nutrient content
+      --(increased_by)-->
+      Organic farming
+      --(increases)-->
+      phenolics
+      --(reduces)-->
+      type-2 diabetes
+
+  ... and 32 more paths
+
+────────────────────────────────────────────────────────────
+TARGET: vitamin deficiency disease (5 paths lead here)
+────────────────────────────────────────────────────────────
+
+  Path 1:
+    Monoculture
+      --(increases)-->
+      Fusarium
+      --(increases)-->
+      mycotoxins
+      --(causes)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(causes)-->
+      vitamin deficiency disease
+
+  Path 2:
+    mineral nitrogen fertilizer
+      --(increases)-->
+      nitrate
+      --(associated_with)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(causes)-->
+      vitamin deficiency disease
+
+  Path 3:
+    mineral nitrogen fertilizer
+      --(increases)-->
+      nitrite
+      --(associated_with)-->
+      human disease
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(causes)-->
+      vitamin deficiency disease
+
+  Path 4:
+    agriculture
+      --(affects)-->
+      malnutrition
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(causes)-->
+      vitamin deficiency disease
+
+  Path 5:
+    vector breeding
+      --(leads_to)-->
+      malaria
+      --(affected_by)-->
+      agriculture
+      --(affects)-->
+      malnutrition
+      --(caused_by_deficiency_in)-->
+      nutrient deficiency
+      --(causes)-->
+      vitamin deficiency disease

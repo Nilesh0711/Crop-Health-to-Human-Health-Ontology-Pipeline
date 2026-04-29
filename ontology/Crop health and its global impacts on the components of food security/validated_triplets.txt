@@ -1,0 +1,46 @@
+<plant pathogens, affects, crop performance, PlantDisease, Crop, 0.92>
+<plant disease, reduces, crop yield, PlantDisease, Crop, 0.95>
+<crop, has_nutrient, nutrient content, Crop, Nutrient, 0.80>
+<plant disease, reduces, nutrient content, PlantDisease, Nutrient, 0.85>
+<nutrient deficiency, deficiency_causes, human disease, Nutrient, HumanDisease, 0.90>
+<soil marginality, affects, crop yield, SoilCondition, Crop, 0.88>
+<water stress, causes, plant disease, ClimateFactor, PlantDisease, 0.92>
+<nutrient stress, causes, plant disease, SoilCondition, PlantDisease, 0.90>
+<brown spot disease, affects, rice, PlantDisease, Crop, 0.95>
+<brown spot disease, reduces, rice yield, PlantDisease, Crop, 0.95>
+<brown spot disease, reduces, grain quality, PlantDisease, Nutrient, 0.85>
+<rice, has_nutrient, carbohydrate, Crop, Nutrient, 0.80>
+<reduced rice quality, leads_to, malnutrition, Nutrient, HumanDisease, 0.75>
+<fusarium head blight, affects, wheat, PlantDisease, Crop, 0.95>
+<fusarium head blight, reduces, wheat yield, PlantDisease, Crop, 0.95>
+<mycotoxins, causes, human disease, Nutrient, HumanDisease, 0.90>
+<mycotoxins, reduces, food safety, Nutrient, Nutrient, 0.85>
+<wheat, has_nutrient, protein, Crop, Nutrient, 0.90>
+<reduced wheat quality, leads_to, malnutrition, Nutrient, HumanDisease, 0.75>
+<false smut, affects, rice, PlantDisease, Crop, 0.95>
+<false smut, reduces, rice yield, PlantDisease, Crop, 0.90>
+<toxins, causes, human disease, Nutrient, HumanDisease, 0.90>
+<rice contamination, reduces, food quality, Crop, Nutrient, 0.85>
+<poor food quality, leads_to, human disease, Nutrient, HumanDisease, 0.80>
+<coffee rust, affects, coffee crop, PlantDisease, Crop, 0.95>
+<coffee rust, reduces, crop yield, PlantDisease, Crop, 0.90>
+<reduced income, leads_to, malnutrition, Nutrient, HumanDisease, 0.70>
+<plant disease epidemics, reduces, food availability, PlantDisease, Crop, 0.92>
+<reduced food availability, leads_to, malnutrition, Nutrient, HumanDisease, 0.85>
+<plant disease, affects, food stability, PlantDisease, Crop, 0.85>
+<potato late blight, affects, potato, PlantDisease, Crop, 0.95>
+<potato late blight, reduces, potato yield, PlantDisease, Crop, 0.95>
+<potato, has_nutrient, carbohydrate, Crop, Nutrient, 0.85>
+<wheat rust, affects, wheat, PlantDisease, Crop, 0.95>
+<wheat rust, reduces, wheat yield, PlantDisease, Crop, 0.95>
+<plant disease, reduces, nutrient availability, PlantDisease, Nutrient, 0.88>
+<nutrient deficiency, causes, anemia, Nutrient, HumanDisease, 0.95>
+<nutrient deficiency, causes, vitamin deficiency disease, Nutrient, HumanDisease, 0.92>
+<poor soil fertility, reduces, nutrient content, SoilCondition, Nutrient, 0.88>
+<food contamination, causes, human disease, Nutrient, HumanDisease, 0.92>
+<agricultural practice, affects, plant disease, AgriculturalPractice, PlantDisease, 0.85>
+<conservation tillage, increases, fusarium head blight, AgriculturalPractice, PlantDisease, 0.90>
+<wheat-maize rotation, increases, fusarium head blight, AgriculturalPractice, PlantDisease, 0.90>
+<hybrid rice cultivation, increases, false smut, AgriculturalPractice, PlantDisease, 0.90>
+<susceptible cultivars, increases, plant disease, AgriculturalPractice, PlantDisease, 0.88>
+<plant disease, leads_to, economic loss, PlantDisease, HumanDisease, 0.75>

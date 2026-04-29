@@ -1,0 +1,295 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"><key id="d2" for="edge" attr.name="relation" attr.type="string"/>
+<key id="d1" for="node" attr.name="type" attr.type="string"/>
+<key id="d0" for="node" attr.name="label" attr.type="string"/>
+<graph edgedefault="directed"><node id="false smut disease">
+  <data key="d0">False smut disease</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="rice">
+  <data key="d0">rice</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="grain yield">
+  <data key="d0">grain yield</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="grain quality">
+  <data key="d0">grain quality</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="carbohydrates">
+  <data key="d0">carbohydrates</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="protein">
+  <data key="d0">protein</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="iron">
+  <data key="d0">iron</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="zinc">
+  <data key="d0">zinc</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="iron deficiency">
+  <data key="d0">iron deficiency</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="anemia">
+  <data key="d0">anemia</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="zinc deficiency">
+  <data key="d0">zinc deficiency</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="immune deficiency">
+  <data key="d0">immune deficiency</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="protein deficiency">
+  <data key="d0">protein deficiency</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="malnutrition">
+  <data key="d0">malnutrition</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="carbohydrate deficiency">
+  <data key="d0">carbohydrate deficiency</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="energy deficiency">
+  <data key="d0">energy deficiency</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="rainfed ecosystem">
+  <data key="d0">rainfed ecosystem</data>
+  <data key="d1">ClimateFactor</data>
+</node>
+<node id="irrigated ecosystem">
+  <data key="d0">irrigated ecosystem</data>
+  <data key="d1">ClimateFactor</data>
+</node>
+<node id="coastal ecosystem">
+  <data key="d0">coastal ecosystem</data>
+  <data key="d1">ClimateFactor</data>
+</node>
+<node id="hilly ecosystem">
+  <data key="d0">hilly ecosystem</data>
+  <data key="d1">ClimateFactor</data>
+</node>
+<node id="disease severity">
+  <data key="d0">disease severity</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="rice yield">
+  <data key="d0">rice yield</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="rice quality">
+  <data key="d0">rice quality</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="reduced nutrient intake">
+  <data key="d0">reduced nutrient intake</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="crop disease">
+  <data key="d0">crop disease</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="food quality">
+  <data key="d0">food quality</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="food insecurity">
+  <data key="d0">food insecurity</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="climate conditions">
+  <data key="d0">climate conditions</data>
+  <data key="d1">ClimateFactor</data>
+</node>
+<node id="disease outbreaks">
+  <data key="d0">disease outbreaks</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="disease monitoring">
+  <data key="d0">disease monitoring</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="disease spread">
+  <data key="d0">disease spread</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="management strategies">
+  <data key="d0">management strategies</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<edge source="false smut disease" target="rice">
+  <data key="d2">affects</data>
+</edge>
+<edge source="false smut disease" target="grain yield">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="false smut disease" target="grain quality">
+  <data key="d2">affects</data>
+</edge>
+<edge source="false smut disease" target="carbohydrates">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="false smut disease" target="protein">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="false smut disease" target="iron">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="false smut disease" target="zinc">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="false smut disease" target="management strategies">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="rice" target="false smut disease">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="rice" target="carbohydrates">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="rice" target="protein">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="rice" target="iron">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="rice" target="zinc">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="rice" target="rainfed ecosystem">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="rice" target="irrigated ecosystem">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="rice" target="coastal ecosystem">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="rice" target="hilly ecosystem">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="grain yield" target="false smut disease">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="grain quality" target="false smut disease">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="carbohydrates" target="rice">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="carbohydrates" target="false smut disease">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="protein" target="rice">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="protein" target="false smut disease">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="iron" target="rice">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="iron" target="false smut disease">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="zinc" target="rice">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="zinc" target="false smut disease">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="iron deficiency" target="anemia">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="anemia" target="iron deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="zinc deficiency" target="immune deficiency">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="immune deficiency" target="zinc deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="protein deficiency" target="malnutrition">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="malnutrition" target="protein deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="malnutrition" target="reduced nutrient intake">
+  <data key="d2">led_to_by</data>
+</edge>
+<edge source="carbohydrate deficiency" target="energy deficiency">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="energy deficiency" target="carbohydrate deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="rainfed ecosystem" target="rice">
+  <data key="d2">affects</data>
+</edge>
+<edge source="irrigated ecosystem" target="rice">
+  <data key="d2">affects</data>
+</edge>
+<edge source="coastal ecosystem" target="rice">
+  <data key="d2">affects</data>
+</edge>
+<edge source="hilly ecosystem" target="rice">
+  <data key="d2">affects</data>
+</edge>
+<edge source="disease severity" target="rice yield">
+  <data key="d2">affects</data>
+</edge>
+<edge source="disease severity" target="rice quality">
+  <data key="d2">affects</data>
+</edge>
+<edge source="rice yield" target="disease severity">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="rice quality" target="disease severity">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="reduced nutrient intake" target="malnutrition">
+  <data key="d2">leads_to</data>
+</edge>
+<edge source="crop disease" target="food quality">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="crop disease" target="food insecurity">
+  <data key="d2">leads_to</data>
+</edge>
+<edge source="food quality" target="crop disease">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="food insecurity" target="crop disease">
+  <data key="d2">led_to_by</data>
+</edge>
+<edge source="climate conditions" target="disease outbreaks">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="disease outbreaks" target="climate conditions">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="disease monitoring" target="disease spread">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="disease spread" target="disease monitoring">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="management strategies" target="false smut disease">
+  <data key="d2">reduces</data>
+</edge>
+</graph></graphml>

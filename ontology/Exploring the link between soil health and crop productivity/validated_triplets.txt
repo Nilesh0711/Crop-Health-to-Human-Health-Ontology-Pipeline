@@ -1,0 +1,39 @@
+<Soil texture, affects, Crop growth, SoilCondition, Crop, 0.95>
+<Soil moisture, affects, Crop growth, SoilCondition, Crop, 0.95>
+<Soil pH, affects, Crop growth, SoilCondition, Crop, 0.94>
+<Nutrient availability, affects, Crop growth, SoilCondition, Crop, 0.95>
+<Waterlogging, causes, Root rot, SoilCondition, PlantDisease, 0.91>
+<Soil microorganisms, increases, Nutrient cycling, AgriculturalPractice, SoilCondition, 0.9>
+<Nitrogen-fixing bacteria, increases, Nitrogen, AgriculturalPractice, Nutrient, 0.95>
+<Phosphate-solubilizing bacteria, increases, Phosphorus, AgriculturalPractice, Nutrient, 0.94>
+<Microbial fertilizers, increases, Crop resistance, AgriculturalPractice, Crop, 0.9>
+<Organic fertilizers, increases, Soil fertility, AgriculturalPractice, SoilCondition, 0.95>
+<Organic fertilizers, increases, Soil organic matter, AgriculturalPractice, SoilCondition, 0.95>
+<Conservation tillage, reduces, Soil erosion, AgriculturalPractice, SoilCondition, 0.94>
+<Conservation tillage, increases, Soil quality, AgriculturalPractice, SoilCondition, 0.93>
+<Crop rotation, reduces, PlantDisease, AgriculturalPractice, PlantDisease, 0.93>
+<Crop rotation, increases, Soil fertility, AgriculturalPractice, SoilCondition, 0.94>
+<Intercropping, increases, Soil microbial diversity, AgriculturalPractice, SoilCondition, 0.94>
+<Monoculture, increases, PlantDisease, AgriculturalPractice, PlantDisease, 0.92>
+<Monoculture, reduces, Soil microbial diversity, AgriculturalPractice, SoilCondition, 0.92>
+<Drought stress, reduces, Crop growth, ClimateFactor, Crop, 0.95>
+<Mulching, reduces, Soil evaporation, AgriculturalPractice, SoilCondition, 0.94>
+<Mulching, increases, Water use efficiency, AgriculturalPractice, SoilCondition, 0.95>
+<Drip irrigation, increases, Crop yield, AgriculturalPractice, Crop, 0.95>
+<Drip irrigation, reduces, Water waste, AgriculturalPractice, SoilCondition, 0.93>
+<Crop, has_nutrient, Nitrogen, Crop, Nutrient, 0.9>
+<Crop, has_nutrient, Phosphorus, Crop, Nutrient, 0.9>
+<Crop, has_nutrient, Potassium, Crop, Nutrient, 0.9>
+<Over-irrigation, causes, Soil salinity, AgriculturalPractice, SoilCondition, 0.92>
+<Soil microorganisms, reduces, PlantDisease, AgriculturalPractice, PlantDisease, 0.9>
+<Biofertilizers, increases, Nutrient availability, AgriculturalPractice, Nutrient, 0.95>
+<Biofertilizers, reduces, PlantDisease, AgriculturalPractice, PlantDisease, 0.93>
+<Crop diversity, reduces, PlantDisease, AgriculturalPractice, PlantDisease, 0.95>
+<Crop diversity, increases, Soil fertility, AgriculturalPractice, SoilCondition, 0.95>
+<Crop diversity, increases, Nutrient use efficiency, AgriculturalPractice, SoilCondition, 0.94>
+<Nutrient deficiency, deficiency_causes, Anemia, Nutrient, HumanDisease, 0.85>
+<Nutrient deficiency, deficiency_causes, Malnutrition, Nutrient, HumanDisease, 0.9>
+<Heavy metals, causes, Kidney damage, Nutrient, HumanDisease, 0.85>
+<Agricultural practices, affects, Nutrient content, AgriculturalPractice, Nutrient, 0.9>
+<Organic farming, increases, Nutrient content, AgriculturalPractice, Nutrient, 0.9>
+<Organic farming, reduces, Soil pollution, AgriculturalPractice, SoilCondition, 0.92>

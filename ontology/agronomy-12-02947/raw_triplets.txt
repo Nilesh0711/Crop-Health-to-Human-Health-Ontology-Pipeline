@@ -1,0 +1,55 @@
+<False smut disease, affects, rice, PlantDisease, Crop, 0.98>
+<False smut disease, causes, grain contamination, PlantDisease, SoilCondition, 0.72>
+<False smut disease, reduces, grain yield, PlantDisease, Crop, 0.95>
+<False smut disease, affects, grain quality, PlantDisease, Crop, 0.93>
+<Ustilaginoidea virens, causes, False smut disease, PlantDisease, PlantDisease, 0.99>
+<False smut disease, associated_with, toxin contamination, PlantDisease, SoilCondition, 0.78>
+<toxin contamination, leads_to, human toxicity, SoilCondition, HumanDisease, 0.62>
+<rice, has_nutrient, carbohydrates, Crop, Nutrient, 0.85>
+<rice, has_nutrient, protein, Crop, Nutrient, 0.83>
+<rice, has_nutrient, iron, Crop, Nutrient, 0.82>
+<rice, has_nutrient, zinc, Crop, Nutrient, 0.80>
+<False smut disease, reduces, carbohydrates, PlantDisease, Nutrient, 0.74>
+<False smut disease, reduces, protein, PlantDisease, Nutrient, 0.76>
+<False smut disease, reduces, iron, PlantDisease, Nutrient, 0.72>
+<False smut disease, reduces, zinc, PlantDisease, Nutrient, 0.71>
+<iron deficiency, deficiency_causes, anemia, Nutrient, HumanDisease, 0.97>
+<zinc deficiency, deficiency_causes, immune deficiency, Nutrient, HumanDisease, 0.95>
+<protein deficiency, deficiency_causes, malnutrition, Nutrient, HumanDisease, 0.96>
+<carbohydrate deficiency, deficiency_causes, energy deficiency, Nutrient, HumanDisease, 0.88>
+<toxin contaminated rice, leads_to, human toxicity, Crop, HumanDisease, 0.77>
+<False smut disease, increases, toxin contamination, PlantDisease, SoilCondition, 0.81>
+<rainfed ecosystem, affects, rice, ClimateFactor, Crop, 0.82>
+<irrigated ecosystem, affects, rice, ClimateFactor, Crop, 0.84>
+<coastal ecosystem, affects, rice, ClimateFactor, Crop, 0.83>
+<hilly ecosystem, affects, rice, ClimateFactor, Crop, 0.80>
+<climate variability, affects, False smut disease, ClimateFactor, PlantDisease, 0.86>
+<environmental conditions, affects, disease spread, ClimateFactor, PlantDisease, 0.78>
+<high humidity, increases, False smut disease, ClimateFactor, PlantDisease, 0.88>
+<temperature variation, affects, False smut disease, ClimateFactor, PlantDisease, 0.84>
+<GIS analysis, associated_with, disease monitoring, AgriculturalPractice, PlantDisease, 0.73>
+<interpolation techniques, associated_with, disease prediction, AgriculturalPractice, PlantDisease, 0.75>
+<cluster analysis, associated_with, disease distribution, AgriculturalPractice, PlantDisease, 0.74>
+<spatial autocorrelation, associated_with, disease clustering, AgriculturalPractice, PlantDisease, 0.76>
+<kriging method, associated_with, disease mapping, AgriculturalPractice, PlantDisease, 0.77>
+<IDW interpolation, associated_with, disease estimation, AgriculturalPractice, PlantDisease, 0.75>
+<sampling practice, associated_with, disease assessment, AgriculturalPractice, PlantDisease, 0.72>
+<false smut hotspots, associated_with, high disease severity, PlantDisease, SoilCondition, 0.79>
+<transplanted ecosystem, increases, False smut disease, ClimateFactor, PlantDisease, 0.83>
+<coastal regions, increases, False smut disease, ClimateFactor, PlantDisease, 0.85>
+<traditional rice ecosystems, increases, False smut disease, ClimateFactor, PlantDisease, 0.82>
+<disease severity, affects, rice yield, PlantDisease, Crop, 0.91>
+<disease severity, affects, rice quality, PlantDisease, Crop, 0.90>
+<infected grains, leads_to, toxin contamination, Crop, SoilCondition, 0.79>
+<toxin contamination, affects, human health, SoilCondition, HumanDisease, 0.76>
+<rice consumption, associated_with, nutrient intake, Crop, Nutrient, 0.88>
+<reduced nutrient intake, leads_to, malnutrition, Nutrient, HumanDisease, 0.92>
+<crop disease, reduces, food quality, PlantDisease, Crop, 0.89>
+<crop disease, leads_to, food insecurity, PlantDisease, HumanDisease, 0.70>
+<climate conditions, associated_with, disease outbreaks, ClimateFactor, PlantDisease, 0.85>
+<disease clusters, associated_with, environmental factors, PlantDisease, ClimateFactor, 0.78>
+<spatial clustering, associated_with, disease spread, AgriculturalPractice, PlantDisease, 0.80>
+<ecosystem diversity, affects, disease distribution, ClimateFactor, PlantDisease, 0.83>
+<disease monitoring, reduces, disease spread, AgriculturalPractice, PlantDisease, 0.74>
+<management strategies, reduces, False smut disease, AgriculturalPractice, PlantDisease, 0.86>
+<risk areas, associated_with, high disease incidence, SoilCondition, PlantDisease, 0.81>

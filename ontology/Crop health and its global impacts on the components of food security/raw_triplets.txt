@@ -1,84 +1,64 @@
-<Plant pathogens, reduces, crop performances>
-<Plant pathogens, affects, food security>
-<Plant pathogens, affects, plant physiology>
-<Climate change, affects, disease threats>
-<Pesticide residues, affects, food safety>
-<Poor cooking quality, reduces, nutritional value>
-<Inadequate balance of nutrients, reduces, food value>
-<Food security, contains, nutritional value>
-<Plant disease epidemics, affects, food security>
-<Phytophthora infestans, causes, famine>
-<Potato blight, affects, Irish population>
-<Pathogen, increases, aggressiveness>
-<Puccinia graminis f. sp. tritici, causes, stem rust>
-<Stem rust, affects, leaf sheaths>
-<New stripe rust strains, adapted to, higher temperatures>
-<Fusarium head blight, affects, wheat>
-<Fusarium graminearum, causes, FHB>
-<Mycotoxins, affects, infected grains>
-<Ustilaginoidea virens, causes, false smut>
-<False smut, affects, rice>
-<Mycotoxins, toxic to, animals>
-<Cochliobolus miyabeanus, causes, brown spot>
-<Brown spot, occurs during, water and nutrient stresses>
-<Water and nutrient stresses, reduces, rice yield>
-<Hemileia vastatrix, causes, coffee rust>
-<Coffee rust, affects, coffee yield>
-<Increased rainfall levels, affects, coffee rust epidemics>
-<Reduced temperature amplitude, affects, coffee rust epidemics>
-<potato late blight, affects, food production>
-<successive epidemics, affects, food availability>
-<cereal rusts, reduces, food production>
-<leaf rust epidemics, affects, wheat stockpiles>
-<Fusarium head blight, reduces, food production>
-<Mycotoxin contamination, affects, grain use>
-<False smut, affects, rice availability>
-<pathogen toxins, affects, rice eating quality>
-<brown spot, affects, primary production>
-<brown spot epidemics, affects, local economy>
-<brown spot, reduces, economic access>
-<coffee rust epidemic, reduces, economic access>
-<cash crops, leads_to, food dependence>
-<wheat rusts, reduces, food production>
-<late blight, affects, food production>
-<epidemics, affects, food security components>
-<Epidemics, reduces, nutritive value of crops>
-<Epidemics, causes, accumulation of toxins in food>
-<Plant disease epidemics, reduces, nutritional value>
-<Maize, contains, fumonisins>
-<Maize, contains, ochratoxins>
-<Groundnut production, contains, aflatoxins>
-<Toxins, causes, major health risks>
-<Chronic epidemics, affects, local economies>
-<Chronic epidemics, affects, physical infrastructures>
-<Acute epidemics, causes, food shortages>
-<Acute epidemics, causes, damaged infrastructures>
-<Magnaporthe oryzae, causes, rice blast>
-<Rice blast, reduces, yield>
-<Yield losses, affects, storage systems>
-<Climate change, affects, food systems>
-<Rhizoctonia bataticola, causes, dry root rot of chickpea>
-<Dry root rot of chickpea, affects, plant proteins>
-<Irish potato famine fungus, causes, potato>
-<Phytophthora infestans, affects, metalaxyl resistance>
-<Climate change, affects, food security>
-<Pest, affects, food security>
-<Pathogen, affects, food security>
-<Climate change, affects, crop protection>
-<Food system metrics, promotes, nutrition security>
-<False smut disease, affects, rice>
-<Chickpea, contains, nutritional quality>
-<Chickpea, promotes, health benefits>
-<False smut balls, contains, Ustiloxin>
-<Ustiloxin, affects, rice>
-<Ustilaginoidea virens, affects, hybrid rice>
-<Coffee rust, affects, coffee>
-<Fusarium head blight, affects, wheat and barley>
-<False smut balls, contains, ustilaginoidins>
-<Temperature stress, affects, dry root rot>
-<Soil moisture stress, affects, dry root rot>
-<Dry root rot, affects, chickpea>
-<Puccinia striiformis, causes, stripe rust>
-<stripe rust, affects, wheat>
-<Mycotoxins, affects, human disease>
-<Fungal pathogens, causes, wheat head blight>
+<plant pathogens, affects, crop performance, PlantDisease, Crop, 0.92>
+<plant disease epidemics, affects, food security, PlantDisease, HumanDisease, 0.70>
+<plant disease, reduces, crop yield, PlantDisease, Crop, 0.95>
+<crop, has_nutrient, nutrient content, Crop, Nutrient, 0.80>
+<plant disease, reduces, nutrient content, PlantDisease, Nutrient, 0.85>
+<nutrient deficiency, deficiency_causes, human disease, Nutrient, HumanDisease, 0.90>
+<soil marginality, affects, crop yield, SoilCondition, Crop, 0.88>
+<water stress, causes, plant disease, ClimateFactor, PlantDisease, 0.92>
+<nutrient stress, causes, plant disease, SoilCondition, PlantDisease, 0.90>
+<brown spot disease, affects, rice, PlantDisease, Crop, 0.95>
+<brown spot disease, reduces, rice yield, PlantDisease, Crop, 0.95>
+<brown spot disease, associated_with, nutrient stress, PlantDisease, SoilCondition, 0.90>
+<brown spot disease, associated_with, water stress, PlantDisease, ClimateFactor, 0.90>
+<brown spot disease, reduces, grain quality, PlantDisease, Nutrient, 0.85>
+<rice, has_nutrient, carbohydrate, Crop, Nutrient, 0.80>
+<reduced rice quality, leads_to, malnutrition, Nutrient, HumanDisease, 0.75>
+<fusarium head blight, affects, wheat, PlantDisease, Crop, 0.95>
+<fusarium head blight, reduces, wheat yield, PlantDisease, Crop, 0.95>
+<fusarium head blight, produces, mycotoxins, PlantDisease, Nutrient, 0.92>
+<mycotoxins, causes, human disease, Nutrient, HumanDisease, 0.90>
+<mycotoxins, reduces, food safety, Nutrient, Nutrient, 0.85>
+<wheat, has_nutrient, protein, Crop, Nutrient, 0.90>
+<reduced wheat quality, leads_to, malnutrition, Nutrient, HumanDisease, 0.75>
+<false smut, affects, rice, PlantDisease, Crop, 0.95>
+<false smut, reduces, rice yield, PlantDisease, Crop, 0.90>
+<false smut, produces, toxins, PlantDisease, Nutrient, 0.92>
+<toxins, causes, human disease, Nutrient, HumanDisease, 0.90>
+<rice contamination, reduces, food quality, Crop, Nutrient, 0.85>
+<poor food quality, leads_to, human disease, Nutrient, HumanDisease, 0.80>
+<coffee rust, affects, coffee crop, PlantDisease, Crop, 0.95>
+<coffee rust, reduces, crop yield, PlantDisease, Crop, 0.90>
+<reduced income, leads_to, malnutrition, Nutrient, HumanDisease, 0.70>
+<plant disease epidemics, reduces, food availability, PlantDisease, Crop, 0.92>
+<reduced food availability, leads_to, malnutrition, Nutrient, HumanDisease, 0.85>
+<climate change, affects, plant disease, ClimateFactor, PlantDisease, 0.90>
+<climate change, increases, disease spread, ClimateFactor, PlantDisease, 0.88>
+<plant disease, affects, food stability, PlantDisease, Crop, 0.85>
+<crop loss, leads_to, food insecurity, Crop, HumanDisease, 0.80>
+<food insecurity, associated_with, malnutrition, HumanDisease, HumanDisease, 0.85>
+<potato late blight, affects, potato, PlantDisease, Crop, 0.95>
+<potato late blight, reduces, potato yield, PlantDisease, Crop, 0.95>
+<potato, has_nutrient, carbohydrate, Crop, Nutrient, 0.85>
+<potato crop failure, leads_to, famine, Crop, HumanDisease, 0.90>
+<famine, causes, mortality, HumanDisease, HumanDisease, 0.80>
+<wheat rust, affects, wheat, PlantDisease, Crop, 0.95>
+<wheat rust, reduces, wheat yield, PlantDisease, Crop, 0.95>
+<wheat yield loss, leads_to, food shortage, Crop, HumanDisease, 0.85>
+<food shortage, causes, malnutrition, HumanDisease, HumanDisease, 0.85>
+<plant disease, reduces, nutrient availability, PlantDisease, Nutrient, 0.88>
+<nutrient deficiency, causes, anemia, Nutrient, HumanDisease, 0.95>
+<nutrient deficiency, causes, vitamin deficiency disease, Nutrient, HumanDisease, 0.92>
+<poor soil fertility, reduces, crop yield, SoilCondition, Crop, 0.90>
+<poor soil fertility, reduces, nutrient content, SoilCondition, Nutrient, 0.88>
+<low nutrient crops, leads_to, malnutrition, Crop, HumanDisease, 0.85>
+<plant disease, affects, food quality, PlantDisease, Nutrient, 0.90>
+<food contamination, causes, human disease, Nutrient, HumanDisease, 0.92>
+<agricultural practice, affects, plant disease, AgriculturalPractice, PlantDisease, 0.85>
+<conservation tillage, increases, fusarium head blight, AgriculturalPractice, PlantDisease, 0.90>
+<wheat-maize rotation, increases, fusarium head blight, AgriculturalPractice, PlantDisease, 0.90>
+<hybrid rice cultivation, increases, false smut, AgriculturalPractice, PlantDisease, 0.90>
+<susceptible cultivars, increases, plant disease, AgriculturalPractice, PlantDisease, 0.88>
+<increased rainfall, increases, plant disease, ClimateFactor, PlantDisease, 0.90>
+<temperature change, affects, plant disease, ClimateFactor, PlantDisease, 0.88>
+<plant disease, leads_to, economic loss, PlantDisease, HumanDisease, 0.75>

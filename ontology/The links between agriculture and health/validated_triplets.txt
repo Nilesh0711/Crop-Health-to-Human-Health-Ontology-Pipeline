@@ -1,0 +1,36 @@
+<agriculture, affects, malnutrition, AgriculturalPractice, HumanDisease, 0.95>
+<agriculture, affects, malaria, AgriculturalPractice, HumanDisease, 0.92>
+<agriculture, affects, foodborne illness, AgriculturalPractice, HumanDisease, 0.93>
+<agriculture, affects, HIV/AIDS, AgriculturalPractice, HumanDisease, 0.9>
+<agriculture, affects, chronic disease, AgriculturalPractice, HumanDisease, 0.9>
+<agriculture, affects, occupational illness, AgriculturalPractice, HumanDisease, 0.91>
+<agriculture, increases, food availability, AgriculturalPractice, Crop, 0.9>
+<food availability, affects, nutrition, Crop, HumanDisease, 0.85>
+<irrigation, increases, crop yield, AgriculturalPractice, Crop, 0.93>
+<vector breeding, leads_to, malaria, ClimateFactor, HumanDisease, 0.92>
+<aflatoxin, causes, liver cancer, Nutrient, HumanDisease, 0.95>
+<aflatoxin, affects, child growth impairment, Nutrient, HumanDisease, 0.94>
+<aflatoxin, associated_with, underweight, Nutrient, HumanDisease, 0.9>
+<crop storage conditions, affects, aflatoxin levels, SoilCondition, Nutrient, 0.9>
+<improved storage, reduces, aflatoxin exposure, AgriculturalPractice, Nutrient, 0.92>
+<aflatoxin exposure, leads_to, hepatocellular cancer, Nutrient, HumanDisease, 0.95>
+<pathogen contamination, leads_to, foodborne illness, PlantDisease, HumanDisease, 0.92>
+<crop, has_nutrient, nutrient, Crop, Nutrient, 0.99>
+<plant disease, reduces, nutrient content, PlantDisease, Nutrient, 0.93>
+<nutrient deficiency, deficiency_causes, malnutrition, Nutrient, HumanDisease, 0.95>
+<nutrient deficiency, deficiency_causes, anemia, Nutrient, HumanDisease, 0.96>
+<nutrient deficiency, deficiency_causes, stunting, Nutrient, HumanDisease, 0.94>
+<soil quality, affects, crop yield, SoilCondition, Crop, 0.92>
+<soil contamination, affects, crop safety, SoilCondition, Crop, 0.9>
+<crop safety, affects, human health, Crop, HumanDisease, 0.9>
+<agricultural labour, affects, nutritional status, AgriculturalPractice, HumanDisease, 0.88>
+<income, affects, food access, AgriculturalPractice, Crop, 0.9>
+<food access, affects, nutrition, Crop, HumanDisease, 0.92>
+<medicinal plants, affects, disease treatment, Crop, HumanDisease, 0.88>
+<crop diversity, increases, nutritional quality, Crop, Nutrient, 0.9>
+<nutritional quality, affects, chronic disease, Nutrient, HumanDisease, 0.9>
+<food price, affects, diet choice, Crop, HumanDisease, 0.87>
+<agricultural policy, affects, food production, AgriculturalPractice, Crop, 0.88>
+<food production, affects, health outcomes, Crop, HumanDisease, 0.9>
+<increased income, reduces, disease risk, AgriculturalPractice, HumanDisease, 0.85>
+<reduced healthcare access, increases, disease burden, AgriculturalPractice, HumanDisease, 0.9>

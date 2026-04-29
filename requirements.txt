@@ -1,5 +1,1 @@
-docling
-openai
-python-dotenv
-pandas
-tqdm
+networkx>=3.0

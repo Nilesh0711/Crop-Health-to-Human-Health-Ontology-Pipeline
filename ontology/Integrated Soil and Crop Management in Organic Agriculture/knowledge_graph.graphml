@@ -1,0 +1,667 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"><key id="d2" for="edge" attr.name="relation" attr.type="string"/>
+<key id="d1" for="node" attr.name="type" attr.type="string"/>
+<key id="d0" for="node" attr.name="label" attr.type="string"/>
+<graph edgedefault="directed"><node id="organic farming">
+  <data key="d0">organic farming</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="crop nutritional quality">
+  <data key="d0">crop nutritional quality</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="pesticide exposure">
+  <data key="d0">pesticide exposure</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="organic food consumption">
+  <data key="d0">organic food consumption</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="obesity">
+  <data key="d0">obesity</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="metabolic syndrome">
+  <data key="d0">metabolic syndrome</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="cancer">
+  <data key="d0">cancer</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="eczema">
+  <data key="d0">eczema</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="pre-eclampsia">
+  <data key="d0">pre-eclampsia</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="infections">
+  <data key="d0">infections</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="cadmium">
+  <data key="d0">cadmium</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="kidney damage">
+  <data key="d0">kidney damage</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="phenolic compounds">
+  <data key="d0">phenolics</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="cardiovascular disease">
+  <data key="d0">cardiovascular disease</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="type-2 diabetes">
+  <data key="d0">type-2 diabetes</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="vitamin c">
+  <data key="d0">vitamin C</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="folate">
+  <data key="d0">folate</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="mineral npk fertilizer">
+  <data key="d0">mineral NPK fertilizer</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="manure fertilization">
+  <data key="d0">manure fertilization</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="plant disease severity">
+  <data key="d0">plant disease severity</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="septoria">
+  <data key="d0">Septoria</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="wheat">
+  <data key="d0">wheat</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="fusarium">
+  <data key="d0">Fusarium</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="mycotoxins">
+  <data key="d0">mycotoxins</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="crop rotation">
+  <data key="d0">crop rotation</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="plant disease">
+  <data key="d0">plant disease</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="weed pressure">
+  <data key="d0">weed pressure</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="grass-clover ley">
+  <data key="d0">grass-clover ley</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="monoculture">
+  <data key="d0">monoculture</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="legume crops">
+  <data key="d0">legume crops</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="nitrogen">
+  <data key="d0">nitrogen</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="rhizobium">
+  <data key="d0">Rhizobium</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="mycorrhiza">
+  <data key="d0">mycorrhiza</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="micronutrients">
+  <data key="d0">micronutrients</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="zinc">
+  <data key="d0">zinc</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="copper">
+  <data key="d0">copper</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="selenium">
+  <data key="d0">selenium</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="water-soluble phosphorus fertilizer">
+  <data key="d0">water-soluble phosphorus fertilizer</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="organic matter input">
+  <data key="d0">organic matter input</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="soil fertility">
+  <data key="d0">soil fertility</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="soil biological activity">
+  <data key="d0">soil biological activity</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="compost">
+  <data key="d0">compost</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="disease suppressiveness">
+  <data key="d0">disease suppressiveness</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="soil suppressiveness">
+  <data key="d0">soil suppressiveness</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="brassica residues">
+  <data key="d0">Brassica residues</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="nematodes">
+  <data key="d0">nematodes</data>
+  <data key="d1">PlantDisease</data>
+</node>
+<node id="chitin">
+  <data key="d0">chitin</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="antioxidant">
+  <data key="d0">antioxidant activity</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="mineral nitrogen fertilizer">
+  <data key="d0">mineral nitrogen fertilizer</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="nitrate">
+  <data key="d0">nitrate</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="nitrite">
+  <data key="d0">nitrite</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="human disease (general)">
+  <data key="d0">human disease</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="organic crops">
+  <data key="d0">organic crops</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="potato">
+  <data key="d0">potato</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="cabbage">
+  <data key="d0">cabbage</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="glucosinolates">
+  <data key="d0">glucosinolates</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="lettuce">
+  <data key="d0">lettuce</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="carotenoids">
+  <data key="d0">carotenoids</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="cadmium exposure">
+  <data key="d0">cadmium exposure</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="crop diversification">
+  <data key="d0">crop diversification</data>
+  <data key="d1">AgriculturalPractice</data>
+</node>
+<node id="yield stability">
+  <data key="d0">yield stability</data>
+  <data key="d1">SoilCondition</data>
+</node>
+<node id="nutrient deficiency">
+  <data key="d0">nutrient deficiency</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="anemia">
+  <data key="d0">anemia</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="zinc deficiency">
+  <data key="d0">zinc deficiency</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="immune dysfunction">
+  <data key="d0">immune dysfunction</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="folate deficiency">
+  <data key="d0">folate deficiency</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="neural disorders">
+  <data key="d0">neural disorders</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="vitamin c deficiency">
+  <data key="d0">vitamin C deficiency</data>
+  <data key="d1">Nutrient</data>
+</node>
+<node id="scurvy">
+  <data key="d0">scurvy</data>
+  <data key="d1">HumanDisease</data>
+</node>
+<node id="crop quality">
+  <data key="d0">crop quality</data>
+  <data key="d1">Crop</data>
+</node>
+<node id="climate conditions">
+  <data key="d0">climate conditions</data>
+  <data key="d1">ClimateFactor</data>
+</node>
+<edge source="organic farming" target="crop nutritional quality">
+  <data key="d2">increases</data>
+</edge>
+<edge source="organic farming" target="pesticide exposure">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="organic farming" target="phenolic compounds">
+  <data key="d2">increases</data>
+</edge>
+<edge source="organic farming" target="vitamin c">
+  <data key="d2">increases</data>
+</edge>
+<edge source="organic farming" target="folate">
+  <data key="d2">increases</data>
+</edge>
+<edge source="organic farming" target="cadmium">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="organic farming" target="cadmium exposure">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="crop nutritional quality" target="organic farming">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="pesticide exposure" target="organic farming">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="organic food consumption" target="obesity">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="organic food consumption" target="metabolic syndrome">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="organic food consumption" target="cancer">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="organic food consumption" target="eczema">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="organic food consumption" target="pre-eclampsia">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="organic food consumption" target="infections">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="obesity" target="organic food consumption">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="metabolic syndrome" target="organic food consumption">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="cancer" target="organic food consumption">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="cancer" target="phenolic compounds">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="cancer" target="cadmium">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="eczema" target="organic food consumption">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="pre-eclampsia" target="organic food consumption">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="infections" target="organic food consumption">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="cadmium" target="kidney damage">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="cadmium" target="organic farming">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="cadmium" target="mineral npk fertilizer">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="cadmium" target="cancer">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="kidney damage" target="cadmium">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="phenolic compounds" target="cardiovascular disease">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="phenolic compounds" target="type-2 diabetes">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="phenolic compounds" target="cancer">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="phenolic compounds" target="organic farming">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="phenolic compounds" target="mineral npk fertilizer">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="phenolic compounds" target="manure fertilization">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="phenolic compounds" target="chitin">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="phenolic compounds" target="organic crops">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="phenolic compounds" target="wheat">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="cardiovascular disease" target="phenolic compounds">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="type-2 diabetes" target="phenolic compounds">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="vitamin c" target="organic farming">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="vitamin c" target="organic crops">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="vitamin c" target="potato">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="folate" target="organic farming">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="folate" target="organic crops">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="mineral npk fertilizer" target="cadmium">
+  <data key="d2">increases</data>
+</edge>
+<edge source="mineral npk fertilizer" target="phenolic compounds">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="manure fertilization" target="phenolic compounds">
+  <data key="d2">increases</data>
+</edge>
+<edge source="manure fertilization" target="plant disease severity">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="plant disease severity" target="manure fertilization">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="septoria" target="wheat">
+  <data key="d2">affects</data>
+</edge>
+<edge source="septoria" target="grass-clover ley">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="wheat" target="septoria">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="wheat" target="fusarium">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="wheat" target="phenolic compounds">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="fusarium" target="wheat">
+  <data key="d2">affects</data>
+</edge>
+<edge source="fusarium" target="mycotoxins">
+  <data key="d2">increases</data>
+</edge>
+<edge source="fusarium" target="monoculture">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="mycotoxins" target="fusarium">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="crop rotation" target="plant disease">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="crop rotation" target="weed pressure">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="plant disease" target="crop rotation">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="plant disease" target="mycorrhiza">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="plant disease" target="soil biological activity">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="plant disease" target="soil suppressiveness">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="weed pressure" target="crop rotation">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="grass-clover ley" target="septoria">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="monoculture" target="fusarium">
+  <data key="d2">increases</data>
+</edge>
+<edge source="legume crops" target="nitrogen">
+  <data key="d2">increases</data>
+</edge>
+<edge source="nitrogen" target="legume crops">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="nitrogen" target="rhizobium">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="rhizobium" target="nitrogen">
+  <data key="d2">increases</data>
+</edge>
+<edge source="mycorrhiza" target="micronutrients">
+  <data key="d2">increases</data>
+</edge>
+<edge source="mycorrhiza" target="zinc">
+  <data key="d2">increases</data>
+</edge>
+<edge source="mycorrhiza" target="copper">
+  <data key="d2">increases</data>
+</edge>
+<edge source="mycorrhiza" target="selenium">
+  <data key="d2">increases</data>
+</edge>
+<edge source="mycorrhiza" target="plant disease">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="mycorrhiza" target="water-soluble phosphorus fertilizer">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="micronutrients" target="mycorrhiza">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="zinc" target="mycorrhiza">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="copper" target="mycorrhiza">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="selenium" target="mycorrhiza">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="water-soluble phosphorus fertilizer" target="mycorrhiza">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="organic matter input" target="soil fertility">
+  <data key="d2">increases</data>
+</edge>
+<edge source="organic matter input" target="soil biological activity">
+  <data key="d2">increases</data>
+</edge>
+<edge source="soil fertility" target="organic matter input">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="soil fertility" target="crop quality">
+  <data key="d2">affects</data>
+</edge>
+<edge source="soil biological activity" target="organic matter input">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="soil biological activity" target="plant disease">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="compost" target="disease suppressiveness">
+  <data key="d2">increases</data>
+</edge>
+<edge source="disease suppressiveness" target="compost">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="soil suppressiveness" target="plant disease">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="brassica residues" target="nematodes">
+  <data key="d2">reduces</data>
+</edge>
+<edge source="nematodes" target="brassica residues">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="chitin" target="phenolic compounds">
+  <data key="d2">increases</data>
+</edge>
+<edge source="chitin" target="antioxidant">
+  <data key="d2">increases</data>
+</edge>
+<edge source="antioxidant" target="chitin">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="mineral nitrogen fertilizer" target="nitrate">
+  <data key="d2">increases</data>
+</edge>
+<edge source="mineral nitrogen fertilizer" target="nitrite">
+  <data key="d2">increases</data>
+</edge>
+<edge source="nitrate" target="mineral nitrogen fertilizer">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="nitrate" target="human disease (general)">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="nitrite" target="mineral nitrogen fertilizer">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="nitrite" target="human disease (general)">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="human disease (general)" target="nitrate">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="human disease (general)" target="nitrite">
+  <data key="d2">associated_with</data>
+</edge>
+<edge source="organic crops" target="phenolic compounds">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="organic crops" target="vitamin c">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="organic crops" target="folate">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="potato" target="vitamin c">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="cabbage" target="glucosinolates">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="glucosinolates" target="cabbage">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="lettuce" target="carotenoids">
+  <data key="d2">has_nutrient</data>
+</edge>
+<edge source="carotenoids" target="lettuce">
+  <data key="d2">nutrient_of</data>
+</edge>
+<edge source="cadmium exposure" target="organic farming">
+  <data key="d2">reduced_by</data>
+</edge>
+<edge source="crop diversification" target="yield stability">
+  <data key="d2">increases</data>
+</edge>
+<edge source="yield stability" target="crop diversification">
+  <data key="d2">increased_by</data>
+</edge>
+<edge source="nutrient deficiency" target="anemia">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="anemia" target="nutrient deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="zinc deficiency" target="immune dysfunction">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="immune dysfunction" target="zinc deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="folate deficiency" target="neural disorders">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="neural disorders" target="folate deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="vitamin c deficiency" target="scurvy">
+  <data key="d2">deficiency_causes</data>
+</edge>
+<edge source="scurvy" target="vitamin c deficiency">
+  <data key="d2">caused_by_deficiency_in</data>
+</edge>
+<edge source="crop quality" target="soil fertility">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="crop quality" target="climate conditions">
+  <data key="d2">affected_by</data>
+</edge>
+<edge source="climate conditions" target="crop quality">
+  <data key="d2">affects</data>
+</edge>
+</graph></graphml>

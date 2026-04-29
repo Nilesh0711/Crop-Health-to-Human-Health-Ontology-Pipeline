@@ -1,0 +1,43 @@
+I am uploading a scientific PDF about agriculture and health. Extract ALL structured knowledge relationships as 6-tuples.
+
+ENTITY TYPES (use ONLY these):
+- Crop
+- PlantDisease
+- Nutrient
+- SoilCondition
+- ClimateFactor
+- HumanDisease
+- AgriculturalPractice
+
+RELATIONS (use ONLY these):
+- affects
+- causes
+- reduces
+- increases
+- has_nutrient
+- leads_to
+- associated_with
+- deficiency_causes
+
+FORMAT (strictly follow this):
+<subject, relation, object, subject_type, object_type, confidence>
+
+CRITICAL INSTRUCTIONS:
+1. Extract as many tuples as possible (aim for 50+)
+2. MUST include relationships linking agriculture to human health:
+   - Nutrient deficiency → Human disease (e.g., Iron deficiency causes Anemia)
+   - Crop consumption → Human health outcomes
+   - Contaminant exposure → Human disease (e.g., Cadmium causes Kidney Damage)
+   - Agricultural practice → Nutrient change → Health impact
+3. MUST include intermediate chain links:
+   - Crop → has_nutrient → Nutrient
+   - PlantDisease → reduces → Nutrient
+   - SoilCondition → affects → Crop
+   - Nutrient → deficiency_causes → HumanDisease
+4. Entities must be short noun phrases (NOT full sentences)
+5. subject_type and object_type MUST be exactly from the entity types list above
+6. confidence is a float between 0.0 and 1.0
+7. Each line must have EXACTLY 6 comma-separated values inside angle brackets
+8. Do NOT include any explanations, headers, or numbering
+
+Output ONLY the tuples, one per line.

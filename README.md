@@ -175,6 +175,37 @@ All data flows through this schema:
 5. Run `python pdf_to_antology.py`
 6. Run `python visualize.py` to regenerate reports
 
+## External Research Validation (In Progress)
+
+`external_validation.py` adds an evidence-first validation workflow without
+changing the current graph pipeline. It treats every raw extracted tuple as a
+candidate, records its originating-paper metadata, and retrieves a small
+claim-specific set of open-access external research articles from Europe PMC.
+
+```powershell
+# Build metadata for all current raw tuples (no network request)
+python external_validation.py build-candidates
+
+# Pilot external retrieval on a small batch
+python external_validation.py retrieve --limit 5 --articles-per-candidate 5
+```
+
+The retrieval process never saves external PDFs, XML files, or complete papers.
+It holds full text in memory, stores only the highest-ranked evidence snippets
+and article metadata in `rag/external_validation_packets.jsonl`, and discards
+the full text. A later LLM or human evaluates one external article at a time
+using `prompt/External Entailment Validator Prompt.md`; validated decisions are
+ingested with:
+
+```powershell
+python external_validation.py ingest-decisions rag/entailment_decisions.jsonl
+```
+
+The command rejects a `supported` or `contradicted` decision unless its quoted
+text occurs in a stored evidence snippet. This milestone validates external
+research evidence only; source-paper entailment and graph insertion remain
+deferred. See `rag.md` for the data contracts and decision policy.
+
 ---
 
 ## Repository Structure

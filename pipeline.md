@@ -44,6 +44,25 @@ Two-stage path traversal algorithm:
 - `networkx >= 3.0` (graph construction and path traversal)
 - No LLM API, no PDF extraction libraries needed
 
+## External Research Validation (Separate, In Progress)
+
+The graph pipeline above remains unchanged while external validation is
+developed. `external_validation.py` reads each `raw_triplets.txt` file and
+creates a stable candidate record with originating-paper metadata (paper title,
+tuple file/line, and local PDF hash where available).
+
+For each candidate, it queries Europe PMC for a small set of open-access
+external research articles. Full text is retrieved into memory only, split and
+ranked there, then discarded. The persistent validation packet contains only
+the selected evidence chunks and bibliographic metadata; external PDFs, XML,
+and complete articles are never written to the repository.
+
+The next step is one-document-at-a-time external entailment using
+`prompt/External Entailment Validator Prompt.md`. Decisions are validated
+against stored chunks before `external_validation.py ingest-decisions` writes
+the external evidence ledger. Source-paper entailment is intentionally deferred
+and is not part of this milestone.
+
 ## Output Files (per PDF)
 - `raw_triplets.txt` — Input from ChatGPT (manually placed)
 - `validated_triplets.txt` — Tuples that passed validation

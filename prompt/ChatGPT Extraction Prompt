@@ -1,4 +1,4 @@
-I am uploading a scientific PDF about agriculture and health. Extract ALL structured knowledge relationships as 6-tuples.
+I am uploading a scientific PDF about agriculture and health. Extract only the structured relationships that are directly supported by the text of this PDF as 6-tuples.
 
 ENTITY TYPES (use ONLY these):
 - Crop
@@ -23,21 +23,17 @@ FORMAT (strictly follow this):
 <subject, relation, object, subject_type, object_type, confidence>
 
 CRITICAL INSTRUCTIONS:
-1. Extract as many tuples as possible (aim for 50+)
-2. MUST include relationships linking agriculture to human health:
-   - Nutrient deficiency → Human disease (e.g., Iron deficiency causes Anemia)
-   - Crop consumption → Human health outcomes
-   - Contaminant exposure → Human disease (e.g., Cadmium causes Kidney Damage)
-   - Agricultural practice → Nutrient change → Health impact
-3. MUST include intermediate chain links:
-   - Crop → has_nutrient → Nutrient
-   - PlantDisease → reduces → Nutrient
-   - SoilCondition → affects → Crop
-   - Nutrient → deficiency_causes → HumanDisease
-4. Entities must be short noun phrases (NOT full sentences)
-5. subject_type and object_type MUST be exactly from the entity types list above
-6. confidence is a float between 0.0 and 1.0
-7. Each line must have EXACTLY 6 comma-separated values inside angle brackets
-8. Do NOT include any explanations, headers, or numbering
+1. There is NO target number of tuples. Extract only as many as the PDF explicitly supports. It is correct to output fewer than 50 tuples, or no tuples for a relation category that the PDF does not state.
+2. Extract only a direct claim stated in the PDF. Do NOT add a relationship from background knowledge, common scientific knowledge, a citation title, a reference list, or an inferred multi-hop chain.
+3. Do NOT force agriculture-to-health links or intermediate links. For example, if the PDF states only “Fusarium increases mycotoxins”, output that claim only; do not infer “Fusarium causes cancer”.
+4. Preserve the relation strength and direction used by the paper:
+   - use `associated_with` for correlation/association; never convert it to `causes`;
+   - use `causes`, `leads_to`, `increases`, or `reduces` only when the text explicitly supports that direction;
+   - if the text says “may”, “could”, “suggests”, “no significant association”, or gives a conditional result, do not convert it into a definitive relation. Skip it when the available relation vocabulary cannot represent the qualifier or negation faithfully.
+5. Keep relevant context in the entity phrase when it changes meaning, such as “cadmium exposure”, “high-dose pesticide exposure”, or “iron deficiency”. Do not broaden a specific result into a general claim.
+6. Entities must be short noun phrases, not sentences. Use an entity type only when it genuinely fits; do not force an entity into an incorrect type merely to make a tuple valid. Skip claims that the current ontology cannot represent faithfully.
+7. `confidence` is the extraction model's confidence that the PDF explicitly states the tuple—not a measure of whether the claim is true in the world. Use a float from 0.0 to 1.0. Use high confidence only for clear, direct statements.
+8. Each line must have exactly 6 comma-separated values inside angle brackets. Do not use commas inside entity names.
+9. Output only tuples, one per line. Do not include explanations, headers, numbering, or inferred reasoning chains.
 
 Output ONLY the tuples, one per line.

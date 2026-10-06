@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+deliverables/*
+ppt/*
+
 # Python caches
 __pycache__/
 *.py[cod]

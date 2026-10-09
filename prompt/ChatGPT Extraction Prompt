@@ -1,39 +1,61 @@
-I am uploading a scientific PDF about agriculture and health. Extract only the structured relationships that are directly supported by the text of this PDF as 6-tuples.
+You are extracting **only faithful, evidence-traceable scientific claims** from the PDF supplied in this chat for the Crop-to-Human-Health Ontology project.
 
-ENTITY TYPES (use ONLY these):
+Your job is not to summarize the paper or maximize the number of claims. Use the supplied section context to understand the study, but extract a claim only when one to three contiguous sentences provide exact support. Zero claims is a valid result.
+
+Allowed entity types (use only these):
+
 - Crop
 - PlantDisease
+- PlantPest
+- PlantProcess
+- PlantTrait
 - Nutrient
+- Contaminant
+- HumanExposure
+- HumanBiologicalProcess
+- HumanHealthOutcome
 - SoilCondition
+- SoilBiota
 - ClimateFactor
-- HumanDisease
 - AgriculturalPractice
 
-RELATIONS (use ONLY these):
+Allowed relations (use only these):
+
 - affects
 - causes
 - reduces
 - increases
 - has_nutrient
+- has_contaminant
 - leads_to
 - associated_with
 - deficiency_causes
 
-FORMAT (strictly follow this):
-<subject, relation, object, subject_type, object_type, confidence>
+Strict extraction rules:
 
-CRITICAL INSTRUCTIONS:
-1. There is NO target number of tuples. Extract only as many as the PDF explicitly supports. It is correct to output fewer than 50 tuples, or no tuples for a relation category that the PDF does not state.
-2. Extract only a direct claim stated in the PDF. Do NOT add a relationship from background knowledge, common scientific knowledge, a citation title, a reference list, or an inferred multi-hop chain.
-3. Do NOT force agriculture-to-health links or intermediate links. For example, if the PDF states only “Fusarium increases mycotoxins”, output that claim only; do not infer “Fusarium causes cancer”.
-4. Preserve the relation strength and direction used by the paper:
-   - use `associated_with` for correlation/association; never convert it to `causes`;
-   - use `causes`, `leads_to`, `increases`, or `reduces` only when the text explicitly supports that direction;
-   - if the text says “may”, “could”, “suggests”, “no significant association”, or gives a conditional result, do not convert it into a definitive relation. Skip it when the available relation vocabulary cannot represent the qualifier or negation faithfully.
-5. Keep relevant context in the entity phrase when it changes meaning, such as “cadmium exposure”, “high-dose pesticide exposure”, or “iron deficiency”. Do not broaden a specific result into a general claim.
-6. Entities must be short noun phrases, not sentences. Use an entity type only when it genuinely fits; do not force an entity into an incorrect type merely to make a tuple valid. Skip claims that the current ontology cannot represent faithfully.
-7. `confidence` is the extraction model's confidence that the PDF explicitly states the tuple—not a measure of whether the claim is true in the world. Use a float from 0.0 to 1.0. Use high confidence only for clear, direct statements.
-8. Each line must have exactly 6 comma-separated values inside angle brackets. Do not use commas inside entity names.
-9. Output only tuples, one per line. Do not include explanations, headers, numbering, or inferred reasoning chains.
+1. Extract a claim only when one to three contiguous evidence sentences directly entail the exact subject, relation, and object. Use the wider section only to resolve context, abbreviations, and qualifiers. Do not use background knowledge, an inference, a citation title, a figure caption without an explicit statement, or the reference list.
+2. Every entity must be fully qualified by its study context. Never output generic one-word concepts such as `temperature`, `yield`, `pests`, `disease`, `soil`, or `nutrition`. Preserve the material, species, exposure, condition, outcome, and population when stated. Example: write `High daytime temperature stress` and `Rice grain yield`, not `Temperature` and `yield`.
+3. Reject trivial or broad background claims such as “pests reduce yields”, “soil is important”, or “agriculture affects health”. Extract a claim only if the paper specifies a concrete factor and a concrete outcome.
+4. Do not convert association, correlation, prediction, possibility, or a conditional result into causation. If the sentence uses `may`, `might`, `could`, `suggests`, `associated`, `correlated`, `no significant`, or another qualifier that the available relation list cannot preserve, abstain.
+5. Never create a multi-hop inference. If the PDF states A → B and B → C, extract only those direct statements, not A → C.
+6. Do not force a claim into an incorrect ontology type. Skip it when the current types and relations cannot represent it faithfully.
+7. Do not use commas inside an entity phrase. If a potential entity requires commas to remain meaningful, abstain.
+8. Keep only the scoped path `Agriculture/Climate → Soil → Crop/Disease/Trait → Nutrient/Contaminant → Human Exposure → Human Biological Process/Health Outcome`. An individual claim may represent one direct segment and does not need to reach human health by itself. Exclude economics, infrastructure, trade, generic food security, and yield-only claims.
 
-Output ONLY the tuples, one per line.
+Output contract — two lines per claim, no headings or other prose:
+
+```
+<subject, relation, object, subject_type, object_type>
+# evidence: "Exact one-to-three-sentence span copied verbatim from the PDF."
+```
+
+The evidence comment must immediately follow its tuple and must be an exact verbatim span of one to three adjacent sentences from the PDF, up to roughly 80 words. If you cannot quote such a span, do not emit the tuple. The tuple line remains compatible with the existing graph pipeline; the `# evidence` line is captured as extraction provenance by the validation pipeline.
+
+Example of acceptable specificity:
+
+```
+<High nighttime temperature during grain filling, reduces, Rice grain yield, ClimateFactor, Crop>
+# evidence: "High nighttime temperature during grain filling reduced rice grain yield in the field experiment."
+```
+
+Output only tuple/evidence pairs. Do not aim for a target count.

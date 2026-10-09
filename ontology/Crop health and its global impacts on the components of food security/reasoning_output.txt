@@ -1,6 +1,0 @@
-nutrient stress [SoilCondition] -(causes)-> plant disease [PlantDisease] -(leads_to)-> economic loss [HumanDisease]
-agricultural practice [AgriculturalPractice] -(affects)-> plant disease [PlantDisease] -(leads_to)-> economic loss [HumanDisease]
-poor soil fertility [SoilCondition] -(reduces)-> nutrient content [Nutrient] -(reduced_by)-> plant disease [PlantDisease] -(leads_to)-> economic loss [HumanDisease]
-soil marginality [SoilCondition] -(affects)-> crop yield [Crop] -(reduced_by)-> plant disease [PlantDisease] -(leads_to)-> economic loss [HumanDisease]
-water stress [ClimateFactor] -(causes)-> plant disease [PlantDisease] -(leads_to)-> economic loss [HumanDisease]
-susceptible cultivars [AgriculturalPractice] -(increases)-> plant disease [PlantDisease] -(leads_to)-> economic loss [HumanDisease]

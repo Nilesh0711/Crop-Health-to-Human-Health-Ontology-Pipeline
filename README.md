@@ -1,224 +1,54 @@
-# Crop Health to Human Health — Ontology Pipeline
+# Crop Health Research Workbench
 
-## Overview
+A local-first application for extracting soil-to-human-health claims from research PDFs, checking source fidelity and external research support, and inspecting an evidence-aware knowledge graph. The validator uses Europe PMC open-access articles, `BAAI/bge-small-en-v1.5` for passage ranking, and local Qwen for extraction and evidence judgement. A corroborated graph edge is still a provisional research finding, not established causality.
 
-This project builds a **knowledge graph** that links agricultural factors (soil conditions, farming practices, crop diseases, climate) to **human health outcomes** (malnutrition, cancer, anemia, etc.). It discovers hidden multi-hop causal chains across scientific literature.
+## Start the application from Git Bash
 
-**Example reasoning chain discovered by the pipeline:**
-```
-Monoculture [AgriculturalPractice]
-  --(increases)--> Fusarium [PlantDisease]
-  --(increases)--> mycotoxins [Nutrient]
-  --(causes)--> human disease [HumanDisease]
+Requirements: Python 3.11+, Node.js 20+, Ollama with `qwen3:8b` (the configured default) or another installed model, and internet access for Europe PMC. The 8B model is selected because it can be fully offloaded on this workstation's 8 GiB GPU. Run setup once from the project folder:
+
+```bash
+bash scripts/setup.sh
 ```
 
-## Quick Start
+Then open three Git Bash terminals in the project folder and run one command in each:
 
-### Prerequisites
-
-- Python 3.11+
-- Access to [ChatGPT](https://chat.openai.com/) (for tuple extraction from PDFs)
-
-### 1. Install Dependencies
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+```bash
+bash scripts/run_ollama.sh
 ```
 
-The only dependency is `networkx` — no LLM APIs or PDF libraries needed.
-
-### 2. Extract Tuples from a PDF
-
-Upload your scientific PDF to ChatGPT and paste the prompt from:
-
-```
-prompt/ChatGPT Extraction Prompt
+```bash
+bash scripts/run_backend.sh
 ```
 
-ChatGPT will output structured 6-tuples like:
-
-```
-<organic farming, reduces, cadmium, AgriculturalPractice, Nutrient, 0.88>
-<cadmium, causes, kidney damage, Nutrient, HumanDisease, 0.85>
+```bash
+bash scripts/run_frontend.sh
 ```
 
-### 3. Save the Tuples
+Keep the three terminals open. `run_ollama.sh` leaves Ollama's extra GPU reserve at zero because Windows/WDDM already holds roughly 0.8–1.1 GiB of VRAM. This allows the 8B model and its 8,192-token context to remain GPU-resident while leaving Windows about the requested 800 MiB. To apply this setting, quit the Ollama app from the Windows system tray before starting the script; a server already running in the app cannot inherit the script's setting, and the script will tell you when that is the case. Pressing Ctrl+C unloads its configured model; if the script started Ollama, it also stops that server. The frontend script installs packages if `frontend\node_modules\` is missing.
 
-Create a folder inside `ontology/` named after your PDF (without `.pdf`), and save ChatGPT's output as `raw_triplets.txt`:
+In the frontend, open **Run settings** to choose an installed Ollama model for that pipeline run. The initial selection follows `VALIDATION_MODEL` (default `qwen3:8b`). The selected model is recorded in the run summary and used for extraction and external article judging. Check currently loaded models with `ollama ps`. To stop an Ollama server that was already running in the Windows app, close it from the system tray.
 
-```
-ontology/
-  Your PDF Name/
-    raw_triplets.txt    <-- paste ChatGPT output here
-```
+Open `http://127.0.0.1:5173`. Choose a PDF in the library, inspect run settings, and click **Run pipeline**. The default is all pages and all eligible claims; `0` means all. Validation can be slow because every claim involves local model calls and external article retrieval. The page shows logs, claims with source quotations and article decisions, a per-paper or merged graph, and provisional reasoning paths. You can add a PDF from the sidebar (50 MB upload limit).
 
-### 4. Run the Pipeline
+For one-server use, run `npm.cmd run build` inside `frontend/`, then start FastAPI; it serves the built UI at `http://127.0.0.1:8000`.
 
-```powershell
-python pdf_to_antology.py
-```
+## Data and code
 
-The script processes all PDFs listed in the `PDF_NAMES` array. If a PDF's `raw_triplets.txt` is missing, it skips that PDF with a warning.
+| Location | Purpose |
+| --- | --- |
+| `pdf/` | Source PDFs; never removed by the pipeline |
+| `backend/app.py` | FastAPI PDF, run, logs, claims, graph, and upload endpoints |
+| `backend/pipeline.py` | Section-aware PDF packets, Qwen claim extraction, controlled-vocabulary checks, and validation orchestration |
+| `backend/semantic_validation.py` | Independent Qwen scope, entity-type, relation, direction, and atomicity gate |
+| `backend/source_validation.py` | Source-PDF entailment gate: exact 1–3 sentence evidence, entity/relation/direction/qualifier checks |
+| `backend/graph.py` | Evidence-state graph snapshots and forward-only provisional paths |
+| `external_validator/` | Europe PMC retrieval, BGE reranking, local Qwen judgement, CLI |
+| `frontend/` | React/Vite/Cytoscape application |
+| `ontology/<PDF stem>/` | Newly generated per-PDF candidate, validation, graph, log, and summary files |
+| `archive/pre_app_2026-10-07/` | Old ontology and RAG data preserved before the new extraction run |
 
-### 5. View the Results
+Only selected external article chunks and bibliographic metadata are persisted in `validation_runs.jsonl`; whole external articles are never saved. Extraction uses ~2,000-word packets, constrained JSON, and exact 1–3-sentence PDF evidence spans. Each claim passes separate Qwen entity typing, relation/scope classification, and source-evidence judgement. Only source-supported claims reach concept-only Europe PMC retrieval; the source-paper title is excluded, and BGE ranks articles before their transient full text is fetched. Rejected or uncertain claims remain in the audit view. External support requires a passage with the exact entities, direction, and certainty. A per-PDF GraphML export is downloadable. A graph path is a hypothesis, not a medical or agronomic conclusion.
 
-```powershell
-python visualize.py
-```
+Saved legacy runs were snapshotted in `analysis/extraction_baseline_2026-10-08.jsonl` before this change. To compare counts and claim overlap after rerunning PDFs, use `./.venv/Scripts/python.exe scripts/extraction_audit.py compare --baseline analysis/extraction_baseline_2026-10-08.jsonl`. These are process metrics, not measured precision: the baseline has no expert truth labels. The script can also create a new baseline with optional provisional Qwen review; see its `--help` output.
 
-This generates two human-readable reports in the `ontology/` folder.
-
----
-
-## Understanding the `ontology/` Folder
-
-After running the pipeline on all PDFs, the ontology folder looks like this:
-
-```
-ontology/
-│
-├── master_knowledge_graph.graphml    ← Cumulative graph across ALL PDFs
-├── graph_report.txt                  ← All nodes and edges listed by type
-├── reasoning_paths_report.txt        ← Multi-hop paths grouped by disease
-│
-├── Crop health and its global impacts.../
-│   ├── raw_triplets.txt              ← Input: ChatGPT extracted tuples
-│   ├── validated_triplets.txt        ← Tuples that passed validation rules
-│   ├── knowledge_graph.graphml       ← Graph for this PDF only
-│   └── reasoning_output.txt          ← Paths found at this stage
-│
-├── Exploring the link between soil.../
-│   ├── raw_triplets.txt
-│   ├── validated_triplets.txt
-│   ├── knowledge_graph.graphml
-│   └── reasoning_output.txt
-│
-└── ... (one folder per PDF)
-```
-
-### Shared Files (Root of `ontology/`)
-
-| File | Description |
-|------|-------------|
-| `master_knowledge_graph.graphml` | The **main output** — a cumulative directed graph merging data from all processed PDFs. Each new PDF adds nodes and edges to this graph. Can be opened in [Gephi](https://gephi.org/), [Cytoscape](https://cytoscape.org/), or [yEd](https://www.yworks.com/products/yed). |
-| `graph_report.txt` | Human-readable listing of all nodes (grouped by entity type) and all edges in the master graph. Generated by `visualize.py`. |
-| `reasoning_paths_report.txt` | All discovered multi-hop reasoning chains, grouped by disease target (e.g., "cancer — 60 paths lead here"). Generated by `visualize.py`. |
-
-### Per-PDF Files
-
-| File | Description |
-|------|-------------|
-| `raw_triplets.txt` | **Input file** — 6-tuples extracted from a PDF using ChatGPT. You create this manually before running the pipeline. |
-| `validated_triplets.txt` | Tuples that survived validation: correct entity types, valid relation, confidence ≥ 0.7, and matching the `VALID_RULES` schema. |
-| `knowledge_graph.graphml` | Isolated graph built from only this PDF's validated tuples. Useful for per-document analysis. |
-| `reasoning_output.txt` | Reasoning paths found using the **master graph** at the point this PDF was processed. Later PDFs produce more paths since the master graph is larger. |
-
----
-
-## Pipeline Steps
-
-The pipeline runs 4 steps for each PDF:
-
-```
-Step 1 — Load raw tuples from raw_triplets.txt
-Step 2 — Deduplicate + validate against VALID_RULES and confidence threshold
-Step 3 — Build/update the master knowledge graph (NetworkX DiGraph)
-Step 4 — Run multi-hop reasoning (find paths from agriculture → human disease)
-```
-
-### Validation Rules
-
-Every tuple is checked against a strict schema of valid `(SubjectType, Relation, ObjectType)` combinations. For example:
-
-- ✅ `(AgriculturalPractice, reduces, PlantDisease)` — valid
-- ✅ `(Nutrient, deficiency_causes, HumanDisease)` — valid
-- ❌ `(Crop, causes, SoilCondition)` — rejected
-
-### Entity Normalization
-
-Synonymous concepts are merged automatically:
-- `"antioxidant activity"` / `"antioxidant capacity"` → `"antioxidant"`
-- `"cadmium concentration"` → `"cadmium"`
-- `"phenolic levels"` / `"phenolic concentrations"` → `"phenolic compounds"`
-
-### Multi-hop Reasoning
-
-The reasoning engine discovers indirect connections:
-
-1. **Stage 1**: Finds direct paths from source nodes (Climate/Soil/Practice) to HumanDisease targets, up to 6 hops.
-2. **Stage 2**: If no direct paths exist, finds partial paths (Source → Nutrient) and (Nutrient → Disease), then stitches them together.
-
----
-
-## 6-Tuple Format
-
-All data flows through this schema:
-
-```
-<Subject, Relation, Object, SubjectType, ObjectType, Confidence>
-```
-
-**Entity Types** (7): `Crop`, `PlantDisease`, `Nutrient`, `SoilCondition`, `ClimateFactor`, `HumanDisease`, `AgriculturalPractice`
-
-**Relations** (8): `affects`, `causes`, `reduces`, `increases`, `has_nutrient`, `leads_to`, `associated_with`, `deficiency_causes`
-
----
-
-## Adding New PDFs
-
-1. Upload the PDF to ChatGPT
-2. Paste the prompt from `prompt/ChatGPT Extraction Prompt`
-3. Copy the output into `ontology/<pdf_name>/raw_triplets.txt`
-4. Add the folder name to `PDF_NAMES` in `pdf_to_antology.py`
-5. Run `python pdf_to_antology.py`
-6. Run `python visualize.py` to regenerate reports
-
-## External Research Validation (In Progress)
-
-`external_validation.py` adds an evidence-first validation workflow without
-changing the current graph pipeline. It treats every raw extracted tuple as a
-candidate, records its originating-paper metadata, and retrieves a small
-claim-specific set of open-access external research articles from Europe PMC.
-
-```powershell
-# Build metadata for all current raw tuples (no network request)
-python external_validation.py build-candidates
-
-# Pilot external retrieval on a small batch
-python external_validation.py retrieve --limit 5 --articles-per-candidate 5
-```
-
-The retrieval process never saves external PDFs, XML files, or complete papers.
-It holds full text in memory, stores only the highest-ranked evidence snippets
-and article metadata in `rag/external_validation_packets.jsonl`, and discards
-the full text. A later LLM or human evaluates one external article at a time
-using `prompt/External Entailment Validator Prompt.md`; validated decisions are
-ingested with:
-
-```powershell
-python external_validation.py ingest-decisions rag/entailment_decisions.jsonl
-```
-
-The command rejects a `supported` or `contradicted` decision unless its quoted
-text occurs in a stored evidence snippet. This milestone validates external
-research evidence only; source-paper entailment and graph insertion remain
-deferred. See `rag.md` for the data contracts and decision policy.
-
----
-
-## Repository Structure
-
-```
-.
-├── pdf_to_antology.py        Main pipeline script (validation, graph, reasoning)
-├── visualize.py              Graph report and reasoning path generator
-├── requirements.txt          Python dependencies (networkx only)
-├── pipeline.md               Technical pipeline documentation
-├── README.md                 This file
-├── prompt/
-│   └── ChatGPT Extraction Prompt   Prompt to paste in ChatGPT web
-├── pdf/                      Input PDFs (for reference)
-└── ontology/                 All generated outputs
-```
+The standalone validator CLI remains available via `python -m external_validator.cli`; see [external_validator/README.md](external_validator/README.md) and [docs/CONTEXT.md](docs/CONTEXT.md) for context.

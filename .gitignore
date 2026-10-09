@@ -5,7 +5,9 @@
 
 deliverables/*
 ppt/*
-
+docs/*
+!docs/CONTEXT.md
+archive/*
 # Python caches
 __pycache__/
 *.py[cod]
@@ -13,3 +15,12 @@ __pycache__/
 # Local virtual environments
 .venv/
 .venv*/
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+
+# Fresh pipeline outputs (source PDFs stay versioned)
+ontology/*
+!ontology/.gitkeep
+rag/*.jsonl

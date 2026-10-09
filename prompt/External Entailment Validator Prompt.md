@@ -38,14 +38,14 @@ do not use background knowledge or facts from other papers.
 
 ```json
 {
-  "candidate_id": "candidate ID from input",
-  "evidence_document_id": "document ID from input",
   "decision": "supported | contradicted | insufficient | needs_review",
-  "subject_match": true,
-  "object_match": true,
-  "relation_match": true,
-  "direction_match": true,
-  "certainty_match": "explicit | qualified | absent",
+  "matches": {
+    "subject": true,
+    "object": true,
+    "relation": true,
+    "direction": true,
+    "certainty": true
+  },
   "evidence": [
     {
       "chunk_id": "chunk ID from input",
@@ -53,8 +53,7 @@ do not use background knowledge or facts from other papers.
       "stance": "supports | contradicts"
     }
   ],
-  "rationale": "brief evidence-grounded explanation",
-  "validator_confidence": 0.0
+  "rationale": "brief evidence-grounded explanation"
 }
 ```
 

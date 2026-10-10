@@ -96,6 +96,10 @@ _ASSOCIATION_ONLY = re.compile(
     re.IGNORECASE,
 )
 _DEFICIENCY_CUE = re.compile(r"\b(?:deficien\w*|insufficien\w*|deplet\w*)\b")
+_CONDITIONAL_CUE = re.compile(
+    r"\b(?:may|might|can|could|possibly|potentially|likely|appears?|seems?|suggest\w*|thought)\b",
+    re.IGNORECASE,
+)
 
 _SOURCE_DECISION_SCHEMA = {
     "type": "object",
@@ -196,10 +200,17 @@ def _canonical_surface_compatible(canonical: object, source_mention: object, con
     This additional check prevents Qwen from assigning that valid anchor to a
     different canonical entity (for example, a ``Rice`` claim anchored to a
     ``Wheat`` mention).  Formatting/plural differences remain safe through
-    ``_mention_anchored``; explicitly defined abbreviations are the sole alias
-    exception.
+    ``_mention_anchored``. Explicitly defined abbreviations and harmless domain
+    modifiers (``aeration`` / ``soil aeration``) are the only exceptions.
     """
+    canonical_terms = _normalized_surface(canonical).split()
+    source_terms = _normalized_surface(source_mention).split()
+    domain_modifiers = {"soil", "crop", "plant", "human"}
+    canonical_core = [term for term in canonical_terms if term not in domain_modifiers]
+    source_core = [term for term in source_terms if term not in domain_modifiers]
+    modifier_only_variant = bool(canonical_core) and canonical_core == source_core
     return (_mention_anchored(canonical, source_mention)
+            or modifier_only_variant
             or _explicit_abbreviation_equivalent(canonical, source_mention, context)
             or _explicit_abbreviation_equivalent(source_mention, canonical, context))
 
@@ -256,6 +267,31 @@ def _contains_association(trigger: object) -> bool:
     return bool(_ASSOCIATION_ONLY.search(_normalized_surface(trigger)))
 
 
+def uses_conditional_modality(evidence: object, trigger: object = "") -> bool:
+    """Detect an explicit hedge local to the relation trigger.
+
+    This is intentionally lexical and local. It does not guess scientific
+    certainty; it only prevents phrases such as ``can reduce`` or ``may
+    increase`` from being promoted to an unqualified descriptive finding.
+    """
+    text = str(evidence or "")
+    relation = str(trigger or "").strip()
+    if relation:
+        match = re.search(re.escape(relation), text, flags=re.IGNORECASE)
+        if match:
+            # A modal can precede a long subject phrase by more than 90
+            # characters (``Drones can ... thereby reducing pesticides``).
+            # Inspect the complete sentence containing the trigger instead of
+            # accidentally promoting such a claim to an unhedged finding.
+            sentence_start = max(text.rfind(".", 0, match.start()), text.rfind("?", 0, match.start()),
+                                 text.rfind("!", 0, match.start())) + 1
+            following = [position for marker in ".?!"
+                         if (position := text.find(marker, match.end())) >= 0]
+            sentence_end = min(following) + 1 if following else len(text)
+            text = text[sentence_start:sentence_end]
+    return bool(_CONDITIONAL_CUE.search(text))
+
+
 def _nearby_context(candidate: dict[str, Any], span: str) -> str:
     packet = str(candidate.get("source_context_packet", ""))
     offset = packet.find(span)
@@ -287,7 +323,12 @@ def validate_source_claim(candidate: dict[str, Any], client: OllamaClient,
         "and causal is reserved for explicit causal wording. Preserve source modality through certainty_match; a mismatch "
         "means the extracted claim is not faithful enough for automatic acceptance. A mere association must not become "
         "causes, increases, reduces, or leads_to. "
+        "Judge one atomic edge only. If X affects an intermediate M and M affects Y (including a relative clause such as "
+        "'M, which increases Y'), the passage does not entail a collapsed X-to-Y edge. "
         "Association does not prove causes, increases or reduces. A claim about a different crop, population or material is unsupported. "
+        "If the evidence explicitly restricts the finding to a named crop, population, dose, condition, comparator, or exposure route "
+        "and the claim omits that restriction from both its entities and qualifiers, choose needs_review. Empty qualifier fields are "
+        "otherwise normal; do not demand information that the selected evidence does not state. "
         "When source surface mentions or a relation trigger are supplied, treat them as the required textual anchors and verify them "
         "against the selected evidence span; they do not by themselves prove the claim. "
         "Return JSON with decision (entailed, unsupported, needs_review), relation_match, direction_match, "
@@ -350,6 +391,9 @@ def validate_source_claim(candidate: dict[str, Any], client: OllamaClient,
             reasons.append("Evidence relation trigger is not compatible with the claimed relation")
         if candidate.get("relation") in _CAUSAL_RELATIONS and _contains_association(trigger_for_check):
             reasons.append("Associative evidence does not establish a causal or directional effect")
+        if (uses_conditional_modality(span, trigger_for_check)
+                and candidate.get("certainty") != "conditional"):
+            reasons.append("Hedged source wording requires conditional certainty")
         if reasons:
             decision = "needs_review"
     result = {**base, "decision": decision, "rationale": str(judged.get("rationale", "")).strip()[:400]}

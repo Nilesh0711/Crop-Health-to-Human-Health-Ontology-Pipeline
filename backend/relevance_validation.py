@@ -63,21 +63,64 @@ def assess_text_quality(text: str) -> dict[str, Any]:
     }
 
 
-def _sample_packets(packets: list[dict[str, Any]], maximum_characters: int = 8_000) -> str:
-    """Build a compact, representative title/abstract/early-methods sample."""
-    parts: list[str] = []
-    remaining = maximum_characters
-    for packet in packets[:3]:
-        text = " ".join(str(item.get("text", "")) for item in packet.get("sentences", []))
-        if not text:
-            continue
+_SCOPE_TERMS = re.compile(
+    r"\b(?:soil|crop|plant|root|microb\w*|nutrient\w*|mineral\w*|contamin\w*|pesticid\w*|"
+    r"mycotoxin\w*|arsenic|cadmium|food quality|food safety|human health|exposure|disease|"
+    r"phytochemical\w*|antioxidant\w*)\b",
+    re.IGNORECASE,
+)
+_FRONT_MATTER = re.compile(
+    r"\b(?:open access|correspondence|copyright|creative commons|author contributions|conflict of interest|"
+    r"publisher(?:'s|s)? note|received \w+|accepted \w+|published \w+|generative ai statement|"
+    r"suggested citation|buy this book|find related titles|all rights reserved|table of contents|"
+    r"boxes, figures, and tables|consensus study report)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_index_listing(text: str) -> bool:
+    return (len(re.findall(r"\b\d{1,2}-\d{1,3}\b", text)) >= 3
+            or len(re.findall(r",\s*\d{1,3}\b", text)) >= 6)
+
+
+def _sample_packets(packets: list[dict[str, Any]], maximum_characters: int = 12_000) -> str:
+    """Build a representative scientific sample from across the document.
+
+    Publisher PDFs can devote most of the first pages to metadata. Selecting
+    only the first characters caused directly relevant papers to be labelled
+    out of scope before their scientific sentences were reached. We rank
+    sentences by pathway content, then restore document order for readability.
+    """
+    ranked: list[tuple[int, int, str, str]] = []
+    position = 0
+    for packet in packets:
         heading = str(packet.get("section_heading", "Paper text"))
-        piece = f"[{heading}] {text}"
-        parts.append(piece[:remaining])
-        remaining -= len(parts[-1])
-        if remaining <= 0:
+        for item in packet.get("sentences", []):
+            text = str(item.get("text", "")).strip()
+            if not text or _FRONT_MATTER.search(text) or _looks_like_index_listing(text):
+                position += 1
+                continue
+            score = len(_SCOPE_TERMS.findall(text))
+            if score:
+                ranked.append((score, position, heading, text))
+            position += 1
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+    selected = sorted(ranked[:48], key=lambda item: item[1])
+    parts: list[str] = []
+    used = 0
+    current_heading = ""
+    for _score, _position, heading, sentence in selected:
+        prefix = f"[{heading}] " if heading != current_heading else ""
+        piece = prefix + sentence
+        if used + len(piece) > maximum_characters:
+            remaining = maximum_characters - used
+            if remaining > 120:
+                parts.append(piece[:remaining])
             break
-    return "\n\n".join(parts)
+        parts.append(piece)
+        used += len(piece) + 1
+        current_heading = heading
+    return " ".join(parts)
 
 
 def classify_document_scope(title: str, packets: list[dict[str, Any]], client: OllamaClient) -> dict[str, Any]:

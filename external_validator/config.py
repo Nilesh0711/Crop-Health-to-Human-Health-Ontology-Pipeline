@@ -11,11 +11,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ONTOLOGY_DIR = PROJECT_ROOT / "ontology"
 PDF_DIR = PROJECT_ROOT / "pdf"
 RAG_DIR = PROJECT_ROOT / "rag"
-# v12 adds claim-level source spans, conservative vocabulary normalization,
-# independent-evidence accounting, two-stage reranking, and an NLI veto.
+# v14 adds author-year citation resolution, agronomy-oriented OpenAlex broad
+# retrieval, safe ontology-label query repair, bounded lexical concept aliases,
+# redundant-qualifier cleanup, and full-sentence modality preservation.
 # Keeping this distinct prevents new results from being confused with older
 # validation records that used different acceptance semantics.
-SCHEMA_VERSION = "external-validation-v12"
+SCHEMA_VERSION = "external-validation-v14"
 # qwen3:8b fully fits on the workstation's 8 GiB GPU far more readily than
 # the 10 GiB Qwen 14B Q4 model.  It is the local-first default; individual
 # runs can still select another installed model in the UI.
@@ -30,7 +31,7 @@ class Settings:
     ollama_url: str = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
     model: str = os.getenv("VALIDATION_MODEL", DEFAULT_MODEL)
     context_tokens: int = int(os.getenv("OLLAMA_CONTEXT_TOKENS", "8192"))
-    embedding_model: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
+    embedding_model: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-base-en-v1.5")
     embedding_device: str = os.getenv("EMBEDDING_DEVICE", "cpu")
     embedding_query_instruction: str = os.getenv(
         "EMBEDDING_QUERY_INSTRUCTION",
@@ -39,7 +40,7 @@ class Settings:
     cross_encoder_model: str = os.getenv("CROSS_ENCODER_MODEL", "ncbi/MedCPT-Cross-Encoder")
     cross_encoder_device: str = os.getenv("CROSS_ENCODER_DEVICE", "cpu")
     cross_encoder_candidates: int = int(os.getenv("CROSS_ENCODER_CANDIDATES", "20"))
-    nli_model: str = os.getenv("NLI_MODEL", "cross-encoder/nli-deberta-v3-large")
+    nli_model: str = os.getenv("NLI_MODEL", "cross-encoder/nli-deberta-v3-base")
     nli_device: str = os.getenv("NLI_DEVICE", "cpu")
     enable_nli: bool = os.getenv("ENABLE_NLI_VALIDATOR", "1").strip().lower() not in {"0", "false", "no"}
     extraction_claims_per_packet: int = int(os.getenv("EXTRACTION_CLAIMS_PER_PACKET", "4"))

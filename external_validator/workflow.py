@@ -15,7 +15,7 @@ from .rerank import SemanticReranker, generate_hypothesis
 from .retrieval import (article_metadata, extract_paragraphs, fetch_fulltext_xml,
                         fetch_open_access_pdf_pages, fulltext_identifiers, is_open_access,
                         make_chunks, openalex_open_access_copy, paragraphs_from_pdf_pages,
-                        resolve_bibliographic_reference, search)
+                        resolve_bibliographic_reference, search, search_openalex)
 from .storage import stable_hash, utc_now
 
 
@@ -93,19 +93,46 @@ def translate_query(client: OllamaClient, candidate: dict[str, Any]) -> dict[str
             f"Qualifiers: {candidate.get('qualifiers') or {}}.\n"
             "Return only {\"query\": \"...\"}. Do not include a rationale or explanation.")
     response = client.chat_json(system, user, max_tokens=160, json_schema=_QUERY_SCHEMA)
-    query = str(response.get("query", "")).strip()
+    raw_query = str(response.get("query", "")).strip()
+    query = raw_query
     # Europe PMC's REST search accepts plain Boolean syntax reliably. Qwen may
     # suggest field names from other scholarly APIs; remove those rather than
     # silently issuing a zero-result query.
     query = re.sub(r"(?i)\b(?:TITLE_ABS|TITLE|ABSTRACT)\s*:\s*", "", query)
     query = re.sub(r"(?i)\s*\[(?:all fields|title/abstract|mesh terms?)\]", "", query)
+    # Ontology labels describe our schema; they are not literature concepts.
+    # Small models occasionally emit ``SoilBiota AND aeration`` verbatim.
+    # Replace only the two labels supplied to the model with their actual
+    # endpoint phrases, retaining useful synonyms elsewhere in its query.
+    replacements = (
+        (candidate.get("subject_type"), candidate.get("subject")),
+        (candidate.get("object_type"), candidate.get("object")),
+    )
+    ontology_label_replaced = False
+    for entity_type, entity in replacements:
+        label = str(entity_type or "").strip()
+        phrase = re.sub(r"[^A-Za-z0-9 -]+", " ", str(entity or "")).strip()
+        if not label or not phrase:
+            continue
+        spaced_label = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", label)
+        repaired = re.sub(rf"(?i)\b(?:{re.escape(label)}|{re.escape(spaced_label)})\b", phrase, query)
+        ontology_label_replaced = ontology_label_replaced or repaired != query
+        query = repaired
+    query = " ".join(query.split())
     if not query or len(query) > 1500:
         raise LLMError("Qwen did not return a usable Europe PMC query")
-    return {"query": query}
+    strategy = "ontology_labels_replaced" if ontology_label_replaced else "sanitized" if query != raw_query else "qwen"
+    return {"query": query, "raw_query": raw_query, "query_strategy": strategy}
 
 
 def _result_key(result: dict[str, Any]) -> str:
-    return "|".join(str(result.get(name) or "").casefold() for name in ("source", "id", "pmcid", "doi"))
+    doi = _normal_identifier(result.get("doi"))
+    if doi:
+        return f"doi:{doi}"
+    pmcid = str(result.get("pmcid") or "").strip().casefold()
+    if pmcid:
+        return f"pmcid:{pmcid}"
+    return "source:" + "|".join(str(result.get(name) or "").casefold() for name in ("source", "id"))
 
 
 def _citation_results(candidate: dict[str, Any], settings: Settings,
@@ -132,27 +159,29 @@ def _citation_results(candidate: dict[str, Any], settings: Settings,
         if not matches:
             notes.append({"article_id": f"reference-{reference.get('reference_number', '?')}",
                           "reason": "resolved_source_citation_not_indexed_in_europe_pmc"})
-            # Europe PMC is the primary evidence source.  For a cited DOI it
-            # did not index, ask OpenAlex only for an explicit public PDF link
-            # rather than turning this into unbounded web retrieval.
+            # For a cited DOI Europe PMC did not index, ask OpenAlex for that
+            # exact work's indexed abstract or explicit public PDF rather than
+            # using unbounded web retrieval.
             if openalex:
                 openalex["_retrieval_route"] = "source_citation_openalex"
                 openalex["_source_reference_number"] = reference.get("reference_number")
                 results.append(openalex)
             else:
                 notes.append({"article_id": f"reference-{reference.get('reference_number', '?')}",
-                              "reason": "cited_doi_has_no_openalex_public_pdf"})
+                              "reason": "cited_doi_has_no_openalex_abstract_or_public_pdf"})
         for result in matches:
             enriched = dict(result)
             enriched["_retrieval_route"] = "source_citation"
             enriched["_source_reference_number"] = reference.get("reference_number")
             # Europe PMC may resolve citation metadata while exposing neither
-            # abstract nor usable full text. Retain OpenAlex's explicit OA PDF
-            # as a fallback on that same bibliographic record.
+            # abstract nor usable full text. Retain OpenAlex's abstract or
+            # explicit OA PDF as a fallback on that same bibliographic record.
             if openalex:
                 enriched["_open_access_pdf_url"] = openalex.get("_open_access_pdf_url")
                 enriched["_landing_page_url"] = openalex.get("_landing_page_url")
                 enriched["_open_access_license"] = openalex.get("_open_access_license")
+                if not enriched.get("abstractText"):
+                    enriched["abstractText"] = openalex.get("abstractText")
             results.append(enriched)
     return results
 
@@ -244,17 +273,38 @@ def retrieve_round(candidate: dict[str, Any], client: OllamaClient, reranker: Se
     # merit transient full-text retrieval.
     notes: list[dict[str, str]] = []
     cited_results = _citation_results(candidate, settings, notes)
-    broad_results = search(translated["query"], settings, max(articles_per_candidate * 25, 100))
+    try:
+        broad_results = search(translated["query"], settings, max(articles_per_candidate * 25, 100))
+    except (OSError, ValueError):
+        broad_results = []
+        notes.append({"article_id": "europe-pmc-broad-search", "reason": "europe_pmc_search_unavailable"})
+    try:
+        openalex_results = search_openalex(_retrieval_text(candidate), settings,
+                                           max(articles_per_candidate * 25, 100))
+    except (OSError, ValueError):
+        openalex_results = []
+        notes.append({"article_id": "openalex-broad-search", "reason": "openalex_search_unavailable"})
     results: list[dict[str, Any]] = []
-    seen_results: set[str] = set()
-    for result in [*cited_results, *broad_results]:
+    seen_results: dict[str, dict[str, Any]] = {}
+    for result in [*cited_results, *broad_results, *openalex_results]:
         key = _result_key(result)
-        if key in seen_results:
+        existing = seen_results.get(key)
+        if existing is not None:
+            # Preserve the higher-priority route while borrowing an explicit
+            # OA PDF/landing page or abstract from the duplicate index record.
+            for field in ("_open_access_pdf_url", "_landing_page_url", "_open_access_license", "abstractText"):
+                if not existing.get(field) and result.get(field):
+                    existing[field] = result[field]
+            if is_open_access(result):
+                existing["isOpenAccess"] = "Y"
             continue
-        seen_results.add(key)
-        results.append(result)
+        enriched = dict(result)
+        seen_results[key] = enriched
+        results.append(enriched)
     if progress:
-        progress(f"Europe PMC returned {len(broad_results)} broad results and {len(cited_results)} cited-paper matches; selecting full-text or abstract evidence")
+        progress(f"Literature search returned {len(broad_results)} Europe PMC results, "
+                 f"{len(openalex_results)} OpenAlex results, and {len(cited_results)} cited-paper matches; "
+                 "selecting full-text or abstract evidence")
     documents: list[dict[str, Any]] = []
     seen: set[str] = set()
     eligible: list[tuple[dict[str, Any], list[tuple[str, str]], str]] = []
@@ -329,7 +379,10 @@ def retrieve_round(candidate: dict[str, Any], client: OllamaClient, reranker: Se
             reference_documents_selected += 1
         if progress:
             progress(f"Ranked {len(chunks)} passages: {result.get('title', 'Untitled article')}")
-    return {"query_translation": translated, "hyde_hypothesis": hypothesis, "result_count": len(broad_results),
+    return {"query_translation": translated, "hyde_hypothesis": hypothesis,
+            "result_count": len(broad_results) + len(openalex_results),
+            "europe_pmc_result_count": len(broad_results),
+            "openalex_result_count": len(openalex_results),
             "cited_result_count": len(cited_results),
             "evidence_documents_count": len(documents),
             "open_access_evidence_documents": sum(document.get("evidence_access") == "full_text" for document in documents),
@@ -383,7 +436,7 @@ def retrieve_only(candidate: dict[str, Any], client: OllamaClient, reranker: Sem
                   articles_per_candidate: int, top_chunks: int) -> dict[str, Any]:
     result = retrieve_round(candidate, client, reranker, settings, articles_per_candidate, top_chunks)
     return {"schema_version": SCHEMA_VERSION, "candidate_id": candidate["candidate_id"], "candidate": candidate,
-            "retrieval": {key: result[key] for key in ("query_translation", "hyde_hypothesis", "result_count", "cited_result_count", "evidence_documents_count", "open_access_evidence_documents", "notes")},
+            "retrieval": {key: result[key] for key in ("query_translation", "hyde_hypothesis", "result_count", "europe_pmc_result_count", "openalex_result_count", "cited_result_count", "evidence_documents_count", "open_access_evidence_documents", "notes")},
             "evidence_documents": result["evidence_documents"], "validation_status": "pending_per_document_entailment", "retrieved_at": utc_now()}
 
 

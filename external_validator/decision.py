@@ -19,10 +19,10 @@ VALID_DECISIONS = {"supported", "contradicted", "insufficient", "needs_review"}
 # signal, while avoiding needless reviews for ordinary scientific wording such
 # as "detected in" or "enhanced".
 RELATION_CUES = {
-    "affects": ("affect", "impact", "influence", "alter", "change", "modulat", "regulat", "reduce", "decrease", "increase", "loss", "damage"),
+    "affects": ("affect", "impact", "influence", "alter", "change", "modulat", "regulat", "determin", "drive", "contribut", "reduce", "decrease", "increase", "enhanc", "promot", "improv", "suppress", "inhibit", "loss", "damage"),
     "causes": ("cause", "induc", "trigger", "produce", "lead to", "led to", "result in", "resulted in"),
-    "reduces": ("reduce", "decreas", "lower", "suppress", "inhibit", "diminish", "attenuat", "impair", "protect against", "loss"),
-    "increases": ("increase", "elevat", "rais", "higher", "enhanc", "promot", "boost", "augment", "bolster"),
+    "reduces": ("reduce", "decreas", "lower", "suppress", "inhibit", "diminish", "attenuat", "impair", "mitigat", "alleviat", "protect against", "loss"),
+    "increases": ("increase", "elevat", "rais", "higher", "enhanc", "promot", "improv", "foster", "stimulat", "facilitat", "boost", "augment", "bolster"),
     "leads_to": ("lead to", "led to", "result in", "resulted in", "produce", "trigger", "consequence"),
     "associated_with": ("associate", "correlat", "linked", "relationship between", "related to"),
     "deficiency_causes": ("deficiency", "deficient", "insufficiency", "deplet", "cause", "induc", "lead to", "result in"),
@@ -81,7 +81,30 @@ _GENERIC_ALIAS_TERMS = {
     "approach", "approaches", "method", "methods", "management", "practice", "practices",
     "technique", "techniques", "treatment", "treatments", "system", "systems", "stress",
     "level", "levels", "concentration", "concentrations", "content", "contents",
+    "soil", "crop", "plant", "human", "ability", "effect", "effects", "response", "responses",
+    "fertilizer", "fertilizers", "fertilisation", "fertilization", "material", "materials",
 }
+
+
+def _concept_terms(value: object) -> set[str]:
+    """Normalize a small set of lexical scientific variants, not broad synonyms."""
+    text = str(value or "").casefold()
+    text = re.sub(r"organic matter derived from fertil\w*", "organic fertilizer", text)
+    normalized: set[str] = set()
+    for term in entity_terms(text):
+        if term.startswith(("microb", "microorgan")):
+            normalized.add("microbe")
+        elif term.startswith(("fertiliz", "fertilis")):
+            normalized.add("fertilizer")
+        elif term.startswith("suppress"):
+            normalized.add("suppress")
+        elif term in {"composition", "community", "communities"}:
+            normalized.add("community")
+        elif term.startswith("accumul"):
+            normalized.add("accumulate")
+        else:
+            normalized.add(term)
+    return normalized - _GENERIC_ALIAS_TERMS
 
 
 def _sentences(text: object) -> list[str]:
@@ -154,17 +177,23 @@ def _alias_compatible(candidate_entity: object, evidence_mention: object) -> boo
     the materially different ``organic fertilizer`` / ``suspension fertilizer``.
     It is intentionally not an ontology or semantic-similarity substitute.
     """
-    candidate_terms = entity_terms(str(candidate_entity or "")) - _GENERIC_ALIAS_TERMS
-    evidence_terms = entity_terms(str(evidence_mention or "")) - _GENERIC_ALIAS_TERMS
+    candidate_terms = _concept_terms(candidate_entity)
+    evidence_terms = _concept_terms(evidence_mention)
     if not candidate_terms or not evidence_terms:
         return False
     return candidate_terms <= evidence_terms or evidence_terms <= candidate_terms
 
 
-def _entity_evidence_compatible(candidate_entity: object, evidence_mention: object, quote: object) -> bool:
+def _entity_evidence_compatible(candidate_entity: object, evidence_mention: object, quote: object,
+                                candidate_aliases: tuple[object, ...] = ()) -> bool:
     if not _mention_in_quote(evidence_mention, quote):
         return False
-    return entity_anchored(str(candidate_entity or ""), str(quote or "")) or _alias_compatible(candidate_entity, evidence_mention)
+    alternatives = (candidate_entity, *candidate_aliases)
+    return any(
+        entity_anchored(str(alternative or ""), str(quote or ""))
+        or _alias_compatible(alternative, evidence_mention)
+        for alternative in alternatives if str(alternative or "").strip()
+    )
 
 
 def _quote_has_relation_cue(relation: object, quote: object) -> bool:
@@ -183,8 +212,8 @@ def _quote_has_relation_cue(relation: object, quote: object) -> bool:
 
 def judge_document(client: OllamaClient, candidate: dict[str, Any], document: dict[str, Any],
                    nli_validator: NLIValidator | None = None) -> dict[str, Any]:
-    system = """Judge this exact scientific claim against numbered sentences from ONE external paper. Use no background knowledge. A related topic, a different intervention/material/population/comparator, a reversed direction, or a mere association is not support for a directional or causal claim. This is evidence alignment: an external paper that explicitly reports X increases/reduces Y can support that directional edge without independently proving a universal causal mechanism, but its modality must be at least as strong as the candidate wording. For support or contradiction, select one or two consecutive sentence numbers and copy the exact subject mention, object mention, and relation trigger from them; otherwise say insufficient. Return JSON only."""
-    payload = {"candidate_id": candidate["candidate_id"], "candidate": {key: candidate.get(key) for key in ("subject", "relation", "object", "subject_type", "object_type", "certainty", "qualifiers")},
+    system = """Judge this exact scientific claim against numbered sentences from ONE external paper. Use no background knowledge. Match the same specific scientific concepts, not necessarily the same character string: ordinary morphological wording such as microbial/microorganism or suppressiveness/suppression may match, but a different intervention, fertilizer, crop, population, dose, or comparator never does. A related topic, a reversed direction, or a mere association is not support for a directional or causal claim. This is evidence alignment: an external paper that explicitly reports X increases/reduces Y can support that directional edge without independently proving a universal causal mechanism, but its modality must be at least as strong as the candidate wording. For support or contradiction, select one or two consecutive sentence numbers and copy the exact subject mention, object mention, and relation trigger from them; otherwise say insufficient. Return JSON only."""
+    payload = {"candidate_id": candidate["candidate_id"], "candidate": {key: candidate.get(key) for key in ("subject", "relation", "object", "subject_type", "object_type", "certainty", "qualifiers", "subject_source_mention", "object_source_mention")},
         "evidence_document_id": document["evidence_document_id"], "evidence_document": {key: document.get(key) for key in ("title", "doi", "publication_year")},
         "evidence_chunks": _numbered_chunks(document)}
     user = ("Return ONE complete JSON object with exactly these keys: decision, matches, evidence, rationale. "
@@ -279,7 +308,10 @@ def decision_errors(packet: dict[str, Any], decision: dict[str, Any]) -> list[st
                 for field in ("subject", "object"):
                     evidence_mention = item.get(f"{field}_mention")
                     matches_entity = (
-                        _entity_evidence_compatible(candidate.get(field, ""), evidence_mention, quote)
+                        _entity_evidence_compatible(
+                            candidate.get(field, ""), evidence_mention, quote,
+                            (candidate.get(f"{field}_source_mention", ""),),
+                        )
                         if evidence_mention is not None
                         else entity_anchored(str(candidate.get(field, "")), quote)
                     )

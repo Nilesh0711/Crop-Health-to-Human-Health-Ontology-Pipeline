@@ -1,6 +1,6 @@
 # Crop Health Research Workbench
 
-A local-first application for extracting soil-to-human-health claims from research PDFs, checking source fidelity and independent external research support, and inspecting an evidence-aware knowledge graph. The bounded extractor emits up to four provenance-anchored claims per packet by default. Local Qwen performs extraction and structured judgements; BGE-large, BM25, MedCPT, and an NLI conflict detector support retrieval and validation. A supported graph edge is still a provisional research finding, not established causality.
+A local-first application for extracting soil-to-human-health claims from research PDFs, checking source fidelity and independent external research support, and inspecting an evidence-aware knowledge graph. The bounded extractor emits up to four provenance-anchored claims per packet by default. Local Qwen performs extraction and structured judgements; BGE-base, BM25, MedCPT, and an NLI conflict detector support retrieval and validation. A supported graph edge is still a provisional research finding, not established causality.
 
 ## Start from Git Bash
 
@@ -32,9 +32,9 @@ Open `http://127.0.0.1:5173`, select a PDF, inspect **Run settings**, and click 
 
 The first validation run may take longer while these CPU models download and initialize:
 
-- Dense retriever: `BAAI/bge-large-en-v1.5`
+- Dense retriever: `BAAI/bge-base-en-v1.5`
 - Biomedical cross-encoder: `ncbi/MedCPT-Cross-Encoder`
-- NLI conflict detector: `cross-encoder/nli-deberta-v3-large`
+- NLI conflict detector: `cross-encoder/nli-deberta-v3-base`
 
 Override their model names, devices, or the NLI toggle with the environment variables shown in `scripts/run_backend.sh`. Keeping these models on CPU leaves GPU memory available for Qwen, but requires several GB of system RAM.
 
@@ -43,13 +43,13 @@ For one-server use, run `npm.cmd run build` inside `frontend/`, then start FastA
 ## Pipeline
 
 1. Extract section-aware packets of about 2,000 words from the source PDF.
-2. Ask Qwen for a bounded number of atomic claims with exact one-to-three-sentence evidence spans and exact entity/relation anchors.
+2. Rank likely mechanistic sentences as an attention index, then ask Qwen for a bounded number of atomic claims using the full ~2,000-word packet, exact one-to-three-sentence evidence spans, and exact entity/relation anchors.
 3. Reject malformed claims and relations outside the automatic relation policy. Explicit causal predicates are deferred to a stricter causal workflow.
 4. Run Qwen semantic scope, type, relation, direction, and atomicity validation.
 5. Normalize only high-confidence local vocabulary matches; preserve original labels and never invent ontology IDs.
-6. Validate source fidelity with a separate stateless Qwen call plus deterministic anchor checks. DeBERTa NLI may veto an apparent entailment when it detects strong contradiction, but cannot promote a claim.
-7. Retrieve source-cited studies and independent literature. Rank metadata using standard BM25/BGE reciprocal-rank fusion, then rerank the leading candidates with MedCPT.
-8. Prefer Europe PMC full-text XML; fall back to an explicit open-access PDF and then an indexed abstract. External files are processed in memory, and only selected page-labelled passages are stored.
+6. Validate source fidelity with a separate stateless Qwen call plus deterministic anchor and modality checks. Explicit hedges such as `may`, `can`, and `could` remain conditional. DeBERTa NLI may veto an apparent entailment when it detects strong contradiction, but cannot promote a claim.
+7. Resolve numeric and author-year source citations, then search independent literature across Europe PMC and OpenAlex. Rank metadata using standard BM25/BGE-base reciprocal-rank fusion, then rerank the leading candidates with MedCPT.
+8. Prefer Europe PMC full-text XML; fall back to an explicit OpenAlex open-access PDF and then an indexed abstract. External files are processed in memory, and only selected page-labelled passages are stored.
 9. Judge each external document separately. Source-reference support and independent corroboration are counted separately; only independently supported claims enter the main graph.
 10. Write a stratified evaluation sample with blank gold-label fields for independent review and measurable precision/recall.
 

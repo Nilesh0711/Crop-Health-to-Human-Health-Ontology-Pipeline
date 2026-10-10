@@ -182,6 +182,21 @@ class SourceValidationTests(unittest.TestCase):
                     "rationale": "The source reports a positive direction."}
         self.assertEqual(validate_source_claim(claim, FakeClient(response))["decision"], "entailed")
 
+    def test_hedged_source_cannot_pass_as_descriptive_even_if_judge_approves(self):
+        span = "Silicon-based agro-wastes can reduce arsenic bioaccumulation in crops."
+        claim = {"candidate_id": "c10", "subject": "Silicon-based agro-wastes",
+                 "subject_source_mention": "Silicon-based agro-wastes", "relation": "reduces",
+                 "relation_trigger": "reduce", "object": "arsenic bioaccumulation in crops",
+                 "object_source_mention": "arsenic bioaccumulation in crops", "certainty": "descriptive",
+                 "source_evidence_span": span, "source_evidence_sentence_numbers": [1]}
+        response = {"decision": "entailed", "relation_match": True, "direction_match": True,
+                    "certainty_match": True, "proof": {"subject": "Silicon-based agro-wastes",
+                    "relation": "reduce", "object": "arsenic bioaccumulation in crops"},
+                    "rationale": "The source states the directional relation."}
+        result = validate_source_claim(claim, FakeClient(response))
+        self.assertEqual(result["decision"], "needs_review")
+        self.assertIn("Hedged source wording requires conditional certainty", result["reasons"])
+
 
 if __name__ == "__main__":
     unittest.main()

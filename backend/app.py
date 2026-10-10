@@ -191,7 +191,7 @@ def start_run(pdf_id: str, options: RunOptions) -> dict[str, Any]:
         output_dir = _output_dir(pdf)
         output_dir.mkdir(parents=True, exist_ok=True)
         for filename in ("summary.json", "document_scope.json", "graph.json", "source_graph.json", "audit_graph.json", "knowledge_graph.graphml", "reasoning_paths.json", "candidates.jsonl",
-                         "schema_valid_candidates.jsonl", "semantic_validation.jsonl", "semantic_valid_candidates.jsonl",
+                         "extraction_rejections.jsonl", "schema_valid_candidates.jsonl", "semantic_validation.jsonl", "semantic_valid_candidates.jsonl",
                          "source_validation.jsonl", "source_entailed_candidates.jsonl",
                          "validation_runs.jsonl", "evaluation_sample.jsonl", "raw_triplets.txt"):
             (output_dir / filename).unlink(missing_ok=True)

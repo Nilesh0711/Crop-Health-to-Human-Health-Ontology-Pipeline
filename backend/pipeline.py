@@ -24,7 +24,7 @@ from .evaluation import write_evaluation_sample
 from .ontology_schema import AUTOMATIC_EXTRACTION_RELATIONS, ENTITY_TYPES, schema_error
 from .relevance_validation import classify_document_scope
 from .semantic_validation import validate_claim_semantics
-from .source_validation import validate_source_claim
+from .source_validation import uses_conditional_modality, validate_source_claim
 from .vocabulary import normalize_entity
 
 
@@ -46,6 +46,16 @@ REFERENCE_HEADING_RE = re.compile(
 REFERENCE_ENTRY_RE = re.compile(r"(?m)^\s*(?P<number>\d{1,3})\.\s+(?P<text>.+?)(?=^\s*\d{1,3}\.\s+|\Z)", re.DOTALL)
 CITATION_GROUP_RE = re.compile(
     r"\[\s*(?P<numbers>\d{1,3}(?:\s*(?:[,;]|[-\u2013\u2014\ufffd])\s*\d{1,3})*)\s*\]"
+)
+AUTHOR_YEAR_REFERENCE_RE = re.compile(
+    r"(?m)^\s*(?P<author>[^\W\d_][^,\n]{0,80}),\s+[^\n]{0,220}?\b(?P<year>(?:19|20)\d{2}[a-z]?)\.\s*",
+    re.UNICODE,
+)
+AUTHOR_YEAR_CITATION_RE = re.compile(
+    r"\b(?P<author>[^\W\d_][\w'\u2019-]{1,70})"
+    r"(?:\s+et\s+al\.|\s+(?:and|&)\s+[^\W\d_][\w'\u2019-]{1,70})?"
+    r"(?:\s*,\s*|\s*\(\s*)(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)?",
+    re.IGNORECASE | re.UNICODE,
 )
 UNDOTTED_SECTION_STEMS = {
     "abstract", "introduction", "background", "methods", "methodology", "materials", "experimental",
@@ -69,10 +79,65 @@ PURPOSE_ONLY_RE = re.compile(
     r"(?:increase|reduce|control|improve|maintain|avoid|prevent)\b", re.IGNORECASE)
 FIGURE_OR_TABLE_RE = re.compile(r"^\s*(?:figure|table)\s*\d", re.IGNORECASE)
 NON_EMPIRICAL_RE = re.compile(r"\b(?:no information on|no evidence (?:was )?(?:available|exists)|future research)\b", re.IGNORECASE)
+PUBLISHER_BOILERPLATE_RE = re.compile(
+    r"\b(?:open access|correspondence|copyright|creative commons|author contributions|conflict of interest|"
+    r"publisher(?:'s|s)? note|generative ai statement|suggested citation|buy this book|find related titles|"
+    r"all rights reserved|table of contents|boxes, figures, and tables|consensus study report|"
+    r"(?:received|accepted|published)\s+(?:/|\d)|citation\s+[A-Z][a-z]+|keywords|department of|division of)\b",
+    re.IGNORECASE,
+)
+ASSOCIATIVE_TRIGGER_RE = re.compile(
+    r"\b(?:associated with|association between|correlated with|linked to|relationship between)\b",
+    re.IGNORECASE,
+)
+EXTRACTION_RELATION_CUE_RE = re.compile(
+    r"\b(?:affect\w*|influenc\w*|impact\w*|reduc\w*|decreas\w*|lower\w*|suppress\w*|"
+    r"inhibit\w*|increas\w*|enhanc\w*|promot\w*|improv\w*|accumulat\w*|contain\w*|"
+    r"contaminat\w*|associat\w*|correlat\w*|link(?:ed|s)?|higher|greater)\b",
+    re.IGNORECASE,
+)
+EXTRACTION_PATHWAY_TERM_RE = re.compile(
+    r"\b(?:soil|crop|plant|root|microb\w*|fung\w*|nutrient\w*|mineral\w*|contamin\w*|"
+    r"pesticid\w*|mycotoxin\w*|arsenic|cadmium|pathogen\w*|disease|exposure|intake|human|"
+    r"health|phytochemical\w*|antioxidant\w*)\b",
+    re.IGNORECASE,
+)
+EDITORIAL_NARRATIVE_RE = re.compile(
+    r"\b(?:research topic|this review|the narrative|the story|underscores|highlights the need|"
+    r"was developed to explore|we hope|future research)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_index_listing(text: str) -> bool:
+    """Detect extracted contents/figure lists that resemble long sentences."""
+    return (len(re.findall(r"\b\d{1,2}-\d{1,3}\b", text)) >= 3
+            or len(re.findall(r",\s*\d{1,3}\b", text)) >= 6)
+
+
+def extraction_priority_sentence_numbers(sentences: list[dict[str, Any]], limit: int = 14) -> list[int]:
+    """Point the extractor toward specific mechanistic sentences in a large packet.
+
+    This is an attention hint, not an acceptance rule. Every emitted claim
+    still needs exact anchors and the normal semantic/source validation.
+    """
+    ranked: list[tuple[int, int]] = []
+    for number, sentence in enumerate(sentences, 1):
+        text = str(sentence.get("text") or "")
+        relation_cues = len(EXTRACTION_RELATION_CUE_RE.findall(text))
+        pathway_terms = len(EXTRACTION_PATHWAY_TERM_RE.findall(text))
+        score = relation_cues * 3 + min(pathway_terms, 6)
+        if EDITORIAL_NARRATIVE_RE.search(text):
+            score -= 4
+        if relation_cues and pathway_terms >= 2:
+            ranked.append((score, number))
+    return [number for _score, number in sorted(ranked, key=lambda item: (-item[0], item[1]))[:limit]]
 GENERIC_ENDPOINTS = {
     "abundance", "benefits", "crop composition", "crop quality", "food security", "health effects",
     "health impacts", "negative health effects", "negative health impacts", "nutritional quality",
     "safety parameters", "yield gap", "yield", "pest and disease", "need to produce crop calories protein",
+    "production", "stockpiles", "economic accessibility", "stability of supply", "food availability",
+    "food access", "uses of the grain", "negative environmental impacts of agricultural production",
 }
 
 EXTRACTION_RESPONSE_SCHEMA = {
@@ -203,8 +268,13 @@ def source_article_identifiers(pdf_path: Path) -> dict[str, str]:
     }
 
 
-def pdf_bibliography(pdf_path: Path) -> dict[int, dict[str, Any]]:
-    """Parse numbered bibliography entries for citation-first retrieval.
+def _citation_author_key(value: object) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(character for character in text.casefold() if character.isalnum())
+
+
+def pdf_bibliography(pdf_path: Path) -> dict[int | str, dict[str, Any]]:
+    """Parse numbered and author-year bibliography entries for citation-first retrieval.
 
     The full reference text is provenance only.  It is not treated as support
     until an independently retrieved article passage passes entailment.
@@ -222,7 +292,7 @@ def pdf_bibliography(pdf_path: Path) -> dict[int, dict[str, Any]]:
     if not match:
         return {}
     reference_text = text[match.end():]
-    entries: dict[int, dict[str, Any]] = {}
+    entries: dict[int | str, dict[str, Any]] = {}
     for entry in REFERENCE_ENTRY_RE.finditer(reference_text):
         number = int(entry.group("number"))
         citation = SPACE_RE.sub(" ", entry.group("text")).strip()
@@ -234,6 +304,35 @@ def pdf_bibliography(pdf_path: Path) -> dict[int, dict[str, Any]]:
             "citation_text": citation[:2000],
             "doi": doi_match.group(0).rstrip(".,;:)").casefold() if doi_match else "",
         }
+
+    # Many agronomy journals use author-year references rather than numbered
+    # citations. Segment those entries from one detected first-author/year line
+    # to the next and expose a stable key such as ``zhang|2022d``. The entry is
+    # still only a retrieval lead; it cannot count as evidence by itself.
+    author_entries = list(AUTHOR_YEAR_REFERENCE_RE.finditer(reference_text))
+    base_year_keys: dict[str, list[str]] = {}
+    for index, entry in enumerate(author_entries):
+        end = author_entries[index + 1].start() if index + 1 < len(author_entries) else len(reference_text)
+        citation = SPACE_RE.sub(" ", reference_text[entry.start():end]).strip()
+        author = _citation_author_key(entry.group("author"))
+        year = entry.group("year").casefold()
+        if not citation or not author:
+            continue
+        key = f"{author}|{year}"
+        doi_match = DOI_RE.search(citation)
+        record = {
+            "reference_number": f"{entry.group('author')} {entry.group('year')}",
+            "citation_key": key,
+            "citation_text": citation[:2000],
+            "doi": doi_match.group(0).rstrip(".,;:)").casefold() if doi_match else "",
+        }
+        entries.setdefault(key, record)
+        base_year_keys.setdefault(f"{author}|{year[:4]}", []).append(key)
+    # A citation sometimes omits the a/b/c suffix. Add the suffix-free alias
+    # only when it resolves to exactly one bibliography entry.
+    for base_key, full_keys in base_year_keys.items():
+        if len(set(full_keys)) == 1:
+            entries.setdefault(base_key, entries[full_keys[0]])
     return entries
 
 
@@ -254,6 +353,51 @@ def citation_numbers(text: str) -> list[int]:
             else:
                 numbers.add(start)
     return sorted(numbers)
+
+
+def author_year_citation_keys(text: str) -> list[str]:
+    """Return stable first-author/year keys from local author-year citations."""
+    keys: set[str] = set()
+    for match in AUTHOR_YEAR_CITATION_RE.finditer(str(text or "")):
+        author = _citation_author_key(match.group("author"))
+        year = match.group("year").casefold()
+        if author:
+            keys.add(f"{author}|{year}")
+    return sorted(keys)
+
+
+def _qualifier_is_redundant(value: str, *entities: str) -> bool:
+    qualifier_terms = re.findall(r"[a-z0-9]+", normalized(value))
+    if not qualifier_terms:
+        return False
+    for entity in entities:
+        entity_terms = re.findall(r"[a-z0-9]+", normalized(entity))
+        if (qualifier_terms == entity_terms
+                or (len(qualifier_terms) > 1 and all(term in entity_terms for term in qualifier_terms))):
+            return True
+    return False
+
+
+def normalize_extraction_qualifiers(candidate: dict[str, Any]) -> list[dict[str, str]]:
+    """Remove duplicated restrictions that would poison external matching.
+
+    The extractor occasionally copied an AgriculturalPractice (for example,
+    ``crop rotation and intercropping systems``) into ``crop_or_species``.
+    Such a value is not added knowledge and forces every external quote to
+    repeat a malformed qualifier. Only exact/redundant values are cleared;
+    genuine crop, population, comparator, metric, and condition constraints
+    remain untouched.
+    """
+    qualifiers = candidate.get("qualifiers") or {}
+    changes: list[dict[str, str]] = []
+    for field in ("crop_or_species", "population"):
+        value = str(qualifiers.get(field) or "").strip()
+        if value and _qualifier_is_redundant(value, str(candidate.get("subject") or ""),
+                                             str(candidate.get("object") or "")):
+            qualifiers[field] = ""
+            changes.append({"field": field, "removed_value": value, "reason": "duplicated_entity"})
+    candidate["qualifiers"] = qualifiers
+    return changes
 
 
 def anchored_quote(source_text: str, proposed_quote: str) -> str | None:
@@ -325,7 +469,8 @@ def _section_name(line: str) -> str | None:
 def _append_section_sentences(section: dict[str, Any], paragraph: str, page: int, seen: set[str]) -> None:
     for sentence_index, sentence in enumerate(page_sentences(paragraph), 1):
         sentence_key = normalized(sentence)
-        if len(re.findall(r"\w+", sentence)) < 6 or sentence_key in seen:
+        if (len(re.findall(r"\w+", sentence)) < 6 or sentence_key in seen
+                or PUBLISHER_BOILERPLATE_RE.search(sentence) or _looks_like_index_listing(sentence)):
             continue
         seen.add(sentence_key)
         section["sentences"].append({"page": page, "page_sentence_index": sentence_index, "text": sentence})
@@ -403,38 +548,50 @@ def iter_pdf_context_packets(pdf_path: Path, max_pages: int = 0,
         if fallback_section["sentences"]:
             sections.append(fallback_section)
 
+    # Pack one continuous document stream. Many review articles have dozens of
+    # short subsections; emitting each subsection independently produced
+    # 100-700-word prompts and allowed four claims from every tiny section.
+    # Combining adjacent sections restores the intended ~2,000-word context and
+    # imposes a meaningful document-level extraction bound while retaining the
+    # originating heading on every sentence.
+    stream: list[dict[str, Any]] = []
     for section in sections:
-        sentences = section["sentences"]
-        start = 0
-        packet_number = 1
-        while start < len(sentences):
-            end = start
-            packet_words = 0
-            while end < len(sentences) and (packet_words < packet_target_words or end == start):
-                packet_words += word_count(sentences[end]["text"])
-                end += 1
-            packet = sentences[start:end]
-            if not packet:
-                break
-            packet_word_count = sum(word_count(sentence["text"]) for sentence in packet)
-            yield {
-                "section_heading": section["heading"],
-                "packet_number": packet_number,
-                "page_start": packet[0]["page"],
-                "page_end": packet[-1]["page"],
-                "word_count": packet_word_count,
-                "estimated_token_count": round(packet_word_count * ESTIMATED_TOKENS_PER_WORD),
-                "sentences": packet,
-            }
-            if end >= len(sentences):
-                break
-            next_start = end
-            overlap_count = 0
-            while next_start > start + 1 and overlap_count < overlap_words:
-                next_start -= 1
-                overlap_count += word_count(sentences[next_start]["text"])
-            start = next_start
-            packet_number += 1
+        for sentence in section["sentences"]:
+            stream.append({**sentence, "section_heading": section["heading"]})
+
+    start = 0
+    packet_number = 1
+    while start < len(stream):
+        end = start
+        packet_words = 0
+        while end < len(stream) and (packet_words < packet_target_words or end == start):
+            packet_words += word_count(stream[end]["text"])
+            end += 1
+        packet = stream[start:end]
+        if not packet:
+            break
+        headings = list(dict.fromkeys(str(sentence["section_heading"]) for sentence in packet))
+        heading = headings[0] if len(headings) == 1 else f"{headings[0]} -> {headings[-1]}"
+        packet_word_count = sum(word_count(sentence["text"]) for sentence in packet)
+        yield {
+            "section_heading": heading,
+            "section_headings": headings,
+            "packet_number": packet_number,
+            "page_start": packet[0]["page"],
+            "page_end": packet[-1]["page"],
+            "word_count": packet_word_count,
+            "estimated_token_count": round(packet_word_count * ESTIMATED_TOKENS_PER_WORD),
+            "sentences": packet,
+        }
+        if end >= len(stream):
+            break
+        next_start = end
+        overlap_count = 0
+        while next_start > start + 1 and overlap_count < overlap_words:
+            next_start -= 1
+            overlap_count += word_count(stream[next_start]["text"])
+        start = next_start
+        packet_number += 1
 
 
 def evidence_span_from_item(item: dict[str, Any], packet_sentences: list[dict[str, Any]]) -> tuple[list[int], list[dict[str, Any]], str] | None:
@@ -460,7 +617,8 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                    emit: Callable[[str, str], None], packets: list[dict[str, Any]] | None = None,
                    document_scope: dict[str, Any] | None = None,
                    source_identifiers: dict[str, str] | None = None,
-                   claims_per_packet: int = EXTRACTION_MAX_CLAIMS_PER_PACKET) -> tuple[list[dict[str, Any]], dict[str, int]]:
+                   claims_per_packet: int = EXTRACTION_MAX_CLAIMS_PER_PACKET
+                   ) -> tuple[list[dict[str, Any]], dict[str, int], list[dict[str, Any]]]:
     digest = file_hash(pdf_path)
     document_id = "local-" + stable_hash(f"{pdf_path.stem}|{digest}", 32)
     source_title = source_paper_title(pdf_path)
@@ -492,24 +650,36 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
               "subject and object may be concise graph labels, but must not be CamelCase ontology labels or substitute a "
               "different intervention, population, material, crop, or outcome for the exact source mention. "
               "Resolve pronouns only if their antecedent is unambiguous within the selected evidence sentences. "
-              "Never combine separate mechanisms into a multi-step claim. "
+              "Never combine separate mechanisms into a multi-step claim. If the source says X affects M and M affects Y "
+              "(including wording such as 'X forms M, which increases Y'), extract the directly stated X->M and M->Y edges; "
+              "never collapse that wording into X->Y. "
               "The accepted path is Agriculture/Climate -> Soil -> Crop/Disease -> Nutrient/Contaminant -> Human Exposure -> Health Outcome. "
               "A directly evidenced relation may skip a stage; do not invent intermediate entities. "
               "Exclude economics, infrastructure, trade, generic food security, and yield-only claims. "
               "Qualify entities with species, cultivar, material, comparator, exposure route, dose/condition, and outcome context "
-              "whenever they constrain the finding. A result in carrots must not become a universal AMF claim; a cultivar comparison "
+              "whenever they constrain the finding. crop_or_species must contain only an actual crop or biological species, never "
+              "a farming practice such as crop rotation, intercropping, crop diversity, or planting. Do not repeat the subject or "
+              "object in a qualifier. Empty qualifier fields are correct when the evidence states no such restriction. "
+              "A result in carrots must not become a universal AMF claim; a cultivar comparison "
               "must retain both cultivar names and the metric. Skip locations, spatial patterns, maps, figures, tables, captions, "
               "section outlines, recommendations (for example 'use X to increase Y'), model-performance statistics, methods, "
               "measurements, generic background claims, and inferred links. "
               "Do not discard a directly reported hedged relation: preserve may/can/thought/suggested wording as conditional certainty. "
               "Use causal certainty only for an unhedged explicit causal statement; increases/reduces may be descriptive findings. "
+              "Before returning claims, prefer the most specific mechanisms in the packet: named organisms, management interventions, "
+              "soil properties, nutrients, contaminants, exposure routes, and health outcomes. Broad statements such as soil health "
+              "improves crop quality must not consume a claim slot when a more specific supported mechanism is available. "
               f"Return at most {claims_per_packet} distinct, high-value eligible claims supported by a local evidence span; do not try to cover every sentence. "
               "There is no target claim count; zero is better than a weak claim. Do not repeat the evidence text in another field; sentence numbers are sufficient. "
               "A sentence saying linked or associated supports only associated_with, never causes, increases, or reduces. "
+              "Never use these standalone generic entity names: soil, soil health, crop, crop productivity, nutritional quality, "
+              "health, nutrition, yield, disease, pests, or temperature. Use a specific source phrase such as degraded soils, "
+              "soil organic matter, crop cadmium concentration, or a named disease when the evidence supports it. "
               "If no claim has a direct one-to-three-sentence proof span, return {\"claims\":[]}.")
     candidates: list[dict[str, Any]] = []
     seen_occurrences: dict[tuple[Any, ...], dict[str, Any]] = {}
     rejected: Counter[str] = Counter()
+    rejection_records: list[dict[str, Any]] = []
     bibliography = pdf_bibliography(pdf_path)
     response_schema = json.loads(json.dumps(EXTRACTION_RESPONSE_SCHEMA))
     response_schema["properties"]["claims"]["maxItems"] = claims_per_packet
@@ -519,11 +689,24 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
     for index, packet in enumerate(packets, 1):
         packet_sentences = packet["sentences"]
         packet_text = "\n".join(f"[{number}] {sentence['text']}" for number, sentence in enumerate(packet_sentences, 1))
+        priority_numbers = extraction_priority_sentence_numbers(packet_sentences)
+        # Qwen 8B can underweight a bare list of sentence numbers in a long
+        # prompt and then spend the limited claim slots on the first broad
+        # statements it sees. Repeat only the ranked evidence candidates as a
+        # compact attention index. They keep their original sentence numbers,
+        # so this does not create a second evidence source or weaken the
+        # exact-span provenance checks below.
+        priority_index = "\n".join(
+            f"[{number}] {packet_sentences[number - 1]['text']}"
+            for number in priority_numbers
+        )
         emit("info", f"Extracting {packet['section_heading']} (pages {packet['page_start']}-{packet['page_end']}), packet {packet['packet_number']} ({index}/{len(packets)}; {packet['word_count']} words, ~{packet['estimated_token_count']} tokens)")
         try:
             result = client.chat_json(system, f"Source paper: {source_title}\n"
                                       f"Section: {packet['section_heading']}\n"
                                       f"Pages: {packet['page_start']}-{packet['page_end']}\n"
+                                      "PRIORITY EVIDENCE INDEX (ranked; prefer the most specific eligible claims here):\n"
+                                      f"{priority_index or '(no high-value candidate detected)'}\n"
                                       f"SECTION CONTEXT PACKET:\n{packet_text}", max_tokens=EXTRACTION_OUTPUT_TOKENS,
                                       json_schema=response_schema)
         except Exception as exc:
@@ -536,6 +719,8 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
         for item in extracted_items:
             if not isinstance(item, dict):
                 rejected["malformed"] += 1
+                rejection_records.append({"reason": "malformed", "packet_number": packet["packet_number"],
+                                          "section_heading": packet["section_heading"], "proposed_claim": {}})
                 continue
             subject = str(item.get("subject", "")).strip()
             proposed_subject_mention = str(item.get("subject_source_mention", "")).strip()
@@ -546,7 +731,8 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
             candidate = {"subject": subject, "relation": relation, "object": obj,
                          "subject_type": str(item.get("subject_type", "")).strip(),
                          "object_type": str(item.get("object_type", "")).strip(),
-                         "certainty": str(item.get("certainty", "")).strip().lower()}
+                         "certainty": str(item.get("certainty", "")).strip().lower(),
+                         "relation_trigger": proposed_relation_trigger}
             raw_qualifiers = item.get("qualifiers")
             candidate["qualifiers"] = {
                 key: str(raw_qualifiers.get(key, "")).strip()[:160]
@@ -555,24 +741,65 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
             evidence = evidence_span_from_item(item, packet_sentences)
             if not subject or not obj or evidence is None or "," in subject or "," in obj:
                 rejected["malformed"] += 1
-                continue
-            if normalized(subject) in GENERIC_ENTITIES or normalized(obj) in GENERIC_ENTITIES:
-                rejected["generic_entity"] += 1
+                rejection_records.append({"reason": "malformed", "packet_number": packet["packet_number"],
+                                          "section_heading": packet["section_heading"],
+                                          "proposed_claim": candidate})
                 continue
             evidence_numbers, evidence_sentences, evidence_span = evidence
+
+            def record_rejection(reason: str) -> None:
+                rejection_records.append({
+                    "reason": reason,
+                    "packet_number": packet["packet_number"],
+                    "section_heading": packet["section_heading"],
+                    "proposed_claim": dict(candidate),
+                    "source_evidence_sentence_numbers": evidence_numbers,
+                    "source_evidence_span": evidence_span,
+                })
+
+            if normalized(subject) in GENERIC_ENTITIES or normalized(obj) in GENERIC_ENTITIES:
+                rejected["generic_entity"] += 1
+                record_rejection("generic_entity")
+                continue
+            if relation in {"increases", "reduces"} and ASSOCIATIVE_TRIGGER_RE.search(proposed_relation_trigger):
+                rejected["association_upgraded_to_directional_relation"] += 1
+                record_rejection("association_upgraded_to_directional_relation")
+                continue
             shape_error = extraction_shape_error(candidate, evidence_span)
             if shape_error:
                 rejected[shape_error] += 1
+                record_rejection(shape_error)
                 continue
             subject_source_mention = source_surface_mention(evidence_span, proposed_subject_mention)
             object_source_mention = source_surface_mention(evidence_span, proposed_object_mention)
             relation_trigger = source_surface_mention(evidence_span, proposed_relation_trigger)
             if not subject_source_mention or not object_source_mention or not relation_trigger:
                 rejected["unanchored_evidence"] += 1
+                record_rejection("unanchored_evidence")
                 continue
+            qualifier_adjustments = normalize_extraction_qualifiers(candidate)
+            # Exact modal wording is safer than asking the same generative
+            # model to self-report its certainty. This normalization only
+            # weakens a claim (for example, ``can reduce`` -> conditional) and
+            # retains the model's original label for auditability.
+            if uses_conditional_modality(evidence_span, relation_trigger) and candidate["certainty"] != "conditional":
+                candidate["extraction_certainty"] = candidate["certainty"]
+                candidate["certainty"] = "conditional"
             evidence_page = evidence_sentences[0]["page"]
             cited_numbers = citation_numbers(evidence_span)
-            cited_references = [bibliography[number] for number in cited_numbers if number in bibliography]
+            cited_keys = author_year_citation_keys(evidence_span)
+            reference_keys: list[int | str] = [*cited_numbers, *cited_keys]
+            cited_references: list[dict[str, Any]] = []
+            seen_reference_ids: set[str] = set()
+            for reference_key in reference_keys:
+                reference = bibliography.get(reference_key)
+                if not reference:
+                    continue
+                identity = str(reference.get("citation_key") or reference.get("reference_number"))
+                if identity in seen_reference_ids:
+                    continue
+                seen_reference_ids.add(identity)
+                cited_references.append(reference)
             evidence_record = {
                 "page": evidence_page,
                 "page_start": packet["page_start"],
@@ -588,6 +815,7 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                 "object_type": candidate["object_type"],
                 "qualifiers": dict(candidate["qualifiers"]),
                 "citation_numbers": cited_numbers,
+                "citation_keys": cited_keys,
                 "references": cited_references,
             }
             # Only identical occurrences introduced by overlapping packets are
@@ -602,9 +830,15 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                 existing = seen_occurrences[key]
                 existing.setdefault("source_evidence_records", []).append(evidence_record)
                 existing["source_citation_numbers"] = sorted(set(existing.get("source_citation_numbers", [])) | set(cited_numbers))
-                known = {item["reference_number"] for item in existing.get("source_references", [])}
-                existing.setdefault("source_references", []).extend(item for item in cited_references if item["reference_number"] not in known)
+                existing["source_citation_keys"] = sorted(set(existing.get("source_citation_keys", [])) | set(cited_keys))
+                known = {str(item.get("citation_key") or item.get("reference_number"))
+                         for item in existing.get("source_references", [])}
+                existing.setdefault("source_references", []).extend(
+                    item for item in cited_references
+                    if str(item.get("citation_key") or item.get("reference_number")) not in known
+                )
                 rejected["overlap_occurrence_deduplicated"] += 1
+                record_rejection("overlap_occurrence_deduplicated")
                 continue
             candidate_id = "candidate-" + stable_hash(
                 f"{document_id}|{normalized(subject)}|{relation}|{normalized(obj)}|"
@@ -625,8 +859,10 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                               "object_source_mention": object_source_mention,
                               "relation_trigger": relation_trigger,
                               "source_citation_numbers": cited_numbers,
+                              "source_citation_keys": cited_keys,
                               "source_references": cited_references,
                               "source_evidence_records": [evidence_record],
+                              "qualifier_adjustments": qualifier_adjustments,
                               "document_scope": (document_scope or {}).get("scope", "uncertain"),
                               "source_context_packet": " ".join(sentence["text"] for sentence in packet_sentences),
                               "extraction_type_variants": [{"subject_type": candidate["subject_type"],
@@ -639,7 +875,7 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
     emit("info", f"Extraction complete: {len(candidates)} unique candidates; "
          f"{rejected.get('overlap_occurrence_deduplicated', 0)} overlap duplicates removed; "
          f"{sum(value for key, value in rejected.items() if key != 'overlap_occurrence_deduplicated')} discarded ({dict(rejected)})")
-    return candidates, dict(rejected)
+    return candidates, dict(rejected), rejection_records
 
 
 def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_claim: int,
@@ -698,17 +934,16 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         (output_dir / "summary.json").write_text(json.dumps(blocked_summary, ensure_ascii=False, indent=2), encoding="utf-8")
         raise ValueError("The PDF text is too degraded for faithful extraction. OCR or a cleaner PDF is required.")
     if document_scope["scope"] == "out_of_scope":
-        emit("warning", "Skipped extraction: the document is outside the soil-to-human-health evidence scope")
-        candidates, extraction_rejection_counts = [], {"document_out_of_scope": 1}
-    else:
-        if document_scope["scope"] == "upstream_only":
-            emit("info", "Paper is upstream-only; retained for evidence-backed pathway bridges, not treated as a health-outcome paper")
-        emit("stage", "Extracting evidence-anchored claims from PDF")
-        candidates, extraction_rejection_counts = extract_claims(pdf_path, client, max_pages, emit,
-                                                                  packets=packets, document_scope=document_scope,
-                                                                  source_identifiers=source_identifiers,
-                                                                  claims_per_packet=claims_per_packet)
+        emit("warning", "Document scope screening found no clear pathway evidence; extraction will still inspect each packet conservatively")
+    elif document_scope["scope"] == "upstream_only":
+        emit("info", "Paper is upstream-only; retained for evidence-backed pathway bridges, not treated as a health-outcome paper")
+    emit("stage", "Extracting evidence-anchored claims from PDF")
+    candidates, extraction_rejection_counts, extraction_rejections = extract_claims(
+        pdf_path, client, max_pages, emit, packets=packets, document_scope=document_scope,
+        source_identifiers=source_identifiers, claims_per_packet=claims_per_packet,
+    )
     write_jsonl(output_dir / "candidates.jsonl", candidates)
+    write_jsonl(output_dir / "extraction_rejections.jsonl", extraction_rejections)
     tuples = "\n".join(
         f"<{item['subject']}, {item['relation']}, {item['object']}, {item['subject_type']}, {item['object_type']}>\n"
         f"# evidence: \"{item['source_evidence_span']}\""
@@ -802,7 +1037,7 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
     (output_dir / "source_graph.json").write_text(json.dumps(initial_source_graph, ensure_ascii=False, indent=2), encoding="utf-8")
     (output_dir / "audit_graph.json").write_text(json.dumps(initial_audit_graph, ensure_ascii=False, indent=2), encoding="utf-8")
     selected = source_entailed[:max_claims] if max_claims else source_entailed
-    emit("stage", f"Validating {len(selected)} claims against Europe PMC")
+    emit("stage", f"Validating {len(selected)} claims against Europe PMC and OpenAlex literature")
     reranker = SemanticReranker(settings) if selected else None
     if reranker:
         emit("info", f"Loading semantic reranker {settings.embedding_model}")

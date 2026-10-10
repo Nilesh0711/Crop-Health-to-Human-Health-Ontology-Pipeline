@@ -32,12 +32,11 @@ _RELATION_SCHEMA = {
         "relation_match": {"type": "boolean"},
         "direction_match": {"type": "boolean"},
         "atomic_claim": {"type": "boolean"},
-        "qualifiers_complete": {"type": "boolean"},
         "ambiguous": {"type": "boolean"},
         "suggested_relation": {"type": "string", "enum": _RELATION_LABELS},
         "rationale": {"type": "string"},
     },
-    "required": ["in_scope", "relation_match", "direction_match", "atomic_claim", "qualifiers_complete", "ambiguous",
+    "required": ["in_scope", "relation_match", "direction_match", "atomic_claim", "ambiguous",
                  "suggested_relation", "rationale"],
     "additionalProperties": False,
 }
@@ -62,22 +61,36 @@ def validate_claim_semantics(candidate: dict[str, Any], client: OllamaClient) ->
     * ``review``: Qwen marked the classification ambiguous.
     """
     evidence = str(candidate.get("source_evidence_span", ""))
+    packet = str(candidate.get("source_context_packet", ""))
+    offset = packet.find(evidence)
+    if offset >= 0:
+        local_context = packet[max(0, offset - 700):offset] + " [EVIDENCE] " + packet[
+            offset + len(evidence):offset + len(evidence) + 500
+        ]
+    else:
+        local_context = packet[:1200]
     type_system = (
         "Classify the two named entities in an extracted scientific claim using only the supplied ontology labels "
         "and source evidence. Classify what each entity phrase denotes, not the broader topic around it. "
-        "A consumption or dietary-exposure phrase is HumanExposure, not AgriculturalPractice. Crop composition, "
+        "A consumption or dietary-exposure phrase is HumanExposure, not AgriculturalPractice. A crop rotation, "
+        "pre-crop, crop-diversity treatment, fertilization regime, or management system is AgriculturalPractice. "
+        "A named crop or harvested plant is Crop. Crop composition, "
         "quality, concentration pattern, or resistance level is PlantTrait; a named chemical or nutritional component "
         "is Nutrient or Contaminant. Soil itself, a soil fraction, or amendment is SoilMaterial; soil pH, chemical "
         "availability, or concentration is SoilChemicalProperty; an edible processed item is FoodProduct. "
         "A disease-resistance mechanism is PlantProcess, while the named disease itself is "
         "PlantDisease. Human biomarkers, immune responses, metabolism, and epigenetic changes are "
-        "HumanBiologicalProcess. Set ambiguous true only when either entity genuinely permits multiple types. Return JSON only."
+        "HumanBiologicalProcess. Use nearby context only to disambiguate the named entity; the selected evidence remains "
+        "the proof. Set ambiguous true only when either entity genuinely permits multiple types. Return JSON only."
     )
     type_payload = {
         "entity_types": ENTITY_DEFINITIONS,
         "subject": candidate.get("subject"),
         "object": candidate.get("object"),
+        "subject_source_mention": candidate.get("subject_source_mention"),
+        "object_source_mention": candidate.get("object_source_mention"),
         "source_evidence_span": evidence,
+        "nearby_context": local_context,
     }
     typed = client.chat_json(type_system, json.dumps(type_payload, ensure_ascii=False),
                              max_tokens=300, json_schema=_TYPE_SCHEMA)
@@ -89,9 +102,10 @@ def validate_claim_semantics(candidate: dict[str, Any], client: OllamaClient) ->
         "nutrient or contaminant -> human exposure -> human biology or health. A directly evidenced edge may skip a stage, "
         "but programme characteristics, economics, infrastructure, trade, generic food security, yield-only outcomes, "
         "and generic sustainability are out of scope. Check that the relation preserves the evidence wording and direction "
-        "and that the claim is one atomic edge. Association never proves causes, increases, reduces, or leads_to. "
-        "Set qualifiers_complete false if the evidence makes the statement dependent on a crop/species, comparator, metric, "
-        "dose, condition, population, or exposure route that is missing from claim qualifiers. Return JSON only."
+        "and that the claim is one atomic edge. A directly stated HumanExposure -> HumanHealthOutcome relation is one atomic "
+        "edge even though it skips intermediate pathway stages. Association never proves causes, increases, reduces, or "
+        "leads_to. Empty optional qualifier fields are normal and must not affect this semantic decision. Comparative "
+        "qualifiers are enforced separately by the schema. Return JSON only."
     )
     relation_payload = {
         "project_pathway": PATHWAY_DESCRIPTION,
@@ -101,6 +115,7 @@ def validate_claim_semantics(candidate: dict[str, Any], client: OllamaClient) ->
         "classified_subject_type": typed.get("subject_type"),
         "classified_object_type": typed.get("object_type"),
         "source_evidence_span": evidence,
+        "nearby_context": local_context,
     }
     judged = client.chat_json(relation_system, json.dumps(relation_payload, ensure_ascii=False),
                               max_tokens=360, json_schema=_RELATION_SCHEMA)
@@ -128,7 +143,6 @@ def validate_claim_semantics(candidate: dict[str, Any], client: OllamaClient) ->
         "atomic_claim": judged.get("atomic_claim"),
     }
     ambiguous = typed.get("ambiguous") is True or judged.get("ambiguous") is True
-    failed = [name for name, passed in checks.items() if passed is not True]
     # Only type differences may be repaired.  A mismatch in scope, relation,
     # direction, or atomicity changes the asserted scientific statement, so it
     # must stay rejected/review rather than being silently rewritten.
@@ -148,9 +162,6 @@ def validate_claim_semantics(candidate: dict[str, Any], client: OllamaClient) ->
     pathway_shape_error = pathway_error(candidate, **classified_types)
     if pathway_shape_error:
         claim_semantic_failures.append("pathway_shape")
-    if judged.get("qualifiers_complete") is not True:
-        claim_semantic_failures.append("qualifiers_complete")
-
     if ambiguous:
         decision = "needs_review"
         action = "review"
@@ -171,13 +182,10 @@ def validate_claim_semantics(candidate: dict[str, Any], client: OllamaClient) ->
     # A normalized type mismatch is a recorded correction, not a failure.  Keep
     # ``reasons`` for rejected/review outcomes so status summaries do not count
     # a successfully repaired claim as an error.
-    reasons = [] if action == "normalize_types" else [
-        f"{name} was not confirmed" for name in failed
-    ]
+    reasons = [f"{name} was not confirmed" for name in claim_semantic_failures
+               if name != "pathway_shape"]
     if pathway_shape_error:
         reasons.append(pathway_shape_error)
-    if judged.get("qualifiers_complete") is not True:
-        reasons.append("Evidence-dependent qualifiers are missing or incomplete")
     if ambiguous:
         reasons.append("Qwen marked the type or relation as ambiguous")
 

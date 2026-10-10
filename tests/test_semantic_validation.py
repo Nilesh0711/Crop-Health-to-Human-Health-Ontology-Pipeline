@@ -48,7 +48,6 @@ def relation_response(**overrides):
         "relation_match": True,
         "direction_match": True,
         "atomic_claim": True,
-        "qualifiers_complete": True,
         "ambiguous": False,
         "suggested_relation": "associated_with",
         "rationale": "Relation classification.",

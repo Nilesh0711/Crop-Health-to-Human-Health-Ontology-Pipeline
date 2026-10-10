@@ -1,4 +1,4 @@
-"""Europe PMC access. External full text is held in memory only."""
+"""Europe PMC, Crossref, and OpenAlex access; external full text stays in memory."""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ FULLTEXT_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/{source}/{artic
 FULLTEXT_BY_ID_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/{article_id}/fullTextXML"
 CROSSREF_URL = "https://api.crossref.org/works"
 OPENALEX_WORK_URL = "https://api.openalex.org/works/{doi_url}"
+OPENALEX_SEARCH_URL = "https://api.openalex.org/works"
 _REFERENCE_STOPWORDS = {"a", "an", "and", "the", "of", "for", "in", "on", "to", "with", "from", "by"}
 
 
@@ -66,13 +67,11 @@ def resolve_bibliographic_reference(reference: dict[str, Any], settings: Setting
 
 
 def openalex_open_access_copy(doi: str, settings: Settings) -> dict[str, Any] | None:
-    """Return a public PDF location for a cited DOI, if OpenAlex supplies one.
+    """Return usable OpenAlex evidence metadata for a cited DOI.
 
-    This is deliberately a citation-only fallback, not a second broad search
-    engine.  It improves coverage for agronomy references that are absent from
-    Europe PMC while preserving the project's rule that a complete external
-    paper is never written to disk.  A landing page is retained as metadata;
-    only an explicit public PDF URL is fetched for transient evidence text.
+    A public PDF is preferred, but an indexed abstract is also usable evidence.
+    Both still pass passage reranking and entailment; the bibliography/metadata
+    record alone never counts as support. Public PDF bytes remain transient.
     """
     normalized_doi = str(doi or "").strip().casefold()
     if not normalized_doi:
@@ -82,12 +81,11 @@ def openalex_open_access_copy(doi: str, settings: Settings) -> dict[str, Any] | 
         work = fetch_json(OPENALEX_WORK_URL.format(doi_url=doi_url), settings)
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError):
         return None
-    if not bool((work.get("open_access") or {}).get("is_oa")):
-        return None
-    location = work.get("best_oa_location") or {}
+    location = work.get("best_oa_location") or work.get("primary_location") or {}
     pdf_url = str(location.get("pdf_url") or "").strip()
     landing_page_url = str(location.get("landing_page_url") or "").strip()
-    if not pdf_url:
+    abstract = _openalex_abstract(work.get("abstract_inverted_index"))
+    if not pdf_url and len(abstract) < 80:
         return None
     return {
         "source": "OPENALEX",
@@ -97,12 +95,73 @@ def openalex_open_access_copy(doi: str, settings: Settings) -> dict[str, Any] | 
         "journalTitle": str((location.get("source") or {}).get("display_name") or "").strip(),
         "pubYear": str(work.get("publication_year") or "").strip(),
         "authorString": "",
-        "abstractText": "",
-        "isOpenAccess": "Y",
+        "abstractText": abstract,
+        "isOpenAccess": "Y" if bool((work.get("open_access") or {}).get("is_oa")) else "N",
         "_open_access_pdf_url": pdf_url,
         "_landing_page_url": landing_page_url,
         "_open_access_license": str(location.get("license") or "").strip(),
     }
+
+
+def _openalex_abstract(inverted_index: object) -> str:
+    """Reconstruct an OpenAlex abstract from its public inverted index."""
+    if not isinstance(inverted_index, dict):
+        return ""
+    positioned: list[tuple[int, str]] = []
+    for word, positions in inverted_index.items():
+        if not isinstance(positions, list):
+            continue
+        positioned.extend((position, str(word)) for position in positions if isinstance(position, int))
+    return " ".join(word for _position, word in sorted(positioned))
+
+
+def search_openalex(query: str, settings: Settings, page_size: int) -> list[dict[str, Any]]:
+    """Search agronomy-friendly OpenAlex metadata alongside Europe PMC.
+
+    OpenAlex is not treated as evidence merely because it indexed a work. Its
+    abstract or transient public PDF must still pass passage reranking and the
+    exact Qwen/anchor judgement used for every external document.
+    """
+    # Broad records without an abstract or public PDF cannot be judged and
+    # only crowd out usable studies, so require indexed abstract text here.
+    params = urllib.parse.urlencode({
+        "search": query,
+        "filter": "has_abstract:true",
+        "select": ("id,doi,title,publication_year,authorships,abstract_inverted_index,"
+                   "open_access,best_oa_location,primary_location"),
+        "per-page": min(max(1, page_size), 200),
+    })
+    payload = fetch_json(f"{OPENALEX_SEARCH_URL}?{params}", settings)
+    results: list[dict[str, Any]] = []
+    for work in payload.get("results", []):
+        if not isinstance(work, dict):
+            continue
+        location = work.get("best_oa_location") or {}
+        primary_location = work.get("primary_location") or {}
+        source = location.get("source") or primary_location.get("source") or {}
+        doi = str(work.get("doi") or "")
+        doi = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", doi, flags=re.IGNORECASE)
+        authorships = work.get("authorships") or []
+        authors = [str((authorship.get("author") or {}).get("display_name") or "").strip()
+                   for authorship in authorships if isinstance(authorship, dict)]
+        pdf_url = str(location.get("pdf_url") or "").strip()
+        landing_url = str(location.get("landing_page_url") or work.get("id") or "").strip()
+        results.append({
+            "source": "OPENALEX",
+            "id": str(work.get("id") or doi),
+            "doi": doi.casefold(),
+            "title": str(work.get("title") or "").strip(),
+            "journalTitle": str(source.get("display_name") or "").strip(),
+            "pubYear": str(work.get("publication_year") or "").strip(),
+            "authorString": ", ".join(author for author in authors[:8] if author),
+            "abstractText": _openalex_abstract(work.get("abstract_inverted_index")),
+            "isOpenAccess": "Y" if bool((work.get("open_access") or {}).get("is_oa")) else "N",
+            "_open_access_pdf_url": pdf_url,
+            "_landing_page_url": landing_url,
+            "_open_access_license": str(location.get("license") or "").strip(),
+            "_retrieval_route": "openalex_broad_search",
+        })
+    return results
 
 
 def is_open_access(result: dict[str, Any]) -> bool:

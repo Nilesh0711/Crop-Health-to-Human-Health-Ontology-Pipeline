@@ -8,7 +8,7 @@ external_validator/
   llm.py              local Ollama structured-JSON client
   workflow.py         citation and broad retrieval, fusion, reranking, judging
   retrieval.py        Crossref, Europe PMC, OpenAlex, XML/PDF passage extraction
-  rerank.py           BGE-large dense retrieval and MedCPT cross-encoder reranking
+  rerank.py           BGE-base dense retrieval and MedCPT cross-encoder reranking
   nli.py              DeBERTa NLI conflict detector
   decision.py         per-document decision and quote/entity/relation guardrails
   claim_matching.py   conservative contiguous entity matching
@@ -18,9 +18,9 @@ external_validator/
 
 ## Validation flow
 
-1. Resolve bibliography entries cited by the exact source evidence span through Crossref and look them up in Europe PMC. If needed, use only an explicit public OpenAlex PDF for that same work.
-2. Ask Qwen for a concept-only broad Europe PMC query and a neutral HyDE passage.
-3. Rank up to 100 metadata candidates using BM25 plus BGE-large reciprocal-rank fusion.
+1. Resolve numeric and author-year bibliography entries cited by the exact source evidence span through Crossref and look them up in Europe PMC. If needed, use the indexed abstract or an explicit public PDF from the exact DOI's OpenAlex record.
+2. Ask Qwen for a concept-only Europe PMC query, repair any leaked ontology labels, and generate a neutral HyDE passage. Run a parallel plain-concept OpenAlex search because agronomy coverage is incomplete in Europe PMC.
+3. Deduplicate DOI-identical records and rank the combined metadata candidates using BM25 plus BGE-base reciprocal-rank fusion.
 4. Rerank the leading candidates jointly with `ncbi/MedCPT-Cross-Encoder` before transient full-text retrieval.
 5. Prefer Europe PMC XML, fall back to an explicit OA PDF, then an indexed abstract. Remove references and other back matter where possible. Keep page numbers for PDF passages.
 6. Rerank passages and retain only the configured top chunks.
@@ -34,9 +34,9 @@ The originating PDF is excluded from external corroboration. Whole external arti
 
 Defaults are configured in `external_validator/config.py` and can be overridden through environment variables:
 
-- `EMBEDDING_MODEL=BAAI/bge-large-en-v1.5`
+- `EMBEDDING_MODEL=BAAI/bge-base-en-v1.5`
 - `CROSS_ENCODER_MODEL=ncbi/MedCPT-Cross-Encoder`
-- `NLI_MODEL=cross-encoder/nli-deberta-v3-large`
+- `NLI_MODEL=cross-encoder/nli-deberta-v3-base`
 - `ENABLE_NLI_VALIDATOR=1`
 
 The embedding and cross-encoder loader tries `sentence-transformers` first and uses direct PyTorch/Transformers loading if that stack is unavailable. NLI is an additional conservative conflict check, not the final judge.

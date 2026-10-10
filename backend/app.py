@@ -31,7 +31,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http
 class RunOptions(BaseModel):
     max_pages: int = Field(default=0, ge=0, le=1000, description="0 means all text pages")
     max_claims: int = Field(default=0, ge=0, le=500, description="0 means all extracted claims")
-    articles_per_claim: int = Field(default=2, ge=1, le=8)
+    articles_per_claim: int = Field(default=3, ge=1, le=8)
+    claims_per_packet: int = Field(default=4, ge=1, le=8)
     model: str = Field(default=DEFAULT_MODEL, min_length=1, max_length=120)
 
 
@@ -87,7 +88,8 @@ def _worker(job_id: str, options: RunOptions) -> None:
     try:
         _emit(job_id, "stage", f"Starting pipeline for {pdf.name}")
         result = run_pipeline(pdf, options.max_pages, options.max_claims, options.articles_per_claim,
-                              lambda level, message: _emit(job_id, level, message), model=options.model)
+                              lambda level, message: _emit(job_id, level, message), model=options.model,
+                              claims_per_packet=options.claims_per_packet)
         with _lock:
             _jobs[job_id]["status"] = "completed"
             _jobs[job_id]["result"] = result
@@ -113,6 +115,12 @@ def health() -> dict[str, Any]:
         model_ready = False
     return {"status": "ok", "model": settings.model, "model_ready": model_ready,
             "available_models": models,
+            "validation_models": {
+                "embedding": {"name": settings.embedding_model, "device": settings.embedding_device},
+                "cross_encoder": {"name": settings.cross_encoder_model, "device": settings.cross_encoder_device},
+                "nli": {"name": settings.nli_model, "device": settings.nli_device,
+                        "enabled": settings.enable_nli},
+            },
             "pdf_count": len(_pdf_map())}
 
 
@@ -123,11 +131,17 @@ def list_pdfs() -> list[dict[str, Any]]:
         for pdf_id, pdf in _pdf_map().items():
             output = _output_dir(pdf)
             summary = _read_json(output / "summary.json")
+            # A PDF-quality failure happens before a summary can be written.
+            # Keep the last scope/text-quality finding visible in the workbench
+            # even for that early, intentional stop.
+            document_scope = _read_json(output / "document_scope.json")
             active = next((job for job in _jobs.values() if job["pdf_id"] == pdf_id and job["status"] in {"queued", "running"}), None)
+            saved_status = summary.get("run_status", "completed") if isinstance(summary, dict) else "not_started"
             items.append({"id": pdf_id, "name": pdf.name, "title": pdf.stem,
                           "size_bytes": pdf.stat().st_size,
-                          "status": "running" if active else "completed" if summary else "not_started",
-                          "summary": summary, "active_job_id": active["id"] if active else None})
+                           "status": "running" if active else saved_status,
+                           "summary": summary, "document_scope": document_scope,
+                           "active_job_id": active["id"] if active else None})
     return items
 
 
@@ -176,10 +190,10 @@ def start_run(pdf_id: str, options: RunOptions) -> dict[str, Any]:
         _jobs[job_id] = job
         output_dir = _output_dir(pdf)
         output_dir.mkdir(parents=True, exist_ok=True)
-        for filename in ("summary.json", "graph.json", "audit_graph.json", "knowledge_graph.graphml", "reasoning_paths.json", "candidates.jsonl",
+        for filename in ("summary.json", "document_scope.json", "graph.json", "source_graph.json", "audit_graph.json", "knowledge_graph.graphml", "reasoning_paths.json", "candidates.jsonl",
                          "schema_valid_candidates.jsonl", "semantic_validation.jsonl", "semantic_valid_candidates.jsonl",
                          "source_validation.jsonl", "source_entailed_candidates.jsonl",
-                         "validation_runs.jsonl", "raw_triplets.txt"):
+                         "validation_runs.jsonl", "evaluation_sample.jsonl", "raw_triplets.txt"):
             (output_dir / filename).unlink(missing_ok=True)
         log_path = output_dir / "run_log.jsonl"
         log_path.write_text("", encoding="utf-8")
@@ -223,6 +237,12 @@ def pdf_audit_graph(pdf_id: str) -> dict[str, Any]:
                       {"nodes": [], "edges": [], "counts": {"nodes": 0, "edges": 0, "corroborated": 0}})
 
 
+@app.get("/api/pdfs/{pdf_id}/source-graph")
+def pdf_source_graph(pdf_id: str) -> dict[str, Any]:
+    return _read_json(_output_dir(_pdf_path(pdf_id)) / "source_graph.json",
+                      {"nodes": [], "edges": [], "counts": {"nodes": 0, "edges": 0, "source_supported": 0}})
+
+
 @app.get("/api/pdfs/{pdf_id}/graph.graphml")
 def download_graphml(pdf_id: str) -> FileResponse:
     path = _output_dir(_pdf_path(pdf_id)) / "knowledge_graph.graphml"
@@ -240,6 +260,12 @@ def master_graph() -> dict[str, Any]:
 @app.get("/api/audit-graph")
 def master_audit_graph() -> dict[str, Any]:
     graphs = [_read_json(path / "audit_graph.json", {"nodes": [], "edges": []}) for path in ONTOLOGY_DIR.iterdir() if path.is_dir()]
+    return merge_graphs(graphs)
+
+
+@app.get("/api/source-graph")
+def master_source_graph() -> dict[str, Any]:
+    graphs = [_read_json(path / "source_graph.json", {"nodes": [], "edges": []}) for path in ONTOLOGY_DIR.iterdir() if path.is_dir()]
     return merge_graphs(graphs)
 
 

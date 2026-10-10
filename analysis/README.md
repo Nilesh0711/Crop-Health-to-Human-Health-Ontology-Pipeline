@@ -10,4 +10,22 @@ After a fresh PDF run, compare with:
 ./.venv/Scripts/python.exe scripts/extraction_audit.py compare --baseline analysis/extraction_baseline_2026-10-08.jsonl
 ```
 
-The report gives counts and exact-triple overlap. A higher number of schema-valid claims is not evidence of higher precision. The original generated PDF outputs under `ontology/` were not modified by this snapshot.
+The report gives counts and exact-triple overlap. A higher number of controlled-vocabulary-valid claims is not evidence of higher precision or scientific correctness. The original generated PDF outputs under `ontology/` were not modified by this snapshot.
+
+## Current-run evaluation
+
+Every completed pipeline run creates a status-stratified
+`ontology/<PDF stem>/evaluation_sample.jsonl`. Its `prediction` block is the
+pipeline output and its `gold` block is intentionally blank so the extracting
+model does not grade itself. After adding independent labels, calculate strict
+triple/type/relation/source metrics and retrieval Recall@k/nDCG@k with:
+
+```bash
+./.venv/Scripts/python.exe -m analysis.evaluate_pipeline score "ontology/<PDF stem>/evaluation_sample.jsonl"
+```
+
+To rebuild a sample from an existing run:
+
+```bash
+./.venv/Scripts/python.exe -m analysis.evaluate_pipeline sample "ontology/<PDF stem>" --limit 80
+```

@@ -10,6 +10,7 @@ from typing import Any
 from .candidates import build_candidates
 from .config import RAG_DIR, Settings
 from .llm import OllamaClient
+from .nli import NLIValidator
 from .rerank import SemanticReranker
 from .storage import read_jsonl, write_jsonl
 from .workflow import evidence_ledger, retrieve_only, validate_candidate
@@ -47,12 +48,22 @@ def _run(args: argparse.Namespace, validate: bool) -> int:
     settings = Settings()
     client, reranker = OllamaClient(settings), SemanticReranker(settings)
     client.health_check()
+    nli_validator = NLIValidator(settings) if validate and settings.enable_nli else None
+    if nli_validator is not None:
+        nli_validator.warmup()
     records: list[dict[str, Any]] = []
     candidates = _selected_candidates(args)
     for position, candidate in enumerate(candidates, 1):
         print(f"[{position}/{len(candidates)}] {candidate['raw_tuple']}")
         try:
-            result = validate_candidate(candidate, client, reranker, settings, args.articles_per_candidate, args.top_chunks) if validate else retrieve_only(candidate, client, reranker, settings, args.articles_per_candidate, args.top_chunks)
+            result = (validate_candidate(
+                candidate, client, reranker, settings,
+                args.articles_per_candidate, args.top_chunks,
+                nli_validator=nli_validator,
+            ) if validate else retrieve_only(
+                candidate, client, reranker, settings,
+                args.articles_per_candidate, args.top_chunks,
+            ))
         except Exception as exc:
             result = {"candidate_id": candidate["candidate_id"], "candidate": candidate, "validation_status": "pipeline_error", "error": str(exc)}
         records.append(result)
@@ -75,7 +86,7 @@ def command_validate(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Qwen query translation + HyDE + BGE reranking + per-document entailment.")
+    parser = argparse.ArgumentParser(description="Qwen query translation + HyDE + hybrid retrieval + cross-encoder reranking + per-document entailment.")
     subparsers = parser.add_subparsers(dest="command", required=True)
     build = subparsers.add_parser("build-candidates", help="Read raw tuple files into candidate JSONL.")
     build.add_argument("--tuple-file", default="raw_triplets.txt")

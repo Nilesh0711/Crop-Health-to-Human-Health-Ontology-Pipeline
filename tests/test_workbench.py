@@ -8,16 +8,42 @@ from fastapi.testclient import TestClient
 
 from backend.app import app
 from backend.graph import graph_from_candidates, reasoning_paths, write_graphml
-from backend.pipeline import anchored_quote
+from backend.ontology_schema import pathway_error
+from backend.pipeline import EXTRACTION_RESPONSE_SCHEMA, anchored_quote, extraction_shape_error
 from external_validator.workflow import evidence_ledger
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_automatic_extraction_schema_blocks_causal_relations(self):
+        relations = EXTRACTION_RESPONSE_SCHEMA["properties"]["claims"]["items"]["properties"]["relation"]["enum"]
+        self.assertNotIn("causes", relations)
+        self.assertNotIn("leads_to", relations)
+        self.assertNotIn("deficiency_causes", relations)
+        self.assertEqual(
+            extraction_shape_error({"subject": "Cadmium", "relation": "causes", "object": "kidney damage"},
+                                   "Cadmium caused kidney damage."),
+            "relation_not_allowed_in_automatic_extraction",
+        )
+
+    def test_pathway_accepts_soil_composition_and_direct_exposure(self):
+        self.assertIsNone(pathway_error({"subject_type": "SoilMaterial", "object_type": "Contaminant",
+                                        "relation": "has_contaminant", "qualifiers": {}}))
+        self.assertIsNone(pathway_error({"subject_type": "AgriculturalPractice", "object_type": "HumanExposure",
+                                        "relation": "reduces", "qualifiers": {}}))
+
     def test_quote_anchor_recovers_original_punctuation(self):
         source = "Rice false smut reduced grain quality – particularly in exposed fields."
         proposed = "Rice false smut reduced grain quality � particularly in exposed fields."
         self.assertEqual(anchored_quote(source, proposed), source[:-1])
         self.assertIsNone(anchored_quote(source, "Rice false smut increased grain quality in exposed fields."))
+
+    def test_extraction_shape_rejects_unqualified_comparison_and_purpose_outline(self):
+        comparison = {"subject": "Organic crops", "object": "cadmium concentration", "qualifiers": {}}
+        self.assertEqual(extraction_shape_error(comparison, "Organic crops had lower cadmium than conventional crops."),
+                         "comparative_evidence_missing_comparator_or_metric")
+        purpose = {"subject": "Organic amendments", "object": "soil suppressiveness", "qualifiers": {}}
+        self.assertEqual(extraction_shape_error(purpose, "Use of organic amendments to increase soil suppressiveness."),
+                         "purpose_or_recommendation_not_empirical_evidence")
 
     def test_api_lists_pdfs_without_running_pipeline(self):
         client = TestClient(app)
@@ -27,6 +53,7 @@ class WorkbenchTests(unittest.TestCase):
         for paper in response.json():
             self.assertIn("id", paper)
             self.assertIn("name", paper)
+            self.assertIn("document_scope", paper)
 
     def test_graph_preserves_evidence_status_and_forward_paths(self):
         candidates = [
@@ -80,6 +107,29 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(graph_from_candidates([candidate], [result], view="main")["counts"]["edges"], 0)
         audit = graph_from_candidates([candidate], [result], view="audit")
         self.assertEqual(audit["edges"][0]["status"], "source_unsupported")
+
+    def test_source_supported_graph_is_separate_from_external_graph(self):
+        candidate = {"candidate_id": "source-only", "subject": "Ley phase", "subject_type": "AgriculturalPractice",
+                     "object": "Weed pressure", "object_type": "PlantTrait", "relation": "reduces", "schema_error": None,
+                     "semantic_validation": {"decision": "accepted"}, "source_validation": {"decision": "entailed"}}
+        result = {"candidate_id": "source-only", "validation_status": "external_evidence_not_found",
+                  "attempts": [{"decisions": []}]}
+        self.assertEqual(graph_from_candidates([candidate], [result], view="main")["counts"]["edges"], 0)
+        source = graph_from_candidates([candidate], [result], view="source")
+        self.assertEqual(source["edges"][0]["status"], "source_supported")
+        self.assertEqual(source["counts"]["source_supported"], 1)
+
+    def test_source_reference_support_does_not_enter_independent_graph(self):
+        candidate = {"candidate_id": "reference-only", "subject": "Rice", "subject_type": "Crop",
+                     "object": "Cadmium", "object_type": "Contaminant", "relation": "has_contaminant",
+                     "schema_error": None, "semantic_validation": {"decision": "accepted"},
+                     "source_validation": {"decision": "entailed"}}
+        result = {"candidate_id": "reference-only", "attempts": [{"decisions": [{
+            "evidence_document_id": "cited-paper", "decision": "supported", "evidence_level": "source_reference"
+        }]}], "support_summary": {"source_reference": 1, "independent_external": 0, "independent_groups": 0}}
+        self.assertEqual(graph_from_candidates([candidate], [result], view="main")["counts"]["edges"], 0)
+        audit = graph_from_candidates([candidate], [result], view="audit")
+        self.assertEqual(audit["edges"][0]["status"], "source_reference_supported")
 
 
 if __name__ == "__main__":

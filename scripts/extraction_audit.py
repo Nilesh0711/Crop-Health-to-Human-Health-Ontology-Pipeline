@@ -87,7 +87,11 @@ def compare(baseline: Path) -> None:
                         "current_semantic_accepted": sum(item.get("semantic_validation", {}).get("decision") == "accepted" for item in fresh),
                         "current_source_entailed": sum(item.get("source_validation", {}).get("decision") == "entailed" for item in fresh),
                         "current_source_needs_review": sum(item.get("source_validation", {}).get("decision") == "needs_review" for item in fresh),
-                        "current_external_support": sum(item.get("validation_status") in {"world_supported_pending_corroboration", "world_corroborated"} for item in results),
+                        "current_external_support": sum(item.get("validation_status") in {
+                            "world_supported_pending_corroboration", "world_corroborated",
+                            "world_independent_supported_pending_corroboration",
+                            "world_independently_corroborated_pending_review",
+                        } for item in results),
                         "claim_overlap": len(old_keys & new_keys), "new_claims": len(new_keys - old_keys),
                         "baseline_claims_absent": len(old_keys - new_keys)}
     print(json.dumps({"caution": "Counts and claim overlap are not precision or recall; expert truth labels are unavailable.",

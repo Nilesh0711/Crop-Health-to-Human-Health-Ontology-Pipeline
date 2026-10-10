@@ -1,40 +1,25 @@
 # External Research-Article Entailment Validator
 
-You are validating one candidate knowledge-graph triple against evidence from
-**one external research article only**.
+Validate one candidate knowledge-graph triple against evidence from one external research article only. Article provenance is tracked separately as a source-paper reference or independently retrieved article.
 
 ## Input
 
-You will receive:
-
-- `candidate`: subject, relation, object, and their project entity types;
-- `evidence_document`: bibliographic metadata for one external article; and
-- `evidence_chunks`: selected text chunks from that same article.
+You receive a candidate claim, external-article metadata, and evidence chunks. Each chunk contains numbered sentences.
 
 ## Task
 
-Decide whether the supplied chunks from this one article support, contradict,
-or fail to establish the exact candidate triple. Use only the supplied chunks;
-do not use background knowledge or facts from other papers.
+Decide whether the selected sentences support, contradict, or fail to establish the exact candidate. Use only supplied evidence. A related topic, a different intervention/material/population/comparator, a reversed direction, or a mere association is not support for a directional or causal claim. An article that explicitly reports an increase or reduction may support that directional edge without proving a universal causal mechanism, provided its modality is at least as strong as the candidate wording.
 
 ## Rules
 
-1. Check the exact subject, object, predicate direction, and strength of the
-   relation. Matching a related topic is not enough.
-2. `associated_with`/correlation does not entail `causes`, `leads_to`,
-   `increases`, or `reduces`.
-3. Preserve qualifiers. A result limited to a dose, crop, species, population,
-   experimental system, or condition does not automatically support an
-   unqualified general claim.
-4. “May”, “could”, “suggests”, or another hedged conclusion does not entail a
-   definitive causal claim.
-5. Lack of a supporting passage is `insufficient`, not `contradicted`.
-6. Quote a short, exact span from a supplied evidence chunk for every
-   `supported` or `contradicted` decision. Never invent a quote or chunk ID.
-7. Do not combine evidence from multiple papers. This response evaluates one
-   `evidence_document_id` only.
+1. Check subject, object, relation, direction, certainty, species/crop, population, dose, condition, comparator, and metric.
+2. `associated_with` or correlation never entails `causes`, `leads_to`, `increases`, or `reduces`.
+3. A hedged statement (`may`, `could`, `suggests`) supports only a correspondingly conditional claim, not a definitive causal claim.
+4. For `supported` or `contradicted`, select one or two consecutive sentence numbers from one chunk. Do not copy or invent a quotation; the pipeline derives the exact stored quote from your sentence IDs.
+5. Copy exact `subject_mention`, `object_mention`, and `relation_trigger` strings from those selected sentences. A narrow lexical variant such as “mulching practices” versus “mulching techniques” may be equivalent, but a materially different entity such as “suspension fertilizer” versus “organic fertilizer” is not.
+6. Lack of support is `insufficient`, not `contradicted`. Never combine evidence across external papers.
 
-## Required JSON output
+## Required JSON
 
 ```json
 {
@@ -49,7 +34,10 @@ do not use background knowledge or facts from other papers.
   "evidence": [
     {
       "chunk_id": "chunk ID from input",
-      "quoted_span": "short exact quote from that chunk",
+      "sentence_numbers": [1],
+      "subject_mention": "exact source words",
+      "object_mention": "exact source words",
+      "relation_trigger": "exact source words",
       "stance": "supports | contradicts"
     }
   ],
@@ -57,5 +45,4 @@ do not use background knowledge or facts from other papers.
 }
 ```
 
-For `insufficient`, return an empty `evidence` array and set the match fields
-to `false` or the appropriate partial values. Output JSON only.
+For `insufficient`, return an empty `evidence` array. Output JSON only.

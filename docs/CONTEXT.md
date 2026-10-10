@@ -1,32 +1,66 @@
 # Project context: soil-to-human-health knowledge graph
 
-## Research goal
+## Goal
 
-Build a provenance-rich graph for the path **Agriculture/Climate → Soil → Crop/Disease → Nutrient/Contaminant → Human Exposure → Health Outcome**. We prefer a small number of faithful, independently supported relations to many plausible triples. The graph is for research exploration; a connected multi-hop path is not automatically a causal conclusion.
+Build a provenance-rich research graph for this bounded pathway:
 
-## Current application (2026-10-09)
+`Agriculture / Climate -> Soil -> Crop / Disease / Trait -> Nutrient / Contaminant -> Human Exposure -> Human Biological Process / Health Outcome`
 
-The FastAPI backend (`backend/`) and React/Cytoscape frontend (`frontend/`) let a user run one PDF at a time, view logs, inspect each claim and its evidence, and switch between a supported graph and an audit view. Source PDFs are in `pdf/`; outputs are in `ontology/<PDF stem>/`. `README.md` has startup commands.
+The project values precise, evidence-backed edges over extraction volume. A graph path is a research hypothesis; it is not a newly proven direct causal fact.
 
-`backend/pipeline.py` extracts text with `pypdf`, forms section-aware overlapping packets targeting ~2,000 words, and sends each packet to local Ollama `qwen3:8b` with an 8,192-token context and up to 2,600 extraction-output tokens. A JSON schema limits each packet to at most ten high-value claims and constrains entity/relation labels. Qwen returns only the claim and 1–3 evidence sentence numbers; the pipeline derives the exact PDF evidence span itself, so the model does not repeat quote text. There is no minimum claim quota or confidence-based acceptance threshold.
+## Application and storage
 
-`backend/ontology_schema.py` defines the bounded vocabulary, including `PlantTrait`, `HumanBiologicalProcess`, and `has_contaminant`. It checks only that extraction uses those stable labels. `backend/semantic_validation.py` separates entity classification from relation/scope classification so the 8B model handles fewer decisions per call. The gate explicitly accepts a useful intermediate pathway edge even when that single claim does not reach human health. Suggested corrections are stored for review and never silently rewrite a claim.
+The project uses a FastAPI backend and React/Cytoscape frontend. Source PDFs live in `pdf/`. Each run writes derived data to `ontology/<PDF stem>/`. Full externally retrieved papers are never persisted; only selected evidence passages and bibliographic/provenance metadata are stored.
 
-`backend/source_validation.py` then makes another stateless Qwen call asking whether the selected local evidence span explicitly supports the exact subject, object, relation, direction, and certainty. Deterministic checks require exact provenance and explicit entity/relation proof. Ambiguous, unsupported, or failed checks do **not** proceed to external retrieval. `candidates.jsonl` is the one canonical full candidate store. `schema_valid_candidates.jsonl`, `semantic_valid_candidates.jsonl`, and `source_entailed_candidates.jsonl` are intentionally minimal candidate-ID indexes; stage decision files contain only the decision, rationale, necessary proof, and optional correction/rejection details.
+The default generative model is local Ollama `qwen3:8b`. It performs extraction and separate structured semantic, source, and external judgements. Retrieval and conservative verification use specialized non-generative models.
 
-Only source-entailed claims go to `external_validator/`: the BGE model is warmed up once, Europe PMC receives a concept-only query that excludes the originating title, BGE ranks article titles/abstracts before XML download and then ranks passages, and Qwen judges each selected external article. A positive judgement must cite retained text and pass entity/direction/certainty guardrails. No automatic validation retries. Only selected external passages and metadata persist; full papers are not saved. `backend/graph.py` puts externally supported edges in the main graph and all others in the audit view. Paths still use only corroborated edges, are per-PDF, and have **no path-level validation yet**; path correctness is deliberately deferred.
+## Current correctness-first pipeline
 
-## What the saved data showed
+1. **PDF quality and scope**: extract section-aware sentence packets, detect degraded text, and classify the paper as in-scope, upstream-only, out-of-scope, or uncertain.
+2. **Evidence-first extraction**: process roughly 2,000-word packets. Each claim selects one to three adjacent source sentences and exact subject, object, and relation-trigger strings. Default output is at most four claims per packet, configurable from one to eight.
+3. **Automatic relation policy**: accept bounded descriptive, directional, associative, composition, trait, and explicit comparison relations. Defer `causes`, `leads_to`, and `deficiency_causes` to a stricter causal-evidence workflow.
+4. **Schema validation**: check only stable entity/relation labels and legal pathway shape. This is structural compatibility, not scientific correctness.
+5. **Semantic validation**: use a fresh Qwen call to check project scope, entity types, relation strength, direction, and atomicity. Never silently rewrite direction, relation, scope, or atomicity.
+6. **Vocabulary normalization**: perform conservative exact local mappings and record the recommended ontology family. ChEBI IDs are assigned only for a small reviewed exact dictionary; no fuzzy identifier invention.
+7. **Source entailment**: use a stateless Qwen judgement plus deterministic exact-span anchors. The claim must preserve entity identity, relation direction, certainty, and qualifiers. DeBERTa NLI can veto an apparent entailment when contradiction is strong, but cannot promote a rejected or uncertain claim.
+8. **External retrieval**: search source-cited studies and broad Europe PMC results. Fuse BM25 and BGE-large rankings with standard reciprocal-rank fusion, then rerank leading candidates with MedCPT.
+9. **Evidence acquisition**: prefer Europe PMC XML, then an explicit OpenAlex OA PDF, then an indexed abstract. Remove reference/back-matter passages where possible and retain PDF page metadata. External files remain in memory.
+10. **External judgement**: Qwen judges each document independently against exact subject, object, direction, relation, certainty, and qualifiers. DeBERTa NLI is a conservative conflict detector.
+11. **Evidence accounting**: source-reference support is not independent corroboration. Count independent publication/study groups separately; two groups are required for the independently corroborated state.
+12. **Graph views**: the main graph contains only independently supported claims. Source-supported and source-reference-only findings remain distinguishable. Rejected, uncertain, contradicted, and insufficient-evidence claims appear in the audit view.
+13. **Evaluation artifact**: produce a status-stratified `evaluation_sample.jsonl` with immutable predictions and blank gold fields. Scoring reports strict triple/type/relation/source metrics and retrieval Recall@k/nDCG@k after independent labels are supplied.
 
-The pre-change baseline at `analysis/extraction_baseline_2026-10-08.jsonl` snapshots **105 claims across five PDFs**; 39 passed the prior scope/schema rules, 68 pass the revised structural rules. That increase is not evidence of better scientific accuracy. Examples motivating the new checks: “False Smut Disease affects Rice” cited a sentence about FSD spatial patterns, not the relation; “Rhizosphere microorganisms affect nutrient transport” used “these aggregates” as its unsupported subject; external quotes about a different fertilizer were counted for “organic fertilizer.” Conversely, a directly stated fertilizer→crop-cadmium relation had been blocked by the old overly rigid stage schema.
+## Important policies
 
-Use `scripts/extraction_audit.py compare --baseline analysis/extraction_baseline_2026-10-08.jsonl` after fresh runs to compare counts and exact triple overlap. Optional Qwen review in the audit script is **provisional**, not independent expert ground truth; it cannot establish measured precision or recall. No trained relevance/type classifier is deployed yet because there is no independent labelled set. Current low-cost gate is deterministic schema/scope checking, followed by Qwen for source ambiguity.
+- Different evidence spans are separate claim occurrences and are validated separately. Only exact overlapping duplicates are collapsed.
+- Model confidence is metadata, never an acceptance criterion.
+- Association cannot be upgraded to causation.
+- Source faithfulness and world-level corroboration are distinct questions.
+- `external_evidence_not_found` means bounded retrieval found no acceptable evidence; it does not mean the claim is false.
+- `A -> B` plus `B -> C` does not establish `A -> C`.
+- Paths and causal-composition validation remain deferred until edge extraction and validation have measured quality.
 
-## Remaining limits
+## Measurement
 
-- Local entity-phrase matching is intentionally conservative; aliases, abbreviations, and paraphrases may be sent to review. Add a small curated alias map or expert-reviewed labels before optimizing recall.
-- An external article may support the same wording in a different species, dose, geography, or population. Qwen is asked to check these qualifiers, but this remains a model judgement requiring spot checks.
-- PDF text extraction is imperfect (tables, columns, bullets, OCR). Preserve source spans and abstain on unclear evidence.
-- Multi-paper consensus, merged-graph canonicalization, and path-level validation are later milestones. Never infer a direct A→C edge from A→B and B→C alone.
+Stage counts and acceptance rates are operational diagnostics, not accuracy. A real quality percentage requires labels independent of the extracting model. The system prepares a small stratified review file to minimize manual work, but it deliberately leaves gold fields blank rather than letting Qwen grade itself.
 
-Reference slides: `ppt/Reasoning with Food Knowledge Graphs.pptx` and `ppt/Rag approach for knowledge graph validation.pptx`. `deliverables/` are prior research artifacts, not fresh app output.
+Score a labelled run with:
+
+```bash
+python -m analysis.evaluate_pipeline score "ontology/<PDF stem>/evaluation_sample.jsonl"
+```
+
+## Key implementation files
+
+- `backend/pipeline.py`: orchestration and extraction contract
+- `backend/ontology_schema.py`: controlled types, relations, and pathway shape
+- `backend/semantic_validation.py`: semantic gate
+- `backend/source_validation.py`: source-entailment gate
+- `backend/vocabulary.py`: conservative ontology normalization
+- `backend/evaluation.py`: review sample and metrics
+- `external_validator/workflow.py`: scholarly retrieval and evidence accounting
+- `external_validator/rerank.py`: BGE-large plus MedCPT two-stage ranking
+- `external_validator/nli.py`: NLI contradiction check
+- `backend/graph.py`: evidence-state graph construction
+
+Reference slides: `ppt/Reasoning with Food Knowledge Graphs.pptx` and `ppt/Rag approach for knowledge graph validation.pptx`.

@@ -11,8 +11,9 @@ const nodeColors = {
 }
 
 const edgeColors = {
-  extracted: '#B9C6C3', single_source: '#D7AD52', corroborated: '#279378',
-  contradicted: '#D96B68', contested: '#BB6C95', insufficient: '#A8B1B1', rejected: '#8E9694', error: '#9FA6AD',
+  extracted: '#B9C6C3', single_source: '#D7AD52', corroborated: '#279378', source_reference_supported: '#8D78B7',
+  contradicted: '#D96B68', contested: '#BB6C95', insufficient: '#A8B1B1', not_found: '#A8B1B1', rejected: '#8E9694', error: '#9FA6AD',
+  source_supported: '#D7AD52',
   semantic_rejected: '#C76C76', semantic_needs_review: '#B08B65',
   source_unsupported: '#C97871', source_needs_review: '#B99B64',
 }

@@ -27,7 +27,11 @@ RELATION_CUES = {
     "associated_with": ("associate", "correlat", "linked", "relationship between", "related to"),
     "deficiency_causes": ("deficiency", "deficient", "insufficiency", "deplet", "cause", "induc", "lead to", "result in"),
     "has_nutrient": ("contain", "content", "composition", "rich in", "source of", "provide", "concentration", "level"),
-    "has_contaminant": ("contain", "contamin", "residue", "accumulat", "present in", "detected", "found in", "occur", "concentration", "content"),
+    # A contaminant can be stated either as material composition ("detected
+    # in grain") or as production/formation within that material.  The latter
+    # is common for fungal toxins, so it is an explicit lexical cue rather
+    # than a broad semantic relaxation.
+    "has_contaminant": ("contain", "contamin", "residue", "accumulat", "present in", "detected", "found in", "occur", "concentration", "content", "produc", "increase", "elevat"),
     "contains": ("contain", "compris", "include", "content", "concentration", "presence"),
     "has_trait": ("has", "have", "had", "with", "exhibit", "characteri", "show"),
     "higher_than": ("higher", "greater", "more", "exceed"),
@@ -102,6 +106,8 @@ def _concept_terms(value: object) -> set[str]:
             normalized.add("community")
         elif term.startswith("accumul"):
             normalized.add("accumulate")
+        elif term.startswith("infect"):
+            normalized.add("infect")
         else:
             normalized.add(term)
     return normalized - _GENERIC_ALIAS_TERMS
@@ -113,16 +119,38 @@ def _sentences(text: object) -> list[str]:
     return [sentence.strip() for sentence in _SENTENCE_BOUNDARY_RE.split(compact) if sentence.strip()]
 
 
-def _numbered_chunks(document: dict[str, Any]) -> list[dict[str, Any]]:
-    """Expose sentence IDs, rather than free-form quotation copying, to Qwen."""
+def _numbered_chunks(document: dict[str, Any], candidate: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Expose sentence IDs, focusing exact claim-bearing sentences when present.
+
+    The focus step does not decide entailment.  It only prevents a small model
+    from citing a later, topically related sentence when the same retrieved
+    chunk contains a sentence that explicitly names both claim endpoints and a
+    compatible relation cue.  When no such lexical sentence exists, all
+    sentences remain available so semantic paraphrases can still be judged.
+    """
     numbered: list[dict[str, Any]] = []
     for chunk in document.get("evidence_chunks", []):
         sentences = _sentences(chunk.get("text", ""))
         if not sentences:
             continue
+        sentence_rows = [{"number": index, "text": sentence}
+                         for index, sentence in enumerate(sentences, 1)]
+        if candidate:
+            subject_terms = _concept_terms(candidate.get("subject"))
+            object_terms = _concept_terms(candidate.get("object"))
+            exact_rows = []
+            for row in sentence_rows:
+                sentence_terms = _concept_terms(row["text"])
+                subject_named = bool(subject_terms) and subject_terms <= sentence_terms
+                object_named = bool(object_terms) and object_terms <= sentence_terms
+                relation_named = _quote_has_relation_cue(candidate.get("relation"), row["text"])
+                if subject_named and object_named and relation_named:
+                    exact_rows.append(row)
+            if exact_rows:
+                sentence_rows = exact_rows[:4]
         numbered.append({
             "chunk_id": chunk.get("chunk_id"),
-            "sentences": [{"number": index, "text": sentence} for index, sentence in enumerate(sentences, 1)],
+            "sentences": sentence_rows,
         })
     return numbered
 
@@ -196,6 +224,18 @@ def _entity_evidence_compatible(candidate_entity: object, evidence_mention: obje
     )
 
 
+def _condition_anchored(value: object, quote: object) -> bool:
+    """Match an explicit condition or its unambiguous initialism (FHB)."""
+    condition = str(value or "").strip()
+    if not condition:
+        return True
+    if entity_anchored(condition, str(quote or "")):
+        return True
+    words = re.findall(r"[A-Za-z]+", condition)
+    initialism = "".join(word[0] for word in words)
+    return len(initialism) >= 2 and bool(re.search(rf"(?i)\b{re.escape(initialism)}\b", str(quote or "")))
+
+
 def _quote_has_relation_cue(relation: object, quote: object) -> bool:
     """Apply the final lexical relation safeguard to a stored source quote."""
     text = str(quote or "").casefold()
@@ -212,10 +252,10 @@ def _quote_has_relation_cue(relation: object, quote: object) -> bool:
 
 def judge_document(client: OllamaClient, candidate: dict[str, Any], document: dict[str, Any],
                    nli_validator: NLIValidator | None = None) -> dict[str, Any]:
-    system = """Judge this exact scientific claim against numbered sentences from ONE external paper. Use no background knowledge. Match the same specific scientific concepts, not necessarily the same character string: ordinary morphological wording such as microbial/microorganism or suppressiveness/suppression may match, but a different intervention, fertilizer, crop, population, dose, or comparator never does. A related topic, a reversed direction, or a mere association is not support for a directional or causal claim. This is evidence alignment: an external paper that explicitly reports X increases/reduces Y can support that directional edge without independently proving a universal causal mechanism, but its modality must be at least as strong as the candidate wording. For support or contradiction, select one or two consecutive sentence numbers and copy the exact subject mention, object mention, and relation trigger from them; otherwise say insufficient. Return JSON only."""
+    system = """Judge this exact scientific claim against numbered sentences from ONE external paper. Use no background knowledge. Match the same specific scientific concepts, not necessarily the same character string: ordinary morphological wording such as microbial/microorganism or suppressiveness/suppression may match, but a different intervention, fertilizer, crop, population, dose, or comparator never does. A related topic, a reversed direction, or a mere association is not support for a directional or causal claim. This is evidence alignment: an external paper that explicitly reports X increases/reduces Y can support that directional edge without independently proving a universal causal mechanism, but its modality must be at least as strong as the candidate wording. For support or contradiction, select the most direct one or two consecutive sentences that explicitly name the candidate's entity-level subject and object, and copy their exact surface mentions and relation trigger. Do not substitute a related agent for the claim subject: for example, Fusarium spp. is not the subject 'infected grains'; select a sentence that explicitly names the infected grains. Ordinary singular/plural forms and an explicitly named subtype retaining the same concept name may match (for example, 'ochratoxin A' is a form of 'ochratoxins'); an unrelated member named without the family term requires explicit definition in the cited sentence. If no selected sentence names both concepts, say insufficient. Return JSON only."""
     payload = {"candidate_id": candidate["candidate_id"], "candidate": {key: candidate.get(key) for key in ("subject", "relation", "object", "subject_type", "object_type", "certainty", "qualifiers", "subject_source_mention", "object_source_mention")},
         "evidence_document_id": document["evidence_document_id"], "evidence_document": {key: document.get(key) for key in ("title", "doi", "publication_year")},
-        "evidence_chunks": _numbered_chunks(document)}
+        "evidence_chunks": _numbered_chunks(document, candidate)}
     user = ("Return ONE complete JSON object with exactly these keys: decision, matches, evidence, rationale. "
             "matches contains boolean subject, object, relation, direction, and certainty fields. For supported, all must be true. "
             "evidence is [] for insufficient. Otherwise it is a one-item list: {chunk_id, sentence_numbers, subject_mention, "
@@ -307,10 +347,10 @@ def decision_errors(packet: dict[str, Any], decision: dict[str, Any]) -> list[st
             if candidate:
                 for field in ("subject", "object"):
                     evidence_mention = item.get(f"{field}_mention")
+                    aliases = (candidate.get(f"{field}_source_mention", ""),)
                     matches_entity = (
                         _entity_evidence_compatible(
-                            candidate.get(field, ""), evidence_mention, quote,
-                            (candidate.get(f"{field}_source_mention", ""),),
+                            candidate.get(field, ""), evidence_mention, quote, aliases,
                         )
                         if evidence_mention is not None
                         else entity_anchored(str(candidate.get(field, "")), quote)
@@ -318,9 +358,11 @@ def decision_errors(packet: dict[str, Any], decision: dict[str, Any]) -> list[st
                     if not matches_entity:
                         errors.append(f"quoted evidence does not explicitly name the claim {field}")
                 qualifiers = candidate.get("qualifiers") or {}
-                for field in ("crop_or_species", "population", "comparator", "metric"):
+                for field in ("crop_or_species", "population", "comparator", "metric", "condition"):
                     value = str(qualifiers.get(field, "")).strip()
-                    if value and not entity_anchored(value, quote):
+                    matches_qualifier = (_condition_anchored(value, quote) if field == "condition"
+                                         else entity_anchored(value, quote))
+                    if value and not matches_qualifier:
                         errors.append(f"quoted evidence does not explicitly match {field}")
     return errors
 

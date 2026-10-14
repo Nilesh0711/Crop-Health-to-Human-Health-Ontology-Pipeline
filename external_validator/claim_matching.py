@@ -9,7 +9,6 @@ _STOPWORDS = {"a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "or
               "practice", "practices", "within", "concentration", "concentrations", "content", "contents",
               "level", "levels", "amount", "amounts"}
 
-
 def _stem(token: str) -> str:
     if token.startswith("terrac"):
         return "terrac"

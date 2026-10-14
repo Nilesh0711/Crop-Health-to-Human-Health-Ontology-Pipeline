@@ -9,6 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+import time
 from typing import Any
 
 from pypdf import PdfReader
@@ -26,9 +27,21 @@ _REFERENCE_STOPWORDS = {"a", "an", "and", "the", "of", "for", "in", "on", "to", 
 
 
 def fetch_json(url: str, settings: Settings) -> dict[str, Any]:
+    """Read scholarly metadata with a bounded retry for transient APIs.
+
+    This retries availability and rate-limit failures only. It never repeats a
+    model verdict, changes a query, or turns absent evidence into support.
+    """
     request = urllib.request.Request(url, headers={"User-Agent": settings.user_agent, "Accept": "application/json"})
-    with urllib.request.urlopen(request, timeout=45) as response:
-        return json.loads(response.read(settings.max_fulltext_bytes).decode("utf-8"))
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(request, timeout=45) as response:
+                return json.loads(response.read(settings.max_fulltext_bytes).decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if exc.code not in {429, 500, 502, 503, 504} or attempt:
+                raise
+            time.sleep(0.6)
+    raise RuntimeError("unreachable metadata retrieval state")
 
 
 def search(query: str, settings: Settings, page_size: int) -> list[dict[str, Any]]:
@@ -165,7 +178,24 @@ def search_openalex(query: str, settings: Settings, page_size: int) -> list[dict
 
 
 def is_open_access(result: dict[str, Any]) -> bool:
-    return str(result.get("isOpenAccess", "")).upper() in {"Y", "YES", "TRUE", "1"}
+    return (str(result.get("isOpenAccess", "")).upper() in {"Y", "YES", "TRUE", "1"}
+            or bool(europe_pmc_open_access_pdf(result)))
+
+
+def europe_pmc_open_access_pdf(result: dict[str, Any]) -> str:
+    """Return an explicitly public PDF exposed by Europe PMC metadata."""
+    values = (result.get("fullTextUrlList") or {}).get("fullTextUrl", [])
+    if isinstance(values, dict):
+        values = [values]
+    for item in values if isinstance(values, list) else []:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url") or "").strip()
+        if (str(item.get("availabilityCode") or "").upper() == "OA"
+                and str(item.get("documentStyle") or "").casefold() == "pdf"
+                and url.startswith(("https://", "http://"))):
+            return url
+    return ""
 
 
 def fulltext_identifiers(result: dict[str, Any]) -> list[tuple[str, str]]:

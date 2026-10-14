@@ -152,7 +152,6 @@ export default function App() {
   const [pdfs, setPdfs] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [health, setHealth] = useState(null)
-  const [availableModels, setAvailableModels] = useState([])
   const [graph, setGraph] = useState({ nodes: [], edges: [], counts: { nodes: 0, edges: 0, corroborated: 0 } })
   const [claims, setClaims] = useState([])
   const [paths, setPaths] = useState([])
@@ -166,7 +165,7 @@ export default function App() {
   const [filter, setFilter] = useState('all')
   const [selectedElement, setSelectedElement] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [options, setOptions] = useState({ max_pages: 0, max_claims: 0, articles_per_claim: 3, claims_per_packet: 4, model: 'qwen3:8b' })
+  const [options, setOptions] = useState({ max_pages: 0, max_claims: 0, articles_per_claim: 3, claims_per_packet: 4 })
   const [message, setMessage] = useState(null)
   const uploadRef = useRef(null)
   const logEndRef = useRef(null)
@@ -203,9 +202,7 @@ export default function App() {
     refreshPdfs().catch(error => setMessage(error.message))
     request('/health').then(data => {
       setHealth(data)
-      setAvailableModels(data.available_models || [])
-      setOptions(current => ({ ...current, model: data.model || current.model }))
-    }).catch(() => setHealth({ model: 'qwen3:8b', model_ready: false, available_models: [] }))
+    }).catch(() => setHealth({ extraction: { ready: false }, validation: { ready: false } }))
   }, [])
 
   useEffect(() => {
@@ -283,7 +280,7 @@ export default function App() {
       </div>
       <div className="sidebar-footer"><button className="upload-card" type="button" onClick={() => uploadRef.current?.click()}><span><Plus size={18} /></span><div><strong>Add a PDF</strong><small>Upload a research paper</small></div></button>
         <input ref={uploadRef} type="file" accept="application/pdf,.pdf" hidden onChange={upload} />
-        <div className="local-status"><span className={`connection-dot ${availableModels.includes(options.model) ? 'online' : ''}`} /><span>{availableModels.includes(options.model) ? 'Local model ready' : 'Selected model unavailable'}</span><strong>{options.model}</strong></div>
+        <div className="local-status"><span className={`connection-dot ${health?.extraction?.ready && health?.validation?.ready ? 'online' : ''}`} /><span>{health?.extraction?.ready && health?.validation?.ready ? 'OpenCode models ready' : 'OpenCode model unavailable'}</span><strong>LongCat → Step 5</strong></div>
       </div>
     </aside>
 
@@ -306,8 +303,8 @@ export default function App() {
           <DocumentScopeNotice documentScope={selected.document_scope || selected.summary?.document_scope} />
 
           <section className="workflow-card"><div className="section-head compact"><div><span className="eyebrow">PIPELINE</span><h2>From paper to evidence</h2></div><button type="button" className="text-button" onClick={() => setSettingsOpen(!settingsOpen)}><Settings2 size={16} /> Run settings <ChevronDown size={15} className={settingsOpen ? 'chevron open' : 'chevron'} /></button></div>
-            <div className="steps"><div className="step"><span className="step-icon"><FileText size={19} /></span><span><strong>Extract</strong><small>Qwen reads PDF text</small></span></div><ArrowRight size={17} className="step-arrow" /><div className="step"><span className="step-icon"><Filter size={19} /></span><span><strong>Semantic gate</strong><small>Qwen checks scope &amp; types</small></span></div><ArrowRight size={17} className="step-arrow" /><div className="step"><span className="step-icon"><Check size={19} /></span><span><strong>Check source</strong><small>Claim vs PDF evidence</small></span></div><ArrowRight size={17} className="step-arrow" /><div className="step"><span className="step-icon"><Sparkles size={19} /></span><span><strong>Validate</strong><small>Citations + hybrid search</small></span></div><ArrowRight size={17} className="step-arrow" /><div className="step"><span className="step-icon"><GitBranch size={19} /></span><span><strong>Map graph</strong><small>Evidence states</small></span></div></div>
-            {settingsOpen && <div className="run-settings"><label>Local model <select value={options.model} onChange={event => setOptions({ ...options, model: event.target.value })}>{availableModels.map(model => <option value={model} key={model}>{model}</option>)}</select><small>Used for extraction, source checking, and external article judging.</small></label><label>PDF pages <input type="number" min="0" max="1000" value={options.max_pages} onChange={event => setOptions({ ...options, max_pages: Number(event.target.value) })} /><small>0 = all pages</small></label><label>Claims per packet <input type="number" min="1" max="8" value={options.claims_per_packet} onChange={event => setOptions({ ...options, claims_per_packet: Number(event.target.value) })} /><small>Compare 2, 4, or 6 during evaluation</small></label><label>Claims to validate <input type="number" min="0" max="500" value={options.max_claims} onChange={event => setOptions({ ...options, max_claims: Number(event.target.value) })} /><small>0 = all claims</small></label><label>Articles per claim <input type="number" min="1" max="8" value={options.articles_per_claim} onChange={event => setOptions({ ...options, articles_per_claim: Number(event.target.value) })} /><small>Reference and independent evidence are tracked separately</small></label></div>}
+            <div className="steps"><div className="step"><span className="step-icon"><FileText size={19} /></span><span><strong>Extract</strong><small>LongCat reads rich PDF context</small></span></div><ArrowRight size={17} className="step-arrow" /><div className="step"><span className="step-icon"><Filter size={19} /></span><span><strong>Semantic gate</strong><small>Step 5 checks scope &amp; types</small></span></div><ArrowRight size={17} className="step-arrow" /><div className="step"><span className="step-icon"><Check size={19} /></span><span><strong>Check source</strong><small>Step 5 vs PDF evidence</small></span></div><ArrowRight size={17} className="step-arrow" /><div className="step"><span className="step-icon"><Sparkles size={19} /></span><span><strong>Validate</strong><small>Step 5 + hybrid search</small></span></div><ArrowRight size={17} className="step-arrow" /><div className="step"><span className="step-icon"><GitBranch size={19} /></span><span><strong>Map graph</strong><small>Evidence states</small></span></div></div>
+            {settingsOpen && <div className="run-settings"><label>Extraction model <input value={health?.extraction?.model || 'opencode/longcat-2.5-preview-free'} readOnly /><small>OpenCode LongCat; receives ~4,000-word evidence packets.</small></label><label>Evidence-validation model <input value={health?.validation?.model || 'opencode/step-5-preview-free'} readOnly /><small>OpenCode Step 5 independently checks scope, source and external evidence.</small></label><label>PDF pages <input type="number" min="0" max="1000" value={options.max_pages} onChange={event => setOptions({ ...options, max_pages: Number(event.target.value) })} /><small>0 = all pages</small></label><label>Claims per packet <input type="number" min="1" max="8" value={options.claims_per_packet} onChange={event => setOptions({ ...options, claims_per_packet: Number(event.target.value) })} /><small>Compare 2, 4, or 6 during evaluation</small></label><label>Claims to validate <input type="number" min="0" max="500" value={options.max_claims} onChange={event => setOptions({ ...options, max_claims: Number(event.target.value) })} /><small>0 = all claims</small></label><label>Independent articles per claim <input type="number" min="1" max="8" value={options.articles_per_claim} onChange={event => setOptions({ ...options, articles_per_claim: Number(event.target.value) })} /><small>One cited lead is checked separately and does not consume this budget</small></label></div>}
             <p className="soft-note">The vocabulary check only verifies approved entity and relation labels. Scientific correctness is assessed by the semantic, source, and external-evidence stages.</p>
           </section>
 

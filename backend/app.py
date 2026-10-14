@@ -15,8 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from external_validator.config import BLOCKED_PIPELINE_MODELS, DEFAULT_MODEL, ONTOLOGY_DIR, PDF_DIR, PROJECT_ROOT, Settings
-from external_validator.llm import OllamaClient
+from external_validator.config import ONTOLOGY_DIR, PDF_DIR, PROJECT_ROOT, Settings
+from external_validator.llm import OpenCodeClient
 from external_validator.storage import read_jsonl, stable_hash
 
 from .graph import merge_graphs
@@ -31,9 +31,9 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http
 class RunOptions(BaseModel):
     max_pages: int = Field(default=0, ge=0, le=1000, description="0 means all text pages")
     max_claims: int = Field(default=0, ge=0, le=500, description="0 means all extracted claims")
-    articles_per_claim: int = Field(default=3, ge=1, le=8)
+    articles_per_claim: int = Field(default=3, ge=1, le=8,
+                                    description="Independent external articles per claim; one cited lead is additional")
     claims_per_packet: int = Field(default=4, ge=1, le=8)
-    model: str = Field(default=DEFAULT_MODEL, min_length=1, max_length=120)
 
 
 _jobs: dict[str, dict[str, Any]] = {}
@@ -88,7 +88,7 @@ def _worker(job_id: str, options: RunOptions) -> None:
     try:
         _emit(job_id, "stage", f"Starting pipeline for {pdf.name}")
         result = run_pipeline(pdf, options.max_pages, options.max_claims, options.articles_per_claim,
-                              lambda level, message: _emit(job_id, level, message), model=options.model,
+                              lambda level, message: _emit(job_id, level, message),
                               claims_per_packet=options.claims_per_packet)
         with _lock:
             _jobs[job_id]["status"] = "completed"
@@ -106,15 +106,18 @@ def _worker(job_id: str, options: RunOptions) -> None:
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     settings = Settings()
-    models: list[str] = []
     try:
-        models = [item.get("name") for item in OllamaClient(settings).health_check().get("models", [])
-                  if item.get("name") not in BLOCKED_PIPELINE_MODELS]
-        model_ready = settings.model in models
+        opencode_models = OpenCodeClient(settings).health_check().get("models", [])
     except Exception:
-        model_ready = False
-    return {"status": "ok", "model": settings.model, "model_ready": model_ready,
-            "available_models": models,
+        opencode_models = []
+    extraction_ready = settings.extraction_model in opencode_models
+    validation_ready = settings.validation_model in opencode_models
+    return {"status": "ok", "model": settings.validation_model, "model_ready": validation_ready,
+            "available_models": opencode_models,
+            "extraction": {"provider": "opencode", "model": settings.extraction_model,
+                           "ready": extraction_ready, "available_models": opencode_models},
+            "validation": {"provider": "opencode", "model": settings.validation_model,
+                           "ready": validation_ready, "available_models": opencode_models},
             "validation_models": {
                 "embedding": {"name": settings.embedding_model, "device": settings.embedding_device},
                 "cross_encoder": {"name": settings.cross_encoder_model, "device": settings.cross_encoder_device},
@@ -174,12 +177,13 @@ async def upload_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
 def start_run(pdf_id: str, options: RunOptions) -> dict[str, Any]:
     pdf = _pdf_path(pdf_id)
     try:
-        available_models = {item.get("name") for item in OllamaClient(Settings()).health_check().get("models", [])
-                            if item.get("name") not in BLOCKED_PIPELINE_MODELS}
+        settings = Settings()
+        available_models = set(OpenCodeClient(settings).health_check().get("models", []))
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Ollama is unavailable: {exc}") from exc
-    if options.model not in available_models:
-        raise HTTPException(status_code=400, detail=f"Ollama model {options.model} is not installed")
+        raise HTTPException(status_code=503, detail=f"OpenCode is unavailable: {exc}") from exc
+    missing = [model for model in (settings.extraction_model, settings.validation_model) if model not in available_models]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Required OpenCode model is unavailable: {', '.join(missing)}")
     with _lock:
         if any(job["status"] in {"queued", "running"} for job in _jobs.values()):
             raise HTTPException(status_code=409, detail="A pipeline is already running. Wait for it to finish.")

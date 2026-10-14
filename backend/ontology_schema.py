@@ -42,12 +42,14 @@ RELATION_DEFINITIONS = {
 
 ENTITY_TYPES = set(ENTITY_DEFINITIONS)
 RELATIONS = set(RELATION_DEFINITIONS)
-# Automatic review-paper extraction deliberately excludes causal predicates.
-# They remain in the wider ontology for curated/legacy claims and a future
-# causal-evidence workflow, but Qwen cannot emit them in the present pipeline.
+# Automatic extraction begins with direct, typed pathway segments. Causal
+# predicates, comparisons, and observational associations remain available in
+# the wider ontology for curated/legacy claims and later specialised workflows,
+# but are deliberately excluded from the starter graph: they require study
+# design, population, exposure, and comparator modelling not yet represented.
 AUTOMATIC_EXTRACTION_RELATIONS = frozenset({
     "affects", "reduces", "increases", "has_nutrient", "has_contaminant",
-    "contains", "has_trait", "higher_than", "lower_than", "associated_with",
+    "contains", "has_trait",
 })
 
 PATHWAY_DESCRIPTION = (
@@ -71,15 +73,17 @@ PATHWAY_TYPE_PAIRS: dict[str, set[str]] = {
     "SoilBiota": {"SoilMaterial", "SoilCondition", "SoilChemicalProperty", "Crop", "FoodProduct", "PlantProcess", "PlantTrait", "PlantDisease", "PlantPest", "Nutrient", "Contaminant", "HumanExposure", "HumanBiologicalProcess", "HumanHealthOutcome"},
     "Crop": {"Crop", "FoodProduct", "PlantProcess", "PlantTrait", "PlantDisease", "PlantPest", "Nutrient", "Contaminant", "HumanExposure", "HumanBiologicalProcess", "HumanHealthOutcome"},
     "FoodProduct": {"PlantTrait", "Nutrient", "Contaminant", "HumanExposure", "HumanBiologicalProcess", "HumanHealthOutcome"},
-    "PlantDisease": {"PlantTrait", "Contaminant"},
-    "PlantPest": {"PlantTrait", "Contaminant"},
-    "PlantProcess": {"PlantTrait", "Nutrient", "Contaminant"},
+    "PlantDisease": {"PlantTrait", "Contaminant", "Crop", "FoodProduct", "AgriculturalPractice"},
+    "PlantPest": {"PlantTrait", "Contaminant", "Crop", "FoodProduct", "AgriculturalPractice"},
+    # Root growth and other plant processes can directly alter physical soil
+    # states such as porosity, aeration, and aggregate stability.
+    "PlantProcess": {"SoilCondition", "SoilChemicalProperty", "PlantTrait", "Nutrient", "Contaminant"},
     "PlantTrait": {"Nutrient", "Contaminant"},
     # Nutrient and contaminant levels may alter crop traits before their
     # downstream human-exposure effects, so both plant-facing and
     # human-facing segments are retained.
     "Nutrient": {"Crop", "PlantProcess", "PlantTrait", "HumanExposure", "HumanBiologicalProcess", "HumanHealthOutcome"},
-    "Contaminant": {"Crop", "PlantProcess", "PlantTrait", "HumanExposure", "HumanBiologicalProcess", "HumanHealthOutcome"},
+    "Contaminant": {"SoilCondition", "SoilChemicalProperty", "SoilBiota", "Crop", "PlantProcess", "PlantTrait", "HumanExposure", "HumanBiologicalProcess", "HumanHealthOutcome"},
     "HumanExposure": {"Contaminant", "Nutrient", "HumanBiologicalProcess", "HumanHealthOutcome"},
     "HumanBiologicalProcess": {"HumanHealthOutcome"},
 }

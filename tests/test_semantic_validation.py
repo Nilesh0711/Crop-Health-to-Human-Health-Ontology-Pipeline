@@ -12,8 +12,10 @@ class ResponseSequenceClient:
     def __init__(self, responses):
         self.settings = SimpleNamespace(model="test-model")
         self.responses = iter(responses)
+        self.calls = []
 
-    def chat_json(self, *_args, **_kwargs):
+    def chat_json(self, *args, **kwargs):
+        self.calls.append((args, kwargs))
         return next(self.responses)
 
 
@@ -33,27 +35,14 @@ def candidate(**overrides):
     return value
 
 
-def type_response(subject_type, object_type, *, ambiguous=False):
+def type_response(subject_type, object_type, *, ambiguous=False, in_scope=True):
     return {
         "subject_type": subject_type,
         "object_type": object_type,
+        "in_scope": in_scope,
         "ambiguous": ambiguous,
         "rationale": "Type classification.",
     }
-
-
-def relation_response(**overrides):
-    value = {
-        "in_scope": True,
-        "relation_match": True,
-        "direction_match": True,
-        "atomic_claim": True,
-        "ambiguous": False,
-        "suggested_relation": "associated_with",
-        "rationale": "Relation classification.",
-    }
-    value.update(overrides)
-    return value
 
 
 class SemanticValidationTests(unittest.TestCase):
@@ -61,7 +50,6 @@ class SemanticValidationTests(unittest.TestCase):
         claim = candidate()
         result = validate_claim_semantics(claim, ResponseSequenceClient([
             type_response("HumanExposure", "HumanHealthOutcome"),
-            relation_response(),
         ]))
 
         self.assertEqual(result["decision"], "accepted")
@@ -71,7 +59,6 @@ class SemanticValidationTests(unittest.TestCase):
             "object_type": "HumanHealthOutcome",
         })
         self.assertEqual(result["type_normalization"]["changed"], ["subject_type"])
-        self.assertEqual(result["suggested"]["subject_type"], "HumanExposure")
         self.assertNotIn("reasons", result)
         self.assertEqual(claim["subject_type"], "AgriculturalPractice")
 
@@ -79,7 +66,6 @@ class SemanticValidationTests(unittest.TestCase):
         claim = candidate(subject_type="HumanExposure")
         result = validate_claim_semantics(claim, ResponseSequenceClient([
             type_response("HumanExposure", "HumanHealthOutcome"),
-            relation_response(),
         ]))
 
         self.assertEqual(result["decision"], "accepted")
@@ -87,52 +73,50 @@ class SemanticValidationTests(unittest.TestCase):
         self.assertNotIn("normalized_types", result)
         self.assertNotIn("suggested", result)
 
-    def test_relation_failure_is_rejected_and_never_normalizes_types(self):
-        claim = candidate()
+    def test_local_section_heading_is_supplied_to_semantic_check(self):
+        claim = candidate(subject="False smut", subject_type="PlantDisease",
+                          object="hybrid rice cultivation", object_type="AgriculturalPractice",
+                          source_evidence_span="Disease intensity was associated with hybrid rice cultivation.",
+                          source_evidence_section_heading="False smut of rice: Asia, today")
+        client = ResponseSequenceClient([
+            type_response("PlantDisease", "AgriculturalPractice"),
+        ])
+        result = validate_claim_semantics(claim, client)
+
+        self.assertEqual(result["decision"], "accepted")
+        self.assertEqual(len(client.calls), 1)
+        self.assertIn("[LOCAL SECTION HEADING] False smut of rice: Asia, today.", client.calls[0][0][1])
+
+    def test_classifier_cannot_veto_valid_crop_edge_by_typing_its_farming_context(self):
+        claim = candidate(subject="maize", subject_type="Crop", relation="has_contaminant",
+                          object="fumonisins", object_type="Contaminant",
+                          subject_source_mention="maize-based subsistence farming")
         result = validate_claim_semantics(claim, ResponseSequenceClient([
-            type_response("HumanExposure", "HumanHealthOutcome"),
-            relation_response(relation_match=False, suggested_relation="reduces"),
+            type_response("AgriculturalPractice", "Contaminant"),
         ]))
-
-        self.assertEqual(result["decision"], "rejected")
-        self.assertEqual(result["action"], "reject")
-        self.assertNotIn("normalized_types", result)
-        self.assertEqual(claim["subject_type"], "AgriculturalPractice")
-        self.assertIn("relation_match was not confirmed", result["reasons"])
-
-    def test_direction_failure_is_rejected_and_never_normalizes_types(self):
-        claim = candidate()
-        result = validate_claim_semantics(claim, ResponseSequenceClient([
-            type_response("HumanExposure", "HumanHealthOutcome"),
-            relation_response(direction_match=False),
-        ]))
-
-        self.assertEqual(result["decision"], "rejected")
-        self.assertEqual(result["action"], "reject")
-        self.assertNotIn("normalized_types", result)
-        self.assertIn("direction_match was not confirmed", result["reasons"])
+        self.assertEqual(result["decision"], "accepted")
+        self.assertEqual(result["action"], "accept")
+        self.assertEqual(result["type_disagreement"]["classified"]["subject_type"], "AgriculturalPractice")
 
     def test_scope_failure_is_rejected_and_never_normalizes_types(self):
         claim = candidate()
         result = validate_claim_semantics(claim, ResponseSequenceClient([
-            type_response("HumanExposure", "HumanHealthOutcome"),
-            relation_response(in_scope=False),
+            type_response("HumanExposure", "HumanHealthOutcome", in_scope=False),
         ]))
 
         self.assertEqual(result["decision"], "rejected")
         self.assertEqual(result["action"], "reject")
         self.assertNotIn("normalized_types", result)
-        self.assertIn("in_scope was not confirmed", result["reasons"])
+        self.assertIn("Claim is outside the project pathway", result["reasons"])
 
     def test_ambiguous_type_correction_remains_in_review(self):
         claim = candidate()
         result = validate_claim_semantics(claim, ResponseSequenceClient([
             type_response("HumanExposure", "HumanHealthOutcome", ambiguous=True),
-            relation_response(),
         ]))
 
-        self.assertEqual(result["decision"], "needs_review")
-        self.assertEqual(result["action"], "review")
+        self.assertEqual(result["decision"], "accepted")
+        self.assertEqual(result["action"], "accept")
         self.assertNotIn("normalized_types", result)
         self.assertEqual(claim["subject_type"], "AgriculturalPractice")
 
@@ -141,7 +125,6 @@ class SemanticValidationTests(unittest.TestCase):
                           relation="has_trait", object="farmer participatory", object_type="AgriculturalPractice")
         result = validate_claim_semantics(claim, ResponseSequenceClient([
             type_response("AgriculturalPractice", "AgriculturalPractice"),
-            relation_response(),
         ]))
 
         self.assertEqual(result["decision"], "rejected")
@@ -154,7 +137,6 @@ class SemanticValidationTests(unittest.TestCase):
                           object="Conventional crops", object_type="Crop", qualifiers={})
         result = validate_claim_semantics(claim, ResponseSequenceClient([
             type_response("Crop", "Crop"),
-            relation_response(suggested_relation="lower_than"),
         ]))
 
         self.assertEqual(result["decision"], "rejected")

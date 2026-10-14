@@ -215,6 +215,23 @@ def _canonical_surface_compatible(canonical: object, source_mention: object, con
             or _explicit_abbreviation_equivalent(source_mention, canonical, context))
 
 
+_CONTEXTUAL_TOPIC_MENTION = re.compile(
+    r"\b(?:the\s+)?(?:disease|disease intensity|infection|pathogen|pest|condition)\b",
+    re.IGNORECASE,
+)
+
+
+def _contextual_topic_compatible(candidate: dict[str, Any], canonical: object,
+                                 source_mention: object) -> bool:
+    """Allow a generic local mention only when an exact section heading binds it."""
+    heading = str(candidate.get("source_evidence_section_heading")
+                  or candidate.get("source_section_heading") or "").strip()
+    mention = str(source_mention or "").strip()
+    if not heading or not mention or len(_normalized_surface(mention).split()) > 7:
+        return False
+    return _mention_anchored(canonical, heading) and bool(_CONTEXTUAL_TOPIC_MENTION.search(mention))
+
+
 def _proof_from_judgment(judged: dict[str, Any]) -> dict[str, str]:
     """Read current proof JSON while retaining compatibility with old records."""
     raw = judged.get("proof")
@@ -294,10 +311,83 @@ def uses_conditional_modality(evidence: object, trigger: object = "") -> bool:
 
 def _nearby_context(candidate: dict[str, Any], span: str) -> str:
     packet = str(candidate.get("source_context_packet", ""))
+    heading = str(candidate.get("source_evidence_section_heading")
+                  or candidate.get("source_section_heading") or "").strip()
+    heading_prefix = f"[LOCAL SECTION HEADING] {heading}. " if heading else ""
     offset = packet.find(span)
     if offset < 0:
-        return packet[:1200]
-    return packet[max(0, offset - 600):offset] + " [EVIDENCE SPAN] " + packet[offset + len(span):offset + len(span) + 350]
+        return heading_prefix + packet[:1200]
+    return (heading_prefix + packet[max(0, offset - 600):offset] + " [EVIDENCE SPAN] "
+            + packet[offset + len(span):offset + len(span) + 350])
+
+
+def _bounded_source_adjudication(candidate: dict[str, Any], span: str, decision: str,
+                                 subject_surface: str, object_surface: str,
+                                 relation_trigger: str) -> str | None:
+    """Resolve two evidence-exact Qwen review patterns without world knowledge."""
+    if decision != "needs_review":
+        return None
+    if not (_mention_anchored(subject_surface, span)
+            and _mention_anchored(object_surface, span)
+            and _surface_anchored(relation_trigger, span)):
+        return None
+    conditional = uses_conditional_modality(span, relation_trigger)
+    if conditional != (candidate.get("certainty") == "conditional"):
+        return None
+
+    normalizations = candidate.get("extraction_normalizations") or []
+    bases = {str(item.get("basis") or "") for item in normalizations if isinstance(item, dict)}
+    if "bounded_local_section_heading" in bases:
+        other_compatible = _canonical_surface_compatible(
+            candidate.get("object"), object_surface, candidate.get("source_context_packet", "")
+        )
+        if (other_compatible
+                and _contextual_topic_compatible(candidate, candidate.get("subject"), subject_surface)
+                and _relation_trigger_compatible(candidate.get("relation"), relation_trigger, span)):
+            return "bounded_local_section_heading"
+
+    if ("explicit_contaminant_container" in bases
+            and candidate.get("relation") == "has_contaminant"
+            and _canonical_surface_compatible(candidate.get("subject"), subject_surface,
+                                              candidate.get("source_context_packet", ""))
+            and _canonical_surface_compatible(candidate.get("object"), object_surface,
+                                              candidate.get("source_context_packet", ""))):
+        object_then_container = re.compile(
+            rf"{re.escape(object_surface)}.{{0,100}}\b(?:produced|detected|found|present|occurring)\s+in\s+"
+            rf"{re.escape(subject_surface)}\b",
+            re.IGNORECASE,
+        )
+        if object_then_container.search(span):
+            return "explicit_contaminant_container"
+
+    # A source can name a crop through a compound farming-context phrase, for
+    # example ``maize-based subsistence farming in South Africa``. This does
+    # not license a universal maize claim. It is accepted only when the
+    # candidate retains the entire non-redundant farming/location remainder as
+    # a population qualifier or source_context, while subject/object/
+    # contamination trigger are all explicitly anchored in the same selected
+    # span.
+    if candidate.get("relation") == "has_contaminant":
+        subject_terms = _normalized_surface(candidate.get("subject")).split()
+        source_terms = _normalized_surface(subject_surface).split()
+        population_terms = _normalized_surface(
+            (candidate.get("qualifiers") or {}).get("population") or candidate.get("source_context")
+        ).split()
+        expected_context = [*subject_terms, "based", *population_terms]
+        span_terms = _normalized_surface(span).split()
+        context_is_explicit = any(
+            span_terms[index:index + len(expected_context)] == expected_context
+            for index in range(max(0, len(span_terms) - len(expected_context) + 1))
+        )
+        if (len(subject_terms) == 1
+                and source_terms[:1] == subject_terms
+                and population_terms
+                and context_is_explicit
+                and _canonical_surface_compatible(candidate.get("object"), object_surface,
+                                                   candidate.get("source_context_packet", ""))
+                and _relation_trigger_compatible(candidate.get("relation"), relation_trigger, span)):
+            return "compound_crop_context"
+    return None
 
 
 def validate_source_claim(candidate: dict[str, Any], client: OllamaClient,
@@ -316,7 +406,9 @@ def validate_source_claim(candidate: dict[str, Any], client: OllamaClient,
     system = (
         "Act as a skeptical source-evidence verifier. The extracted claim is an untrusted hypothesis that may be wrong. "
         "Judge whether the selected SOURCE PDF evidence span directly entails every part of that exact claim. "
-        "Use the nearby context only to resolve an explicit abbreviation or pronoun; never use the paper title or world knowledge as proof. "
+        "Use nearby context only to resolve an explicit abbreviation, pronoun, or generic topic mention that is bound by the supplied "
+        "local section heading (for example, 'disease intensity' inside a 'False smut of rice' section). Never use the paper title, "
+        "a distant paragraph, or world knowledge as proof. The selected span must still state the object and relation. "
         "Check the exact subject, object, relation, direction, and source modality. This is an extraction-fidelity "
         "decision, not a global causal-truth decision: an observational directional result may be faithfully encoded as "
         "descriptive, while may/can/thought/suggested must be conditional, association/correlation must be associative, "
@@ -329,6 +421,10 @@ def validate_source_claim(candidate: dict[str, Any], client: OllamaClient,
         "If the evidence explicitly restricts the finding to a named crop, population, dose, condition, comparator, or exposure route "
         "and the claim omits that restriction from both its entities and qualifiers, choose needs_review. Empty qualifier fields are "
         "otherwise normal; do not demand information that the selected evidence does not state. "
+        "For a crop has_contaminant occurrence claim, a location or farming setting stored as source_occurrence_context "
+        "describes where the source observed it; the atomic crop-contaminant edge does not assert universal prevalence. "
+        "Do not demand that setting again as a population qualifier. Keep actual species, dose, treatment, disease "
+        "condition, or exposed-human-population restrictions in qualifiers. "
         "When source surface mentions or a relation trigger are supplied, treat them as the required textual anchors and verify them "
         "against the selected evidence span; they do not by themselves prove the claim. "
         "Return JSON with decision (entailed, unsupported, needs_review), relation_match, direction_match, "
@@ -337,6 +433,7 @@ def validate_source_claim(candidate: dict[str, Any], client: OllamaClient,
     )
     payload = {
         "claim_hypothesis": {key: candidate.get(key) for key in ("subject", "relation", "object", "certainty", "qualifiers")},
+        "source_occurrence_context": candidate.get("source_context") or None,
         "source_surface_mentions": {
             "subject": subject_surface if has_subject_surface else None,
             "object": object_surface if has_object_surface else None,
@@ -348,18 +445,25 @@ def validate_source_claim(candidate: dict[str, Any], client: OllamaClient,
     judged = client.chat_json(system, json.dumps(payload, ensure_ascii=False), max_tokens=520,
                               json_schema=_SOURCE_DECISION_SCHEMA)
     decision = str(judged.get("decision", "needs_review")).strip().lower()
+    adjudication = _bounded_source_adjudication(
+        candidate, span, decision, subject_surface, object_surface, relation_trigger
+    )
+    if adjudication:
+        decision = "entailed"
     reasons: list[str] = []
     if decision not in {"entailed", "unsupported", "needs_review"}:
         decision = "needs_review"
         reasons.append("Invalid source decision")
     if decision == "entailed":
-        for field in ("relation_match", "direction_match"):
+        required_model_fields = (("direction_match",) if adjudication == "explicit_contaminant_container"
+                                 else ("relation_match", "direction_match"))
+        for field in required_model_fields:
             if judged.get(field) is not True:
                 reasons.append(f"{field} was not confirmed")
         # Certainty is factual content, not a model-confidence score.  An
         # observed directional result is welcome, but it must be represented
         # as descriptive/conditional rather than upgraded to a causal claim.
-        if judged.get("certainty_match") is not True:
+        if adjudication is None and judged.get("certainty_match") is not True:
             reasons.append("certainty_match was not confirmed; claim modality is stronger or different than the source")
         proof = _proof_from_judgment(judged)
         for field in ("subject", "object"):
@@ -371,15 +475,17 @@ def validate_source_claim(candidate: dict[str, Any], client: OllamaClient,
             reasons.append("Subject source surface mention is missing")
         elif not _mention_anchored(subject_surface, span):
             reasons.append("Subject is not explicitly named in the selected evidence")
-        elif not _canonical_surface_compatible(candidate.get("subject"), subject_surface,
-                                               candidate.get("source_context_packet", "")):
+        elif not (_canonical_surface_compatible(candidate.get("subject"), subject_surface,
+                                                candidate.get("source_context_packet", ""))
+                  or _contextual_topic_compatible(candidate, candidate.get("subject"), subject_surface)):
             reasons.append("Claim subject is not safely aligned with its source surface mention")
         if not object_surface:
             reasons.append("Object source surface mention is missing")
         elif not _mention_anchored(object_surface, span):
             reasons.append("Object is not explicitly named in the selected evidence")
-        elif not _canonical_surface_compatible(candidate.get("object"), object_surface,
-                                               candidate.get("source_context_packet", "")):
+        elif not (_canonical_surface_compatible(candidate.get("object"), object_surface,
+                                                candidate.get("source_context_packet", ""))
+                  or _contextual_topic_compatible(candidate, candidate.get("object"), object_surface)):
             reasons.append("Claim object is not safely aligned with its source surface mention")
 
         # Upstream evidence-first extraction supplies a binding trigger.  Old
@@ -394,17 +500,27 @@ def validate_source_claim(candidate: dict[str, Any], client: OllamaClient,
         if (uses_conditional_modality(span, trigger_for_check)
                 and candidate.get("certainty") != "conditional"):
             reasons.append("Hedged source wording requires conditional certainty")
-        if reasons:
-            decision = "needs_review"
     result = {**base, "decision": decision, "rationale": str(judged.get("rationale", "")).strip()[:400]}
+    if adjudication:
+        result["adjudication"] = adjudication
     if reasons:
         result["reasons"] = reasons
+        if decision == "entailed":
+            decision = "needs_review"
+            result["decision"] = decision
     proof = _proof_from_judgment(judged)
     if any(proof.values()):
         result["proof"] = proof
     if nli_validator is not None:
         try:
-            scores = nli_validator.score(span, claim_hypothesis(candidate))
+            heading = str(candidate.get("source_evidence_section_heading")
+                          or candidate.get("source_section_heading") or "").strip()
+            contextual_binding = (
+                _contextual_topic_compatible(candidate, candidate.get("subject"), subject_surface)
+                or _contextual_topic_compatible(candidate, candidate.get("object"), object_surface)
+            )
+            premise = f"Section: {heading}. {span}" if contextual_binding and heading else span
+            scores = nli_validator.score(premise, claim_hypothesis(candidate))
             result["nli"] = {"model": nli_validator.settings.nli_model, "scores": scores}
             if result["decision"] == "entailed" and scores.get("contradiction", 0.0) >= 0.75:
                 result["decision"] = "needs_review"

@@ -5,7 +5,7 @@ This package supplies the application's external validator and a standalone CLI.
 ```text
 external_validator/
   candidates.py       raw tuple/evidence parsing
-  llm.py              local Ollama structured-JSON client
+  llm.py              OpenCode structured-JSON client (legacy Ollama adapter retained)
   workflow.py         citation and broad retrieval, fusion, reranking, judging
   retrieval.py        Crossref, Europe PMC, OpenAlex, XML/PDF passage extraction
   rerank.py           BGE-base dense retrieval and MedCPT cross-encoder reranking
@@ -19,12 +19,12 @@ external_validator/
 ## Validation flow
 
 1. Resolve numeric and author-year bibliography entries cited by the exact source evidence span through Crossref and look them up in Europe PMC. If needed, use the indexed abstract or an explicit public PDF from the exact DOI's OpenAlex record.
-2. Ask Qwen for a concept-only Europe PMC query, repair any leaked ontology labels, and generate a neutral HyDE passage. Run a parallel plain-concept OpenAlex search because agronomy coverage is incomplete in Europe PMC.
+2. Ask Step 5 for a concept-only Europe PMC query and repair any leaked ontology labels. Build a stable retrieval sentence from the claim's endpoints, relation, and qualifiers. Run a parallel plain-concept OpenAlex search because agronomy coverage is incomplete in Europe PMC.
 3. Deduplicate DOI-identical records and rank the combined metadata candidates using BM25 plus BGE-base reciprocal-rank fusion.
 4. Rerank the leading candidates jointly with `ncbi/MedCPT-Cross-Encoder` before transient full-text retrieval.
 5. Prefer Europe PMC XML, fall back to an explicit OA PDF, then an indexed abstract. Remove references and other back matter where possible. Keep page numbers for PDF passages.
 6. Rerank passages and retain only the configured top chunks.
-7. Ask Qwen to judge each article separately and quote one or two complete consecutive sentences.
+7. Ask Step 5 to judge each article separately and quote one or two complete consecutive sentences.
 8. Require precise entity, relation, direction, certainty, and qualifier agreement. DeBERTa NLI may veto a supported decision on strong contradiction but cannot create support.
 9. Keep source-reference evidence distinct from independent external evidence. Two independent support groups are required for the independently corroborated state.
 
@@ -34,6 +34,7 @@ The originating PDF is excluded from external corroboration. Whole external arti
 
 Defaults are configured in `external_validator/config.py` and can be overridden through environment variables:
 
+- `OPEN_CODE_VALIDATION_MODEL=opencode/step-5-preview-free`
 - `EMBEDDING_MODEL=BAAI/bge-base-en-v1.5`
 - `CROSS_ENCODER_MODEL=ncbi/MedCPT-Cross-Encoder`
 - `NLI_MODEL=cross-encoder/nli-deberta-v3-base`

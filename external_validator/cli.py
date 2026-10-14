@@ -1,4 +1,4 @@
-"""Commands for a clean, local-Qwen validation run."""
+"""Commands for an OpenCode Step 5 evidence-validation run."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 
 from .candidates import build_candidates
 from .config import RAG_DIR, Settings
-from .llm import OllamaClient
+from .llm import OpenCodeClient
 from .nli import NLIValidator
 from .rerank import SemanticReranker
 from .storage import read_jsonl, write_jsonl
@@ -38,15 +38,16 @@ def command_build_candidates(args: argparse.Namespace) -> int:
 
 def command_health_check(_: argparse.Namespace) -> int:
     settings = Settings()
-    models = OllamaClient(settings).health_check().get("models", [])
-    names = [model.get("name") for model in models]
-    print(json.dumps({"ollama_reachable": True, "configured_model": settings.model, "model_present": settings.model in names, "models": names}, indent=2))
-    return 0 if settings.model in names else 2
+    names = OpenCodeClient(settings).health_check().get("models", [])
+    present = settings.validation_model in names
+    print(json.dumps({"opencode_reachable": True, "configured_model": settings.validation_model,
+                      "model_present": present, "models": names}, indent=2))
+    return 0 if present else 2
 
 
 def _run(args: argparse.Namespace, validate: bool) -> int:
     settings = Settings()
-    client, reranker = OllamaClient(settings), SemanticReranker(settings)
+    client, reranker = OpenCodeClient(settings, settings.validation_model), SemanticReranker(settings)
     client.health_check()
     nli_validator = NLIValidator(settings) if validate and settings.enable_nli else None
     if nli_validator is not None:
@@ -86,12 +87,12 @@ def command_validate(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Qwen query translation + HyDE + hybrid retrieval + cross-encoder reranking + per-document entailment.")
+    parser = argparse.ArgumentParser(description="Step 5 query translation + hybrid retrieval + cross-encoder reranking + per-document entailment.")
     subparsers = parser.add_subparsers(dest="command", required=True)
     build = subparsers.add_parser("build-candidates", help="Read raw tuple files into candidate JSONL.")
     build.add_argument("--tuple-file", default="raw_triplets.txt")
     build.set_defaults(func=command_build_candidates)
-    health = subparsers.add_parser("health-check", help="Verify local Ollama and the configured Qwen model.")
+    health = subparsers.add_parser("health-check", help="Verify OpenCode and the configured Step 5 model.")
     health.set_defaults(func=command_health_check)
     for name, func, help_text in (("retrieve", command_retrieve, "Retrieve/rerank without judging."), ("validate", command_validate, "Run one-pass external validation.")):
         sub = subparsers.add_parser(name, help=help_text)

@@ -2,11 +2,22 @@ import unittest
 
 from external_validator.candidates import EVIDENCE_RE, parse_tuple_line
 from external_validator.decision import decision_errors, judge_document
-from external_validator.retrieval import extract_paragraphs, make_chunks
-from external_validator.workflow import _bm25_scores, originating_source_match, translate_query
+from external_validator.rerank import generate_hypothesis
+from external_validator.retrieval import europe_pmc_open_access_pdf, extract_paragraphs, is_open_access, make_chunks
+from external_validator.workflow import (_bm25_scores, _citation_reserved_order,
+                                         evidence_query_plan, originating_source_match,
+                                         metadata_evidence_coverage, translate_query)
 
 
 class ExternalValidationTests(unittest.TestCase):
+    def test_retrieval_sentence_uses_claim_and_required_context_without_an_llm(self):
+        sentence = generate_hypothesis({
+            "subject": "infected grains", "relation": "has_contaminant", "object": "mycotoxins",
+            "qualifiers": {"condition": "Fusarium head blight", "population": ""},
+        })
+        self.assertIn("infected grains has contaminant mycotoxins", sentence)
+        self.assertIn("condition: Fusarium head blight", sentence)
+
     def test_independent_nli_can_only_veto_supported_decision(self):
         class JudgeClient:
             def chat_json(self, *_args, **_kwargs):
@@ -106,6 +117,85 @@ class ExternalValidationTests(unittest.TestCase):
         }]}
         self.assertEqual(judge_document(JudgeClient(), candidate, document)["decision"], "supported")
 
+    def test_external_judge_accepts_a_named_ochratoxin_member_for_the_family_endpoint(self):
+        class JudgeClient:
+            def chat_json(inner_self, _system, user, **_kwargs):
+                self.assertNotIn("permitted_object_evidence_names", user)
+                return {
+                    "decision": "supported",
+                    "matches": {"subject": True, "object": True, "relation": True,
+                                "direction": True, "certainty": True},
+                    "evidence": [{
+                        "chunk_id": "external-ota:chunk-0", "sentence_numbers": [1],
+                        "subject_mention": "maize", "object_mention": "Ochratoxin A",
+                        "relation_trigger": "contamination", "stance": "supports",
+                    }],
+                    "rationale": "The named ochratoxin member was detected in maize.",
+                }
+
+        candidate = {"candidate_id": "c-ota", "subject": "maize", "relation": "has_contaminant",
+                     "object": "ochratoxins", "subject_type": "Crop", "object_type": "Contaminant",
+                     "certainty": "descriptive", "qualifiers": {}}
+        document = {"evidence_document_id": "external-ota", "evidence_chunks": [{
+            "chunk_id": "external-ota:chunk-0",
+            "text": "Ochratoxin A contamination was detected in maize samples from Romanian farms.",
+        }]}
+        self.assertEqual(judge_document(JudgeClient(), candidate, document)["decision"], "supported")
+
+    def test_external_judge_accepts_mycotoxin_increase_in_infected_grains(self):
+        class JudgeClient:
+            def chat_json(inner_self, _system, user, **_kwargs):
+                self.assertIn('"number": 1', user)
+                self.assertNotIn("Fusarium spp. accounted", user)
+                return {
+                    "decision": "supported",
+                    "matches": {"subject": True, "object": True, "relation": True,
+                                "direction": True, "certainty": True},
+                    "evidence": [{
+                        "chunk_id": "external-fhb:chunk-0", "sentence_numbers": [1],
+                        "subject_mention": "FHB-infected barley, wheat, rye, and triticale grains",
+                        "object_mention": "trichothecene mycotoxins",
+                        "relation_trigger": "large increases", "stance": "supports",
+                    }],
+                    "rationale": "The selected sentence explicitly reports mycotoxins in infected grains.",
+                }
+
+        candidate = {"candidate_id": "c-fhb", "subject": "infected grains",
+                     "relation": "has_contaminant", "object": "mycotoxins",
+                     "subject_type": "Crop", "object_type": "Contaminant",
+                     "certainty": "conditional", "qualifiers": {"condition": "Fusarium head blight"}}
+        document = {"evidence_document_id": "external-fhb", "evidence_chunks": [{
+            "chunk_id": "external-fhb:chunk-0",
+            "text": ("FHB-infected barley, wheat, rye, and triticale grains exhibited large increases in "
+                     "trichothecene mycotoxins following malting. Fusarium spp. accounted for most fungal hyphae."),
+        }]}
+        self.assertEqual(judge_document(JudgeClient(), candidate, document)["decision"], "supported")
+
+    def test_external_judge_requires_explicit_disease_condition(self):
+        class JudgeClient:
+            def chat_json(self, *_args, **_kwargs):
+                return {
+                    "decision": "supported",
+                    "matches": {"subject": True, "object": True, "relation": True,
+                                "direction": True, "certainty": True},
+                    "evidence": [{
+                        "chunk_id": "external-oat:chunk-0", "sentence_numbers": [1],
+                        "subject_mention": "infected grains", "object_mention": "mycotoxins",
+                        "relation_trigger": "produce", "stance": "supports",
+                    }],
+                    "rationale": "General infected-grain evidence.",
+                }
+
+        candidate = {"candidate_id": "c-condition", "subject": "infected grains",
+                     "relation": "has_contaminant", "object": "mycotoxins",
+                     "subject_type": "Crop", "object_type": "Contaminant",
+                     "certainty": "conditional", "qualifiers": {"condition": "Fusarium head blight"}}
+        document = {"evidence_document_id": "external-oat", "evidence_chunks": [{
+            "chunk_id": "external-oat:chunk-0",
+            "text": "Once the infected grains produce mycotoxins, their food safety requires monitoring.",
+        }]}
+        self.assertEqual(judge_document(JudgeClient(), candidate, document)["decision"], "needs_review")
+
     def test_external_judge_requires_a_causal_cue_for_deficiency_causes(self):
         class JudgeClient:
             def chat_json(self, *_args, **_kwargs):
@@ -142,6 +232,77 @@ class ExternalValidationTests(unittest.TestCase):
                      "source_paper_title": "Originating Paper Title"}
         result = translate_query(QueryClient(), candidate)
         self.assertNotIn("Originating Paper Title", result["query"])
+
+    def test_plant_disease_query_receives_a_disambiguating_type_hint(self):
+        class QueryClient:
+            def chat_json(self, *_args, **_kwargs):
+                return {"query": 'brown spot AND rice AND "grain quality"'}
+
+        candidate = {"subject": "brown spot", "relation": "affects", "object": "grain quality",
+                     "subject_type": "PlantDisease", "object_type": "PlantTrait", "qualifiers": {}}
+        result = translate_query(QueryClient(), candidate)
+        self.assertIn("disease OR infection", result["query"])
+        self.assertIn('"brown spot"', result["query"])
+        self.assertIn("disease_type_hint_added", result["query_strategy"])
+        self.assertIn("disease_phrase_quoted", result["query_strategy"])
+
+    def test_association_query_plan_adds_measurement_terms_without_rewriting_claim(self):
+        candidate = {"subject": "False smut", "relation": "associated_with",
+                     "object": "hybrid rice cultivation", "subject_type": "PlantDisease",
+                     "object_type": "AgriculturalPractice", "qualifiers": {}}
+        plan = evidence_query_plan(candidate, {"query": '("False smut" AND hybrid rice cultivation)'})
+        self.assertEqual(plan["europe_pmc"][0], '("False smut" AND hybrid rice cultivation)')
+        self.assertIn('"False smut" AND "hybrid rice"', plan["europe_pmc"][1])
+        self.assertIn("incidence", plan["europe_pmc"][1])
+        self.assertIn("severity", plan["openalex"][1])
+
+    def test_contaminant_query_plan_includes_generic_singular_form(self):
+        candidate = {"subject": "maize", "relation": "has_contaminant", "object": "ochratoxins",
+                     "subject_type": "Crop", "object_type": "Contaminant", "qualifiers": {}}
+        plan = evidence_query_plan(candidate, {"query": 'maize AND ochratoxins'})
+        self.assertIn('"ochratoxin"', plan["europe_pmc"][1])
+        self.assertIn("ochratoxin", plan["openalex"][1])
+
+    def test_metadata_coverage_accepts_vetted_toxin_member_for_family_endpoint(self):
+        candidate = {"subject": "maize", "relation": "has_contaminant", "object": "ochratoxins",
+                     "subject_type": "Crop", "object_type": "Contaminant", "qualifiers": {}}
+        exact_member = "Detection of Ochratoxin A in Maize"
+        self.assertGreaterEqual(metadata_evidence_coverage(candidate, exact_member, exact_member), 4)
+
+    def test_query_plan_keeps_explicit_disease_condition(self):
+        candidate = {"subject": "infected grains", "relation": "has_contaminant", "object": "mycotoxins",
+                     "subject_type": "Crop", "object_type": "Contaminant",
+                     "qualifiers": {"condition": "Fusarium head blight"}}
+        plan = evidence_query_plan(candidate, {"query": "infected grains AND mycotoxins"})
+        self.assertIn('"Fusarium head blight"', plan["europe_pmc"][1])
+        self.assertIn("Fusarium head blight", plan["openalex"][1])
+        self.assertEqual(plan["openalex"][0], "infected grains mycotoxins Fusarium head blight")
+
+    def test_metadata_coverage_prefers_exact_disease_material_study(self):
+        candidate = {"subject": "infected grains", "relation": "has_contaminant", "object": "mycotoxins",
+                     "qualifiers": {"condition": "Fusarium head blight"}}
+        exact = "Fusarium Head Blight–Infected Grains and Elevated Mycotoxin Production"
+        topical = "Review of fungal pathogens causing wheat head blight and mycotoxin accumulation"
+        self.assertGreater(metadata_evidence_coverage(candidate, exact),
+                           metadata_evidence_coverage(candidate, topical))
+
+    def test_metadata_coverage_gives_exact_title_priority_over_a_broad_review(self):
+        candidate = {"subject": "infected grains", "relation": "has_contaminant", "object": "mycotoxins",
+                     "qualifiers": {"condition": "Fusarium head blight"}}
+        exact_title = "Fusarium Head Blight-Infected Grains and Elevated Mycotoxin Production"
+        broad_title = "Fusarium Head Blight, Mycotoxins and Strategies for Their Reduction"
+        self.assertGreater(
+            metadata_evidence_coverage(candidate, exact_title, exact_title),
+            metadata_evidence_coverage(candidate, broad_title, broad_title),
+        )
+
+    def test_explicit_europe_pmc_oa_pdf_is_usable(self):
+        result = {"isOpenAccess": "N", "fullTextUrlList": {"fullTextUrl": [{
+            "availabilityCode": "OA", "documentStyle": "pdf",
+            "url": "https://example.org/article.pdf",
+        }]}}
+        self.assertEqual(europe_pmc_open_access_pdf(result), "https://example.org/article.pdf")
+        self.assertTrue(is_open_access(result))
 
     def test_originating_paper_is_excluded_by_identifier_or_conservative_title_variant(self):
         self.assertEqual(
@@ -197,6 +358,12 @@ class ExternalValidationTests(unittest.TestCase):
              "Amaranth is a climate-resilient crop requiring weed management."],
         )
         self.assertGreater(scores[0], scores[1])
+
+    def test_exact_source_citation_receives_a_reserved_evidence_slot(self):
+        broad = (0.9, ({"_retrieval_route": "broad_search", "id": "broad"}, [], ""))
+        cited = (0.1, ({"_retrieval_route": "source_citation", "id": "cited"}, [], ""))
+        ordered = _citation_reserved_order([broad, cited], 1)
+        self.assertEqual(ordered[0][1][0]["id"], "cited")
 
     def test_supported_decision_requires_a_stored_quote(self):
         packet = {"candidate": {"candidate_id": "c1", "subject": "Cadmium", "object": "kidney damage"}, "evidence_documents": [{"evidence_document_id": "external-1", "evidence_chunks": [{"chunk_id": "external-1:chunk-0", "text": "Cadmium exposure caused kidney damage in mice after treatment."}]}]}

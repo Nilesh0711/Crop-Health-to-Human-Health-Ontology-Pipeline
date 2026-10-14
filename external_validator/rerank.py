@@ -1,19 +1,10 @@
-"""HyDE, dense retrieval, and true cross-encoder reranking."""
+"""Dense retrieval and cross-encoder reranking."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from .config import Settings
-from .llm import OllamaClient
-
-
-_HYPOTHESIS_SCHEMA = {
-    "type": "object",
-    "properties": {"hypothesis": {"type": "string"}},
-    "required": ["hypothesis"],
-    "additionalProperties": False,
-}
 
 
 class SemanticReranker:
@@ -146,13 +137,16 @@ class SemanticReranker:
         return selected
 
 
-def generate_hypothesis(client: OllamaClient, candidate: dict[str, Any]) -> str:
-    system = "You write one neutral, hypothetical scientific conclusion for semantic retrieval. Do not assert that the claim is true. Output JSON only."
-    user = ("Create one single-sentence academic passage that would directly discuss this claim. "
-            f"Claim: <{candidate['subject']}, {candidate['relation']}, {candidate['object']}>. "
-            "Return {\"hypothesis\": \"...\"}.")
-    response = client.chat_json(system, user, max_tokens=96, json_schema=_HYPOTHESIS_SCHEMA)
-    hypothesis = str(response.get("hypothesis", "")).strip()
-    if not hypothesis:
-        raise RuntimeError("Qwen did not return a HyDE hypothesis")
-    return hypothesis
+def generate_hypothesis(candidate: dict[str, Any]) -> str:
+    """Build a stable retrieval sentence from the claim itself.
+
+    The prior model-generated HyDE passage cost a provider request per claim
+    and could add unverified concepts. The bi-encoder and cross-encoder only
+    need the fixed endpoints, relation, and nonempty restrictions.
+    """
+    qualifiers = "; ".join(f"{key.replace('_', ' ')}: {value}" for key, value in
+                           (candidate.get("qualifiers") or {}).items() if value)
+    claim = (f"{candidate.get('subject', '')} "
+             f"{str(candidate.get('relation') or '').replace('_', ' ')} "
+             f"{candidate.get('object', '')}.")
+    return f"{claim} {qualifiers}".strip()

@@ -2,7 +2,10 @@ import unittest
 from types import SimpleNamespace
 
 from backend.ontology_schema import schema_error
-from backend.pipeline import citation_numbers, page_sentences
+from backend.pipeline import (author_year_citation_keys, citation_numbers, extraction_anchor_error,
+                              normalize_contextual_disease_entity,
+                              normalize_contaminant_container_claim,
+                              normalize_extraction_qualifiers, page_sentences)
 from backend.source_validation import validate_source_claim
 
 
@@ -19,6 +22,73 @@ class SourceValidationTests(unittest.TestCase):
     def test_bullets_remain_separate_evidence_units(self):
         self.assertEqual(page_sentences("Microbes improve soil. • Cadmium accumulates in rice. • Exposure harms people."),
                          ["Microbes improve soil.", "Cadmium accumulates in rice.", "Exposure harms people."])
+
+    def test_author_year_citation_does_not_split_at_et_al(self):
+        text = ("The rate decreased as infected grains increased (Ding et al. 1997). "
+                "Disease intensity was associated with hybrid cultivation (Lu et al. 2009).")
+        self.assertEqual(page_sentences(text), [
+            "The rate decreased as infected grains increased (Ding et al. 1997).",
+            "Disease intensity was associated with hybrid cultivation (Lu et al. 2009).",
+        ])
+
+    def test_author_year_keys_cover_comma_free_and_parenthetical_citations(self):
+        text = ("Produced in infected grains (Parry et al. 1995; Xu and Nicholson 2009; Savary 2014). "
+                "The rate changed (Ding et al. 1997), as also reported by Reddy et al. (2011).")
+        self.assertEqual(author_year_citation_keys(text), [
+            "ding|1997", "parry|1995", "reddy|2011", "savary|2014", "xu|2009",
+        ])
+
+    def test_author_year_key_allows_missing_space_after_et_al(self):
+        self.assertEqual(author_year_citation_keys("Brown spot (Barnwal et al.2013) affects quality."),
+                         ["barnwal|2013"])
+
+    def test_generic_disease_intensity_is_canonicalized_from_local_heading(self):
+        claim = {"subject": "increased disease intensity", "subject_type": "SoilCondition"}
+        change = normalize_contextual_disease_entity(claim, "False smut of rice: Asia, today")
+        self.assertEqual(claim["subject"], "False smut")
+        self.assertEqual(claim["subject_type"], "PlantDisease")
+        self.assertEqual(change["basis"], "bounded_local_section_heading")
+
+    def test_concrete_infected_grains_are_not_replaced_by_heading(self):
+        claim = {"subject": "infected grains", "subject_type": "Crop"}
+        self.assertIsNone(normalize_contextual_disease_entity(claim, "False smut of rice: Asia, today"))
+        self.assertEqual(claim["subject"], "infected grains")
+
+    def test_disease_contaminant_claim_uses_explicit_infected_grain_container(self):
+        claim = {
+            "subject": "Fusarium head blight", "subject_type": "PlantDisease",
+            "relation": "has_contaminant", "object": "mycotoxins", "object_type": "Contaminant",
+            "qualifiers": {"crop_or_species": "infected grains", "condition": ""},
+        }
+        change = normalize_contaminant_container_claim(
+            claim,
+            "FHB is a concern because mycotoxins may be produced in infected grains.",
+            "Fusarium head blight of wheat, Great Plains of North America",
+        )
+        self.assertEqual(claim["subject"], "infected grains")
+        self.assertEqual(claim["subject_type"], "Crop")
+        self.assertEqual(claim["qualifiers"]["crop_or_species"], "")
+        self.assertEqual(claim["qualifiers"]["condition"], "Fusarium head blight")
+        self.assertEqual(change["source_mention"], "infected grains")
+
+    def test_disease_contaminant_claim_clears_redundant_grain_qualifier(self):
+        claim = {
+            "subject": "Fusarium head blight", "subject_type": "PlantDisease",
+            "relation": "has_contaminant", "object": "mycotoxins", "object_type": "Contaminant",
+            "qualifiers": {"crop_or_species": "grains", "condition": ""},
+        }
+        normalize_contaminant_container_claim(
+            claim, "Mycotoxins may be produced in infected grains.", "Fusarium head blight of wheat"
+        )
+        self.assertEqual(claim["qualifiers"]["crop_or_species"], "")
+
+    def test_entity_anchor_cannot_copy_the_relation_or_both_endpoints(self):
+        self.assertEqual(
+            extraction_anchor_error("Increased disease intensity is associated with hybrid rice cultivation",
+                                    "Increased disease intensity is associated with hybrid rice cultivation",
+                                    "associated with"),
+            "identical_subject_and_object_anchors",
+        )
 
     def test_controlled_vocabulary_accepts_known_labels(self):
         claim = {"subject_type": "AgriculturalPractice", "relation": "increases", "object_type": "Contaminant"}
@@ -51,6 +121,156 @@ class SourceValidationTests(unittest.TestCase):
                     "subject_quote": "These aggregates", "relation_quote": "improve", "object_quote": "nutrient transport"}
         result = validate_source_claim(claim, FakeClient(response))
         self.assertEqual(result["decision"], "needs_review")
+
+    def test_local_section_heading_can_bind_generic_disease_mention(self):
+        span = "Increased disease intensity is associated with hybrid rice cultivation."
+        claim = {
+            "candidate_id": "c-heading",
+            "subject": "False smut",
+            "subject_source_mention": "Increased disease intensity",
+            "relation": "associated_with",
+            "relation_trigger": "associated with",
+            "object": "hybrid rice cultivation",
+            "object_source_mention": "hybrid rice cultivation",
+            "source_evidence_span": span,
+            "source_evidence_sentence_numbers": [1],
+            "source_evidence_section_heading": "False smut of rice: Asia, today",
+            "source_context_packet": "False smut of rice: Asia, today. " + span,
+            "certainty": "associative",
+            "qualifiers": {"crop_or_species": "rice"},
+        }
+        response = {
+            "decision": "entailed",
+            "relation_match": True,
+            "direction_match": True,
+            "certainty_match": True,
+            "proof": {"subject": "Increased disease intensity", "relation": "associated with",
+                      "object": "hybrid rice cultivation"},
+            "rationale": "The local section binds disease intensity to false smut.",
+        }
+        self.assertEqual(validate_source_claim(claim, FakeClient(response))["decision"], "entailed")
+
+    def test_bounded_heading_can_resolve_model_review_without_world_knowledge(self):
+        span = "Increased disease intensity is associated with hybrid rice cultivation."
+        claim = {
+            "candidate_id": "c-heading-review", "subject": "False smut",
+            "subject_source_mention": "Increased disease intensity", "relation": "associated_with",
+            "relation_trigger": "is associated with", "object": "hybrid rice cultivation",
+            "object_source_mention": "hybrid rice cultivation", "source_evidence_span": span,
+            "source_evidence_sentence_numbers": [1],
+            "source_evidence_section_heading": "False smut of rice: Asia, today",
+            "source_context_packet": span, "certainty": "associative", "qualifiers": {},
+            "extraction_normalizations": [{"basis": "bounded_local_section_heading"}],
+        }
+        response = {
+            "decision": "needs_review", "relation_match": True, "direction_match": True,
+            "certainty_match": True,
+            "proof": {"subject": "Increased disease intensity", "relation": "is associated with",
+                      "object": "hybrid rice cultivation"},
+            "rationale": "The heading is needed to resolve the disease name.",
+        }
+        result = validate_source_claim(claim, FakeClient(response))
+        self.assertEqual(result["decision"], "entailed")
+        self.assertEqual(result["adjudication"], "bounded_local_section_heading")
+
+    def test_explicit_contaminant_container_can_resolve_model_review(self):
+        span = "Mycotoxins may be produced in infected grains."
+        claim = {
+            "candidate_id": "c-container-review", "subject": "infected grains",
+            "subject_source_mention": "infected grains", "relation": "has_contaminant",
+            "relation_trigger": "may be produced", "object": "mycotoxins",
+            "object_source_mention": "Mycotoxins", "source_evidence_span": span,
+            "source_evidence_sentence_numbers": [1], "source_context_packet": span,
+            "certainty": "conditional", "qualifiers": {"condition": "Fusarium head blight"},
+            "extraction_normalizations": [{"basis": "explicit_contaminant_container"}],
+        }
+        response = {
+            "decision": "needs_review", "relation_match": False, "direction_match": True,
+            "certainty_match": False,
+            "proof": {"subject": "infected grains", "relation": "may be produced",
+                      "object": "Mycotoxins"},
+            "rationale": "The composition relation uses normalized ontology wording.",
+        }
+        result = validate_source_claim(claim, FakeClient(response))
+        self.assertEqual(result["decision"], "entailed")
+        self.assertEqual(result["adjudication"], "explicit_contaminant_container")
+
+    def test_compound_crop_context_preserves_population_restriction(self):
+        span = ("The crop health state of maize-based subsistence farming in South Africa is due to "
+                "the accumulation of fumonisins.")
+        claim = {
+            "candidate_id": "c-maize-context", "subject": "maize",
+            "subject_source_mention": "maize-based subsistence farming in South Africa",
+            "relation": "has_contaminant", "relation_trigger": "accumulation of",
+            "object": "fumonisins", "object_source_mention": "fumonisins",
+            "source_evidence_span": span, "source_evidence_sentence_numbers": [1],
+            "source_context_packet": span, "certainty": "descriptive",
+            "qualifiers": {"population": "subsistence farming in South Africa"},
+        }
+        response = {
+            "decision": "needs_review", "relation_match": True, "direction_match": True,
+            "certainty_match": True,
+            "proof": {"subject": "maize-based subsistence farming in South Africa",
+                      "relation": "accumulation of", "object": "fumonisins"},
+            "rationale": "The source uses a compound farming-context phrase.",
+        }
+        result = validate_source_claim(claim, FakeClient(response))
+        self.assertEqual(result["decision"], "entailed")
+        self.assertEqual(result["adjudication"], "compound_crop_context")
+
+    def test_compound_crop_context_is_recorded_when_extractor_omits_optional_population(self):
+        span = ("Maize-based subsistence farming in South Africa is affected by "
+                "the accumulation of fumonisins in food grains.")
+        claim = {
+            "candidate_id": "c-context-omitted", "subject": "Maize", "subject_type": "Crop",
+            "subject_source_mention": "Maize-based subsistence farming",
+            "relation": "has_contaminant", "relation_trigger": "accumulation of",
+            "object": "fumonisins", "object_source_mention": "fumonisins",
+            "source_evidence_span": span, "source_evidence_sentence_numbers": [1],
+            "source_context_packet": span, "certainty": "descriptive", "qualifiers": {"population": ""},
+        }
+        normalize_extraction_qualifiers(claim, claim["subject_source_mention"], span)
+        self.assertEqual(claim["source_context"], "subsistence farming in South Africa")
+        response = {
+            "decision": "needs_review", "relation_match": True, "direction_match": True,
+            "certainty_match": True,
+            "proof": {"subject": "Maize-based subsistence farming", "relation": "accumulation of",
+                      "object": "fumonisins"},
+            "rationale": "The surrounding farming setting is regional.",
+        }
+        result = validate_source_claim(claim, FakeClient(response))
+        self.assertEqual(result["decision"], "entailed")
+        self.assertEqual(result["adjudication"], "compound_crop_context")
+
+    def test_heading_cannot_replace_infected_grains_endpoint_with_disease(self):
+        span = "The rate of milled rice decreases as the number of infected grains increases."
+        claim = {
+            "candidate_id": "c-collapsed-heading",
+            "subject": "False smut",
+            "subject_source_mention": "infected grains",
+            "relation": "reduces",
+            "relation_trigger": "decreases as",
+            "object": "rate of milled rice",
+            "object_source_mention": "rate of milled rice",
+            "source_evidence_span": span,
+            "source_evidence_sentence_numbers": [1],
+            "source_evidence_section_heading": "False smut of rice: Asia, today",
+            "source_context_packet": "False smut of rice: Asia, today. " + span,
+            "certainty": "descriptive",
+            "qualifiers": {"crop_or_species": "rice"},
+        }
+        response = {
+            "decision": "entailed",
+            "relation_match": True,
+            "direction_match": True,
+            "certainty_match": True,
+            "proof": {"subject": "infected grains", "relation": "decreases as",
+                      "object": "rate of milled rice"},
+            "rationale": "The heading names the disease.",
+        }
+        result = validate_source_claim(claim, FakeClient(response))
+        self.assertEqual(result["decision"], "needs_review")
+        self.assertIn("Claim subject is not safely aligned with its source surface mention", result["reasons"])
 
     def test_association_does_not_entail_reduction(self):
         span = "Phenolic content in vegetables is associated with lower cardiovascular risk."
@@ -100,7 +320,7 @@ class SourceValidationTests(unittest.TestCase):
                     "rationale": "The source phrase is explicit."}
         result = validate_source_claim(claim, FakeClient(response))
         self.assertEqual(result["decision"], "needs_review")
-        self.assertIn("Claim subject is not safely aligned with its source surface mention", result["reasons"])
+        self.assertIn("Claim subject is not safely aligned with its source surface mention", result.get("reasons", []))
 
     def test_explicitly_defined_abbreviation_can_align_canonical_and_source_terms(self):
         span = "Soil organic carbon increased phosphorus uptake in rice."

@@ -6,14 +6,13 @@ import json
 import re
 import unicodedata
 from collections import Counter
-from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable
 
 from pypdf import PdfReader
 
 from external_validator.config import ONTOLOGY_DIR, PROJECT_ROOT, SCHEMA_VERSION, Settings
-from external_validator.llm import OllamaClient
+from external_validator.llm import OpenCodeClient
 from external_validator.nli import NLIValidator
 from external_validator.rerank import SemanticReranker
 from external_validator.storage import file_hash, stable_hash, utc_now, write_jsonl
@@ -35,6 +34,11 @@ SPACE_RE = re.compile(r"\s+")
 DOI_RE = re.compile(r"\b10\.\d{4,9}/[-._;()/:A-Z0-9]+", re.IGNORECASE)
 PMCID_RE = re.compile(r"\bPMC\d{4,}\b", re.IGNORECASE)
 PMID_RE = re.compile(r"\bPMID\s*[:=]?\s*(\d{5,10})\b", re.IGNORECASE)
+SENTENCE_PERIOD_MARKER = "<DOT>"
+SCHOLARLY_ABBREVIATION_RE = re.compile(
+    r"\b(?:et\s+al|e\.g|i\.e|fig|figs|eq|eqs|ref|refs|vs|dr|prof|no)\.",
+    re.IGNORECASE,
+)
 SENTENCE_BOUNDARY_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'“(\[])")
 SECTION_HEADING_RE = re.compile(
     r"^\s*(?P<number>\d{1,2}(?:\.\d+)*)(?P<terminal_dot>\.)?\s+(?P<title>[A-Z][A-Za-z0-9 ,:;()/-]{2,140})\s*$"
@@ -42,6 +46,10 @@ SECTION_HEADING_RE = re.compile(
 JOURNAL_HEADER_RE = re.compile(r"^\s*Agronomy\s+\d{4},\s+\d+.*?(?:of\s+\d+)?\s*$", re.IGNORECASE)
 REFERENCE_HEADING_RE = re.compile(
     r"^\s*(?:\d+(?:\.\d+)*\.?\s+)?(?:references|bibliography)\b", re.IGNORECASE | re.MULTILINE
+)
+REFERENCE_SECTION_HEADING_RE = re.compile(
+    r"^\s*(?:\d+(?:\.\d+)*\.?\s+)?(?:references|bibliography)\s*$",
+    re.IGNORECASE | re.MULTILINE,
 )
 REFERENCE_ENTRY_RE = re.compile(r"(?m)^\s*(?P<number>\d{1,3})\.\s+(?P<text>.+?)(?=^\s*\d{1,3}\.\s+|\Z)", re.DOTALL)
 CITATION_GROUP_RE = re.compile(
@@ -51,12 +59,29 @@ AUTHOR_YEAR_REFERENCE_RE = re.compile(
     r"(?m)^\s*(?P<author>[^\W\d_][^,\n]{0,80}),\s+[^\n]{0,220}?\b(?P<year>(?:19|20)\d{2}[a-z]?)\.\s*",
     re.UNICODE,
 )
+APA_AUTHOR_YEAR_REFERENCE_RE = re.compile(
+    r"^\s*(?P<author>[^\W\d_][\w'\u2019 -]{1,70}),\s+(?=[A-Z]\s*\.)"
+    r".{0,600}?\(\s*(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)\.",
+    re.MULTILINE | re.DOTALL | re.UNICODE,
+)
 AUTHOR_YEAR_CITATION_RE = re.compile(
     r"\b(?P<author>[^\W\d_][\w'\u2019-]{1,70})"
     r"(?:\s+et\s+al\.|\s+(?:and|&)\s+[^\W\d_][\w'\u2019-]{1,70})?"
     r"(?:\s*,\s*|\s*\(\s*)(?P<year>(?:19|20)\d{2}[a-z]?)\s*\)?",
     re.IGNORECASE | re.UNICODE,
 )
+BARE_AUTHOR_YEAR_CITATION_RE = re.compile(
+    r"\b(?P<author>[A-Z][A-Za-z'\u2019-]{1,70})"
+    r"(?:\s+et\s+al\.\s*|\s+(?:and|&)\s+[A-Z][A-Za-z'\u2019-]{1,70}\s+)"
+    r"(?P<year>(?:19|20)\d{2}[a-z]?)\b",
+    re.UNICODE,
+)
+PARENTHETICAL_SINGLE_AUTHOR_YEAR_RE = re.compile(
+    r"(?:^|;)\s*(?P<author>[A-Z][A-Za-z'\u2019-]{1,70})\s+"
+    r"(?P<year>(?:19|20)\d{2}[a-z]?)\s*(?=;|$)",
+    re.UNICODE,
+)
+PARENTHETICAL_BLOCK_RE = re.compile(r"\((?P<content>[^()]*(?:19|20)\d{2}[^()]*)\)")
 UNDOTTED_SECTION_STEMS = {
     "abstract", "introduction", "background", "methods", "methodology", "materials", "experimental",
     "results", "findings", "discussion", "conclusion", "conclusions", "summary", "review",
@@ -68,8 +93,11 @@ HEADING_TRAILING_FRAGMENTS = {
 HEADING_INITIAL_LIST_VERBS = {
     "analyse", "analyze", "assess", "compare", "consider", "describe", "determine", "evaluate", "examine", "identify", "investigate", "measure", "provide", "show", "use",
 }
-EXTRACTION_PACKET_TARGET_WORDS = 2000
-EXTRACTION_PACKET_OVERLAP_WORDS = 250
+# LongCat is remotely hosted and can receive substantially richer source
+# context than a local 8B model. Keep the packet below a conservative
+# ~8k-token prompt budget after instructions and priority evidence are added.
+EXTRACTION_PACKET_TARGET_WORDS = 4000
+EXTRACTION_PACKET_OVERLAP_WORDS = 500
 EXTRACTION_MAX_CLAIMS_PER_PACKET = 4
 EXTRACTION_OUTPUT_TOKENS = 1800
 ESTIMATED_TOKENS_PER_WORD = 1.4
@@ -136,7 +164,7 @@ GENERIC_ENDPOINTS = {
     "abundance", "benefits", "crop composition", "crop quality", "food security", "health effects",
     "health impacts", "negative health effects", "negative health impacts", "nutritional quality",
     "safety parameters", "yield gap", "yield", "pest and disease", "need to produce crop calories protein",
-    "production", "stockpiles", "economic accessibility", "stability of supply", "food availability",
+    "production", "crop performance", "crop performances", "stockpiles", "economic accessibility", "stability of supply", "food availability",
     "food access", "uses of the grain", "negative environmental impacts of agricultural production",
 }
 
@@ -224,6 +252,105 @@ def extraction_shape_error(candidate: dict[str, Any], evidence_span: str) -> str
     return None
 
 
+def extraction_anchor_error(subject_mention: str, object_mention: str, relation_trigger: str) -> str | None:
+    """Reject predicate-sized strings masquerading as entity anchors."""
+    subject = normalized(subject_mention)
+    obj = normalized(object_mention)
+    trigger = normalized(relation_trigger)
+    if not subject or not obj or not trigger:
+        return "missing_source_anchor"
+    if subject == obj:
+        return "identical_subject_and_object_anchors"
+    trigger_pattern = rf"(?<!\w){re.escape(trigger)}(?!\w)"
+    if re.search(trigger_pattern, subject) or re.search(trigger_pattern, obj):
+        return "entity_anchor_contains_relation_trigger"
+    return None
+
+
+_GENERIC_DISEASE_ENTITY_RE = re.compile(
+    r"^(?:increased|decreased|high|low|greater|reduced)?\s*"
+    r"(?:disease|infection)\s+(?:intensity|incidence|severity|level|levels|rate|rates)$",
+    re.IGNORECASE,
+)
+
+
+def contextual_disease_label(section_heading: str) -> str | None:
+    """Return a named disease from a conservative local topic heading."""
+    heading = SPACE_RE.sub(" ", str(section_heading or "")).strip()
+    if not heading or not re.search(
+            r"\b(?:blights?|rusts?|smut|brown spot|mildew|rot|wilt|scab)\b", heading, re.IGNORECASE):
+        return None
+    label = re.split(r"[:,]", heading, maxsplit=1)[0].strip()
+    label = re.sub(
+        r"\s+of\s+(?:rice|wheat|maize|corn|barley|oats?|rye|potato|coffee)(?:\s+.*)?$",
+        "", label, flags=re.IGNORECASE,
+    ).strip()
+    return label if 1 < len(label.split()) <= 8 else None
+
+
+def normalize_contextual_disease_entity(candidate: dict[str, Any], section_heading: str) -> dict[str, str] | None:
+    """Replace only a generic disease-intensity label with its exact section topic.
+
+    The source surface mention remains unchanged and source validation must
+    still prove the bounded heading-to-mention binding. This normalization is
+    useful for retrieval: external papers discuss ``false smut``, not the
+    context-free string ``increased disease intensity``.
+    """
+    subject = str(candidate.get("subject") or "").strip()
+    if not _GENERIC_DISEASE_ENTITY_RE.fullmatch(subject):
+        return None
+    disease = contextual_disease_label(section_heading)
+    if not disease:
+        return None
+    candidate["subject"] = disease
+    candidate["subject_type"] = "PlantDisease"
+    return {"field": "subject", "original": subject, "normalized": disease,
+            "basis": "bounded_local_section_heading"}
+
+
+_CONTAMINANT_CONTAINER_RE = re.compile(
+    r"\b(?:produced|detected|found|present|occurring)\s+in\s+"
+    r"(?P<container>(?:infected|contaminated)\s+(?:grains?|kernels?|seeds?))\b",
+    re.IGNORECASE,
+)
+
+
+def normalize_contaminant_container_claim(candidate: dict[str, Any], evidence_span: str,
+                                           section_heading: str) -> dict[str, str] | None:
+    """Repair a disease-as-container error only when the source names a container.
+
+    ``FHB ... mycotoxins may be produced in infected grains`` does not mean a
+    disease contains a toxin. The explicit crop material is the composition
+    subject, while the disease remains a provenance-bearing condition.
+    """
+    if not (candidate.get("relation") == "has_contaminant"
+            and candidate.get("subject_type") == "PlantDisease"
+            and candidate.get("object_type") == "Contaminant"):
+        return None
+    match = _CONTAMINANT_CONTAINER_RE.search(str(evidence_span or ""))
+    if not match:
+        return None
+    original_subject = str(candidate.get("subject") or "").strip()
+    container = match.group("container")
+    candidate["subject"] = container
+    candidate["subject_type"] = "Crop"
+    qualifiers = candidate.setdefault("qualifiers", {})
+    existing_crop = str(qualifiers.get("crop_or_species") or "").strip()
+    # ``grains`` is no additional restriction when the canonical composition
+    # subject is already ``infected grains``.
+    if existing_crop and normalized(existing_crop) in normalized(container):
+        qualifiers["crop_or_species"] = ""
+    if not str(qualifiers.get("condition") or "").strip():
+        qualifiers["condition"] = contextual_disease_label(section_heading) or original_subject
+    return {
+        "field": "subject",
+        "original": original_subject,
+        "normalized": container,
+        "source_mention": container,
+        "basis": "explicit_contaminant_container",
+    }
+
+
 def source_paper_title(pdf_path: Path) -> str:
     """Prefer embedded PDF metadata while retaining a stable filename fallback."""
     metadata = PdfReader(str(pdf_path)).metadata
@@ -288,9 +415,13 @@ def pdf_bibliography(pdf_path: Path) -> dict[int | str, dict[str, Any]]:
         text = "\n".join(pages)
     except Exception:
         return {}
-    match = REFERENCE_HEADING_RE.search(text)
-    if not match:
+    # Use an exact heading and prefer the last occurrence. A broad search for
+    # ``References ...`` can start inside article prose and make ordinary body
+    # lines look like bibliography entries.
+    heading_matches = list(REFERENCE_SECTION_HEADING_RE.finditer(text))
+    if not heading_matches:
         return {}
+    match = heading_matches[-1]
     reference_text = text[match.end():]
     entries: dict[int | str, dict[str, Any]] = {}
     for entry in REFERENCE_ENTRY_RE.finditer(reference_text):
@@ -309,7 +440,16 @@ def pdf_bibliography(pdf_path: Path) -> dict[int | str, dict[str, Any]]:
     # citations. Segment those entries from one detected first-author/year line
     # to the next and expose a stable key such as ``zhang|2022d``. The entry is
     # still only a retrieval lead; it cannot count as evidence by itself.
-    author_entries = list(AUTHOR_YEAR_REFERENCE_RE.finditer(reference_text))
+    # Support both ``Surname, ... 2022.`` and APA ``Surname, A. (2022).``
+    # layouts. Deduplicate matches that start at the same bibliography entry.
+    detected_entries = [*AUTHOR_YEAR_REFERENCE_RE.finditer(reference_text),
+                        *APA_AUTHOR_YEAR_REFERENCE_RE.finditer(reference_text)]
+    author_entries = []
+    seen_entry_starts: set[int] = set()
+    for entry in sorted(detected_entries, key=lambda item: item.start()):
+        if entry.start() not in seen_entry_starts:
+            author_entries.append(entry)
+            seen_entry_starts.add(entry.start())
     base_year_keys: dict[str, list[str]] = {}
     for index, entry in enumerate(author_entries):
         end = author_entries[index + 1].start() if index + 1 < len(author_entries) else len(reference_text)
@@ -358,7 +498,11 @@ def citation_numbers(text: str) -> list[int]:
 def author_year_citation_keys(text: str) -> list[str]:
     """Return stable first-author/year keys from local author-year citations."""
     keys: set[str] = set()
-    for match in AUTHOR_YEAR_CITATION_RE.finditer(str(text or "")):
+    value = str(text or "")
+    matches = [*AUTHOR_YEAR_CITATION_RE.finditer(value), *BARE_AUTHOR_YEAR_CITATION_RE.finditer(value)]
+    for block in PARENTHETICAL_BLOCK_RE.finditer(value):
+        matches.extend(PARENTHETICAL_SINGLE_AUTHOR_YEAR_RE.finditer(block.group("content")))
+    for match in matches:
         author = _citation_author_key(match.group("author"))
         year = match.group("year").casefold()
         if author:
@@ -378,7 +522,9 @@ def _qualifier_is_redundant(value: str, *entities: str) -> bool:
     return False
 
 
-def normalize_extraction_qualifiers(candidate: dict[str, Any]) -> list[dict[str, str]]:
+def normalize_extraction_qualifiers(candidate: dict[str, Any],
+                                    subject_source_mention: str = "",
+                                    evidence_span: str = "") -> list[dict[str, str]]:
     """Remove duplicated restrictions that would poison external matching.
 
     The extractor occasionally copied an AgriculturalPractice (for example,
@@ -386,7 +532,10 @@ def normalize_extraction_qualifiers(candidate: dict[str, Any]) -> list[dict[str,
     Such a value is not added knowledge and forces every external quote to
     repeat a malformed qualifier. Only exact/redundant values are cleared;
     genuine crop, population, comparator, metric, and condition constraints
-    remain untouched.
+    remain untouched. A geographic/farming occurrence context for an atomic
+    ``has_contaminant`` edge is source provenance, not a universal claim
+    qualifier: it is retained under ``source_context`` so literature from a
+    different region may corroborate the generic crop-contaminant relation.
     """
     qualifiers = candidate.get("qualifiers") or {}
     changes: list[dict[str, str]] = []
@@ -396,6 +545,32 @@ def normalize_extraction_qualifiers(candidate: dict[str, Any]) -> list[dict[str,
                                              str(candidate.get("object") or "")):
             qualifiers[field] = ""
             changes.append({"field": field, "removed_value": value, "reason": "duplicated_entity"})
+    population = str(qualifiers.get("population") or "").strip()
+    is_farming_site_context = bool(re.search(r"\b(?:farming|production|cultivation)\b", population, re.IGNORECASE)
+                                   and re.search(r"\b(?:in|from|at)\s+[A-Z]", population))
+    if candidate.get("relation") == "has_contaminant" and population and is_farming_site_context:
+        candidate["source_context"] = population
+        qualifiers["population"] = ""
+        changes.append({"field": "population", "moved_value": population,
+                        "reason": "geographic_farming_occurrence_context"})
+    # Extract a source setting even when the model left its optional qualifier
+    # blank. This applies to any crop-based farming/production phrase and
+    # preserves the location in provenance without changing the graph edge.
+    if candidate.get("relation") == "has_contaminant" and not candidate.get("source_context"):
+        crop = str(candidate.get("subject") or "").strip()
+        surface = str(subject_source_mention or candidate.get("subject_source_mention") or "").strip()
+        match = (re.match(rf"(?i)^{re.escape(crop)}[-\s]+based\s+(?P<setting>.+)$", surface)
+                 if crop else None)
+        if match and re.search(r"\b(?:farming|production|cultivation)\b", match.group("setting"), re.IGNORECASE):
+            setting = match.group("setting")
+            if evidence_span:
+                location = re.search(rf"{re.escape(surface)}\s+(in\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+){{0,3}})",
+                                     evidence_span)
+                if location:
+                    setting += " " + location.group(1)
+            candidate["source_context"] = setting
+            changes.append({"field": "source_context", "added_value": setting,
+                            "reason": "compound_crop_occurrence_context"})
     candidate["qualifiers"] = qualifiers
     return changes
 
@@ -436,11 +611,17 @@ def page_sentences(text: str) -> list[str]:
     # Keep list items separate: a PDF bullet list can contain several unrelated
     # findings while looking like one sentence after whitespace is collapsed.
     repaired = re.sub(r"(?<=\w)-\s*\n\s*(?=[a-z])", "", text)
+    repaired = SCHOLARLY_ABBREVIATION_RE.sub(
+        lambda match: match.group(0).replace(".", SENTENCE_PERIOD_MARKER), repaired
+    )
     sentences: list[str] = []
     for item in re.split(r"\s*[•●▪]\s*", repaired):
         compact = SPACE_RE.sub(" ", item).strip()
         if compact:
-            sentences.extend(sentence.strip() for sentence in SENTENCE_BOUNDARY_RE.split(compact) if sentence.strip())
+            sentences.extend(
+                sentence.replace(SENTENCE_PERIOD_MARKER, ".").strip()
+                for sentence in SENTENCE_BOUNDARY_RE.split(compact) if sentence.strip()
+            )
     return sentences
 
 
@@ -466,6 +647,28 @@ def _section_name(line: str) -> str | None:
     return None
 
 
+def _unnumbered_topic_heading(line: str, continuation: str = "") -> str | None:
+    """Recognize conservative disease/topic headings used by older reviews."""
+    compact = SPACE_RE.sub(" ", f"{line} {continuation}" if continuation else line).strip()
+    if not 4 <= len(compact) <= 120 or compact.endswith((".", ";", "?", "!")):
+        return None
+    words = re.findall(r"[A-Za-z]+", compact)
+    if not 2 <= len(words) <= 18 or not compact[0].isupper():
+        return None
+    if not re.search(
+            r"\b(?:blights?|rusts?|smut|brown spot|mildew|rot|wilt|scab|pathogen|plant disease|"
+            r"soil health|crop health|human health|contaminant|mycotoxin|exposure)\b",
+            compact, re.IGNORECASE):
+        return None
+    colon_heading = (":" in compact and not compact.endswith(":")
+                     and not re.search(r"[\[\](){}]", compact)
+                     and bool(re.search(r":\s*[A-Za-z].+", compact)))
+    if colon_heading or ("," in compact and re.search(
+            r"\b(?:today|century|Asia|Africa|Europe|America)\s*$", compact, re.IGNORECASE)):
+        return compact
+    return None
+
+
 def _append_section_sentences(section: dict[str, Any], paragraph: str, page: int, seen: set[str]) -> None:
     for sentence_index, sentence in enumerate(page_sentences(paragraph), 1):
         sentence_key = normalized(sentence)
@@ -481,7 +684,7 @@ def iter_pdf_context_packets(pdf_path: Path, max_pages: int = 0,
                              overlap_words: int = EXTRACTION_PACKET_OVERLAP_WORDS):
     """Yield overlapping, section-aware passages for rich extraction context.
 
-    Packets target roughly 2,800 model tokens while preserving sentence boundaries
+    Packets target roughly 5,600 source tokens while preserving sentence boundaries
     and a small overlap. A later 1-3 sentence evidence span remains the provenance
     for each extracted claim. Short sections naturally produce shorter packets.
     """
@@ -502,13 +705,23 @@ def iter_pdf_context_packets(pdf_path: Path, max_pages: int = 0,
         for paragraph in re.split(r"\n\s*\n", "\n".join(cleaned_lines)):
             lines = [SPACE_RE.sub(" ", line).strip() for line in paragraph.splitlines() if line.strip()]
             body_lines: list[str] = []
-            for line in lines:
+            line_index = 0
+            while line_index < len(lines):
+                line = lines[line_index]
                 # Many articles use headings such as ``6. References``. Stop
                 # before those citations can be mistaken for source evidence.
                 if REFERENCE_HEADING_RE.match(line):
                     reference_section = True
                     break
                 heading = _section_name(line)
+                consumed_continuation = False
+                if not heading:
+                    heading = _unnumbered_topic_heading(line)
+                if not heading and line_index + 1 < len(lines):
+                    continuation = lines[line_index + 1]
+                    if len(continuation.split()) <= 4:
+                        heading = _unnumbered_topic_heading(line, continuation)
+                        consumed_continuation = heading is not None
                 if heading:
                     if body_lines and current_section is not None:
                         _append_section_sentences(current_section, "\n".join(body_lines), page_index + 1, seen_sentences)
@@ -516,6 +729,7 @@ def iter_pdf_context_packets(pdf_path: Path, max_pages: int = 0,
                     current_section = {"heading": heading, "sentences": []}
                     sections.append(current_section)
                     content_started = True
+                    line_index += 2 if consumed_continuation else 1
                     continue
                 abstract_match = re.match(r"^abstract\s*:?[\s]*(.*)$", line, flags=re.IGNORECASE)
                 if abstract_match:
@@ -527,9 +741,11 @@ def iter_pdf_context_packets(pdf_path: Path, max_pages: int = 0,
                     content_started = True
                     abstract_body = abstract_match.group(1).strip()
                     body_lines = [abstract_body] if abstract_body else []
+                    line_index += 1
                     continue
                 if content_started:
                     body_lines.append(line)
+                line_index += 1
             if body_lines and current_section is not None:
                 _append_section_sentences(current_section, "\n".join(body_lines), page_index + 1, seen_sentences)
             if reference_section:
@@ -551,7 +767,7 @@ def iter_pdf_context_packets(pdf_path: Path, max_pages: int = 0,
     # Pack one continuous document stream. Many review articles have dozens of
     # short subsections; emitting each subsection independently produced
     # 100-700-word prompts and allowed four claims from every tiny section.
-    # Combining adjacent sections restores the intended ~2,000-word context and
+    # Combining adjacent sections restores the intended ~4,000-word context and
     # imposes a meaningful document-level extraction bound while retaining the
     # originating heading on every sentence.
     stream: list[dict[str, Any]] = []
@@ -613,7 +829,7 @@ def evidence_span_from_item(item: dict[str, Any], packet_sentences: list[dict[st
     return None
 
 
-def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
+def extract_claims(pdf_path: Path, client: OpenCodeClient, max_pages: int,
                    emit: Callable[[str, str], None], packets: list[dict[str, Any]] | None = None,
                    document_scope: dict[str, Any] | None = None,
                    source_identifiers: dict[str, str] | None = None,
@@ -637,22 +853,30 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
               "Nutrient (beneficial chemical or content), Contaminant (harmful chemical or mycotoxin), HumanExposure (intake/contact), "
               "HumanBiologicalProcess (human biomarker, immune, metabolic or epigenetic process), "
               "HumanHealthOutcome (human disease or health effect, never crop yield). "
-              "Use only relations affects, reduces, increases, has_nutrient, has_contaminant, contains, has_trait, higher_than, "
-              "lower_than, associated_with. Do not use causes, leads_to, or deficiency_causes in automatic extraction from this "
-              "review paper; those require a later, stricter causal-evidence workflow. Use has_trait only for Crop/FoodProduct -> PlantTrait. "
-              "Use has_nutrient/has_contaminant/contains only for soil/crop/food material -> Nutrient or Contaminant. Use higher_than/lower_than only "
-              "for an explicit comparison between crop or food materials and ALWAYS record both its metric and comparator. "
+              "Use only relations affects, reduces, increases, has_nutrient, has_contaminant, contains, and has_trait. Do not use causes, "
+              "leads_to, deficiency_causes, higher_than, lower_than, or associated_with in this starter pipeline. Association-only and comparative "
+              "observations require study-design, population, and comparator modelling that is not yet part of the automatic main graph; return no claim "
+              "for them. Use has_trait only for Crop/FoodProduct -> PlantTrait. "
+              "Use has_nutrient/has_contaminant/contains only for soil/crop/food material -> Nutrient or Contaminant. "
               "Do not put ontology type labels such as HumanHealthOutcome in subject or object names. "
               "Use the whole packet to understand study context, abbreviations, mechanisms, and qualifiers. "
               "For every claim, select one to three consecutive numbered evidence sentences that directly state the subject, relation, and object. "
               "subject_source_mention, object_source_mention, and relation_trigger MUST be exact consecutive words copied "
-              "from those selected evidence sentences. They are mandatory proof anchors, not paraphrases. "
+              "from those selected evidence sentences. Entity mentions must be concise noun phrases: never copy the whole sentence, "
+              "never include the relation trigger inside an entity mention, and never use the same text for both endpoints. "
+              "They are mandatory proof anchors, not paraphrases. "
               "subject and object may be concise graph labels, but must not be CamelCase ontology labels or substitute a "
               "different intervention, population, material, crop, or outcome for the exact source mention. "
               "Resolve pronouns only if their antecedent is unambiguous within the selected evidence sentences. "
               "Never combine separate mechanisms into a multi-step claim. If the source says X affects M and M affects Y "
               "(including wording such as 'X forms M, which increases Y'), extract the directly stated X->M and M->Y edges; "
               "never collapse that wording into X->Y. "
+              "Encode the relation that the sentence actually states. For example, 'mycotoxins may be produced in infected grains' "
+              "supports <infected grains, has_contaminant, mycotoxins> with conditional certainty; it does not support "
+              "<disease, increases, mycotoxins>. Likewise, 'milled rice rate decreases as infected grains increase' should use "
+              "the infected grains and milled-rice rate as endpoints, not collapse the section topic into a direct cause. "
+              "When a local disease heading disambiguates those endpoints, preserve that disease in qualifiers.condition "
+              "instead of substituting it for an endpoint. "
               "The accepted path is Agriculture/Climate -> Soil -> Crop/Disease -> Nutrient/Contaminant -> Human Exposure -> Health Outcome. "
               "A directly evidenced relation may skip a stage; do not invent intermediate entities. "
               "Exclude economics, infrastructure, trade, generic food security, and yield-only claims. "
@@ -688,16 +912,20 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
         raise ValueError("The PDF has no extractable text. OCR is required before extraction.")
     for index, packet in enumerate(packets, 1):
         packet_sentences = packet["sentences"]
-        packet_text = "\n".join(f"[{number}] {sentence['text']}" for number, sentence in enumerate(packet_sentences, 1))
+        packet_text = "\n".join(
+            f"[{number}] [Section: {sentence.get('section_heading', packet['section_heading'])}] {sentence['text']}"
+            for number, sentence in enumerate(packet_sentences, 1)
+        )
         priority_numbers = extraction_priority_sentence_numbers(packet_sentences)
-        # Qwen 8B can underweight a bare list of sentence numbers in a long
+        # A generative model can underweight a bare list of sentence numbers in a long
         # prompt and then spend the limited claim slots on the first broad
         # statements it sees. Repeat only the ranked evidence candidates as a
         # compact attention index. They keep their original sentence numbers,
         # so this does not create a second evidence source or weaken the
         # exact-span provenance checks below.
         priority_index = "\n".join(
-            f"[{number}] {packet_sentences[number - 1]['text']}"
+            f"[{number}] [Section: {packet_sentences[number - 1].get('section_heading', packet['section_heading'])}] "
+            f"{packet_sentences[number - 1]['text']}"
             for number in priority_numbers
         )
         emit("info", f"Extracting {packet['section_heading']} (pages {packet['page_start']}-{packet['page_end']}), packet {packet['packet_number']} ({index}/{len(packets)}; {packet['word_count']} words, ~{packet['estimated_token_count']} tokens)")
@@ -746,6 +974,7 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                                           "proposed_claim": candidate})
                 continue
             evidence_numbers, evidence_sentences, evidence_span = evidence
+            evidence_heading = str(evidence_sentences[0].get("section_heading") or packet["section_heading"])
 
             def record_rejection(reason: str) -> None:
                 rejection_records.append({
@@ -777,7 +1006,22 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                 rejected["unanchored_evidence"] += 1
                 record_rejection("unanchored_evidence")
                 continue
-            qualifier_adjustments = normalize_extraction_qualifiers(candidate)
+            anchor_error = extraction_anchor_error(subject_source_mention, object_source_mention, relation_trigger)
+            if anchor_error:
+                rejected[anchor_error] += 1
+                record_rejection(anchor_error)
+                continue
+            extraction_normalizations: list[dict[str, str]] = []
+            container_normalization = normalize_contaminant_container_claim(
+                candidate, evidence_span, evidence_heading
+            )
+            if container_normalization:
+                extraction_normalizations.append(container_normalization)
+                subject_source_mention = container_normalization["source_mention"]
+                subject = str(candidate["subject"])
+            qualifier_adjustments = normalize_extraction_qualifiers(
+                candidate, subject_source_mention, evidence_span
+            )
             # Exact modal wording is safer than asking the same generative
             # model to self-report its certainty. This normalization only
             # weakens a claim (for example, ``can reduce`` -> conditional) and
@@ -800,11 +1044,15 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                     continue
                 seen_reference_ids.add(identity)
                 cited_references.append(reference)
+            contextual_entity_normalization = normalize_contextual_disease_entity(candidate, evidence_heading)
+            if contextual_entity_normalization:
+                extraction_normalizations.append(contextual_entity_normalization)
+            subject = str(candidate["subject"])
             evidence_record = {
                 "page": evidence_page,
                 "page_start": packet["page_start"],
                 "page_end": packet["page_end"],
-                "section_heading": packet["section_heading"],
+                "section_heading": evidence_heading,
                 "sentence_numbers": evidence_numbers,
                 "evidence_span": evidence_span,
                 "subject_source_mention": subject_source_mention,
@@ -814,18 +1062,18 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                 "subject_type": candidate["subject_type"],
                 "object_type": candidate["object_type"],
                 "qualifiers": dict(candidate["qualifiers"]),
+                "source_context": candidate.get("source_context", ""),
                 "citation_numbers": cited_numbers,
                 "citation_keys": cited_keys,
                 "references": cited_references,
             }
-            # Only identical occurrences introduced by overlapping packets are
-            # deduplicated. Different source spans, types, or modalities remain
-            # separate assertions and pass semantic/source validation on their
-            # own before any later graph-level aggregation.
+            # Only an exact same-evidence assertion is deduplicated. Competing
+            # model qualifier guesses must not create repeated validation work
+            # for the same subject/relation/object/span; source spans, types,
+            # and modalities still remain separate assertions.
             key = (normalized(subject), relation, normalized(obj), candidate["certainty"],
                    candidate["subject_type"], candidate["object_type"], evidence_page,
-                   normalized(evidence_span),
-                   tuple((name, normalized(value)) for name, value in sorted(candidate["qualifiers"].items())))
+                   normalized(evidence_span))
             if key in seen_occurrences:
                 existing = seen_occurrences[key]
                 existing.setdefault("source_evidence_records", []).append(evidence_record)
@@ -851,7 +1099,9 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                                "source_pmid": source_identifiers.get("source_pmid", ""),
                               "source_pdf_sha256": digest, "source_page": evidence_page,
                               "source_page_start": packet["page_start"], "source_page_end": packet["page_end"],
-                              "source_section_heading": packet["section_heading"], "source_packet_number": packet["packet_number"],
+                              "source_section_heading": evidence_heading,
+                              "source_evidence_section_heading": evidence_heading,
+                              "source_packet_number": packet["packet_number"],
                               "source_context_estimated_tokens": packet["estimated_token_count"],
                               "source_evidence_sentence_numbers": evidence_numbers,
                               "source_evidence_span": evidence_span,
@@ -863,6 +1113,9 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
                               "source_references": cited_references,
                               "source_evidence_records": [evidence_record],
                               "qualifier_adjustments": qualifier_adjustments,
+                              "source_context": candidate.get("source_context", ""),
+                              "contextual_entity_normalization": contextual_entity_normalization,
+                              "extraction_normalizations": extraction_normalizations,
                               "document_scope": (document_scope or {}).get("scope", "uncertain"),
                               "source_context_packet": " ".join(sentence["text"] for sentence in packet_sentences),
                               "extraction_type_variants": [{"subject_type": candidate["subject_type"],
@@ -879,19 +1132,22 @@ def extract_claims(pdf_path: Path, client: OllamaClient, max_pages: int,
 
 
 def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_claim: int,
-                 emit: Callable[[str, str], None], model: str | None = None,
-                 claims_per_packet: int | None = None) -> dict[str, Any]:
+                 emit: Callable[[str, str], None], claims_per_packet: int | None = None) -> dict[str, Any]:
     output_dir = ONTOLOGY_DIR / pdf_path.stem
     output_dir.mkdir(parents=True, exist_ok=True)
-    settings = replace(Settings(), model=model) if model else Settings()
+    settings = Settings()
     claims_per_packet = claims_per_packet or settings.extraction_claims_per_packet
     if not 1 <= claims_per_packet <= 8:
         raise ValueError("claims_per_packet must be between 1 and 8")
-    client = OllamaClient(settings)
-    names = [model.get("name") for model in client.health_check().get("models", [])]
-    if settings.model not in names:
-        raise RuntimeError(f"Local Ollama model {settings.model} is unavailable")
-    emit("success", f"Connected to local model {settings.model}")
+    available_models = OpenCodeClient(settings).health_check().get("models", [])
+    if settings.extraction_model not in available_models:
+        raise RuntimeError(f"OpenCode extraction model {settings.extraction_model} is unavailable")
+    if settings.validation_model not in available_models:
+        raise RuntimeError(f"OpenCode validation model {settings.validation_model} is unavailable")
+    extractor = OpenCodeClient(settings, settings.extraction_model)
+    client = OpenCodeClient(settings, settings.validation_model)
+    emit("success", f"Connected to OpenCode extraction model {settings.extraction_model}")
+    emit("success", f"Connected to OpenCode validation model {settings.validation_model}")
     packets = list(iter_pdf_context_packets(pdf_path, max_pages))
     if not packets:
         raise ValueError("The PDF has no extractable text. OCR is required before extraction.")
@@ -915,11 +1171,18 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         blocked_summary = {
             "pdf": pdf_path.name,
             "pdf_sha256": file_hash(pdf_path),
-            "model": settings.model,
+            "model": settings.extraction_model,
+            "extraction_model": settings.extraction_model,
+            "validation_model": settings.validation_model,
             "completed_at": utc_now(),
             "run_status": "blocked_text_quality",
             "schema_version": SCHEMA_VERSION,
             "claims_per_packet": claims_per_packet,
+            "llm_calls": {
+                "extraction": extractor.request_metrics,
+                "validation": client.request_metrics,
+                "total_requests": extractor.request_metrics["requests"] + client.request_metrics["requests"],
+            },
             "document_scope": document_scope,
             "extracted": 0,
             "schema_valid": 0,
@@ -939,7 +1202,7 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         emit("info", "Paper is upstream-only; retained for evidence-backed pathway bridges, not treated as a health-outcome paper")
     emit("stage", "Extracting evidence-anchored claims from PDF")
     candidates, extraction_rejection_counts, extraction_rejections = extract_claims(
-        pdf_path, client, max_pages, emit, packets=packets, document_scope=document_scope,
+        pdf_path, extractor, max_pages, emit, packets=packets, document_scope=document_scope,
         source_identifiers=source_identifiers, claims_per_packet=claims_per_packet,
     )
     write_jsonl(output_dir / "candidates.jsonl", candidates)
@@ -998,23 +1261,13 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                          if candidate["semantic_validation"]["decision"] == "accepted"]
     write_jsonl(output_dir / "semantic_valid_candidates.jsonl",
                 [{"candidate_id": item["candidate_id"]} for item in semantic_accepted])
-    nli_validator: NLIValidator | None = None
-    if semantic_accepted and settings.enable_nli:
-        emit("info", f"Loading independent NLI validator {settings.nli_model} on {settings.nli_device}")
-        try:
-            nli_validator = NLIValidator(settings)
-            nli_validator.warmup()
-            emit("success", "Independent NLI validator ready")
-        except Exception as exc:
-            nli_validator = None
-            emit("warning", f"NLI validator unavailable; exact anchors and Qwen checks remain active: {exc}")
     emit("stage", f"Checking source evidence for {len(semantic_accepted)} claims")
     source_results: list[dict[str, Any]] = []
     write_jsonl(output_dir / "source_validation.jsonl", source_results)
     for position, candidate in enumerate(semantic_accepted, 1):
         emit("info", f"Source claim {position}/{len(semantic_accepted)}: {candidate['subject']} → {candidate['relation']} → {candidate['object']}")
         try:
-            source_result = validate_source_claim(candidate, client, nli_validator=nli_validator)
+            source_result = validate_source_claim(candidate, client)
         except Exception as exc:
             source_result = {"candidate_id": candidate["candidate_id"], "decision": "needs_review",
                              "rationale": f"Source check failed: {exc}"}
@@ -1038,6 +1291,15 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
     (output_dir / "audit_graph.json").write_text(json.dumps(initial_audit_graph, ensure_ascii=False, indent=2), encoding="utf-8")
     selected = source_entailed[:max_claims] if max_claims else source_entailed
     emit("stage", f"Validating {len(selected)} claims against Europe PMC and OpenAlex literature")
+    nli_validator: NLIValidator | None = None
+    if selected and settings.enable_nli:
+        emit("info", f"Loading external contradiction checker {settings.nli_model} on {settings.nli_device}")
+        try:
+            nli_validator = NLIValidator(settings)
+            nli_validator.warmup()
+            emit("success", "External contradiction checker ready")
+        except Exception as exc:
+            emit("warning", f"External contradiction checker unavailable: {exc}")
     reranker = SemanticReranker(settings) if selected else None
     if reranker:
         emit("info", f"Loading semantic reranker {settings.embedding_model}")
@@ -1077,10 +1339,17 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
     write_graphml(graph, output_dir / "knowledge_graph.graphml")
     paths = reasoning_paths(graph)
     evaluation_path = write_evaluation_sample(output_dir, candidates, results)
-    summary = {"pdf": pdf_path.name, "pdf_sha256": file_hash(pdf_path), "model": settings.model, "completed_at": utc_now(),
+    summary = {"pdf": pdf_path.name, "pdf_sha256": file_hash(pdf_path), "model": settings.extraction_model,
+               "extraction_model": settings.extraction_model, "validation_model": settings.validation_model, "completed_at": utc_now(),
                "run_status": "completed",
                "schema_version": SCHEMA_VERSION,
                "claims_per_packet": claims_per_packet,
+               "external_judge_workers": settings.external_judge_workers,
+               "llm_calls": {
+                   "extraction": extractor.request_metrics,
+                   "validation": client.request_metrics,
+                   "total_requests": extractor.request_metrics["requests"] + client.request_metrics["requests"],
+               },
                "embedding_model": settings.embedding_model,
                "cross_encoder_model": settings.cross_encoder_model,
                "nli_model": settings.nli_model if settings.enable_nli else None,
@@ -1107,5 +1376,10 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                "reasoning_paths": len(paths)}
     (output_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     (output_dir / "reasoning_paths.json").write_text(json.dumps(paths, ensure_ascii=False, indent=2), encoding="utf-8")
-    emit("success", f"Finished: {len(candidates)} extracted, {len(results)} externally evaluated, {graph['counts']['corroborated']} corroborated graph claims")
+    emit(
+        "success",
+        f"Finished: {len(candidates)} extracted, {len(results)} externally evaluated, "
+        f"{graph['counts']['supported']} independently supported and "
+        f"{graph['counts']['corroborated']} corroborated graph claims",
+    )
     return summary

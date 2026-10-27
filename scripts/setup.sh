@@ -40,4 +40,4 @@ fi
 
 cd "$PROJECT_ROOT/frontend"
 "$NPM" install
-echo "Setup complete. Start Ollama, backend, and frontend in separate terminals."
+echo "Setup complete. Configure the backend OpenCode API key, then start the backend and frontend in separate terminals."

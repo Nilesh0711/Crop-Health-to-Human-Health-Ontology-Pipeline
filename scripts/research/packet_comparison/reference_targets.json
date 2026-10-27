@@ -1,0 +1,110 @@
+[
+  {
+    "case": "crop_health",
+    "sentence_id": "cbddc29fd8d13bc7950c9d823a02d504",
+    "page": 6,
+    "quote": "FHB does cause important yield reductions, but the disease has become a primary concern because of the mycotoxins that may be produced in infected grains (Parry et al. 1995; McMullen et al. 1997;X u 2003; Xu and Nicholson 2009; Bateman et al. 2007).",
+    "target": "FHB-affected infected grains / may produce / mycotoxins",
+    "restrictions": "Preserve may and FHB/wheat local binding; do not convert to definite production.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "crop_health",
+    "sentence_id": "532a0bf3fc20d4bbf4d36cbdfb12fab4",
+    "page": 6,
+    "quote": "The pathogen produces two kinds of mycotoxins, namely ustiloxin (Koiso et al.1992, 1998) and ustilaginoidin (Koyama and Natori 1988; Meng et al. 2015), which are toxic to animals.",
+    "target": "false-smut pathogen / produces / ustiloxin or ustilaginoidin",
+    "restrictions": "Bind the pathogen to its local section; do not collapse toxin production with animal toxicity.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "crop_health",
+    "sentence_id": "a64fa2f2010fb3a23b4a92cae6974851",
+    "page": 12,
+    "quote": "These situations are illustrated by the dramatic crop health state of maize-based subsistence farming in South Africa (due to the accumulation of fumonisins, ochratoxins, and aflatoxins; Wagacha and Muthomi2008;F i g .3, Type F), and commercial groundnut production in West Africa (due to aflatoxins, Fig.3, Type H): in these contexts, populations are exposed to major health risks (Wild and Gong 2010), beyond the yield reductions, the reduction of stocks, and the fall of crop value.",
+    "target": "maize / has_contaminant / fumonisins, ochratoxins or aflatoxins",
+    "restrictions": "Preserve cited occurrence and crop; groundnut aflatoxin is a separate occurrence.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "crop_health",
+    "sentence_id": "82f0608255137263050c20c0ee087606",
+    "page": 14,
+    "quote": "Because rice blast is not associated with mycotoxin production, or with a major reduction of grain quality, Component 6 is not to be considered in this case.",
+    "target": "NEGATIVE CONTROL: rice blast is not associated with mycotoxin production",
+    "restrictions": "Do not extract a positive rice blast-produces-mycotoxin edge.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "soil_productivity",
+    "sentence_id": "86a11bf8764fc19758dd8fadeaa0bffd",
+    "page": 2,
+    "quote": "The limited pore space and reduced oxygen availability in such soils inhibit microbial activity, leading to a decline in nutrient mineralization and availability.",
+    "target": "limited pore space or reduced oxygen availability / inhibits / microbial activity",
+    "restrictions": "Do not collapse the downstream nutrient-mineralization result; preserve soil context.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "soil_productivity",
+    "sentence_id": "4cd664b85917779017031a7e1d9e9356",
+    "page": 3,
+    "quote": "The organic matter derived from fertilizers can increase microbial activity and enhance soil porosity, thereby facilitating better root growth and nutrient uptake (Zhang et al., 2022d).",
+    "target": "fertilizer-derived organic matter / can increase / microbial activity",
+    "restrictions": "Preserve can and fertilizer-derived material; root-growth consequence is a different edge.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "soil_productivity",
+    "sentence_id": "c0d01155cedd4c579dabc542254a911e",
+    "page": 4,
+    "quote": "Excess N can promote vigorous crop growth, which can lead to increased density, decreased stem strength, and ultimately reduced yield and quality (Liu et al., 2022b).",
+    "target": "excess nitrogen / can promote / vigorous crop growth",
+    "restrictions": "Preserve excess and can; do not collapse an indirect causal chain into yield.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "soil_productivity",
+    "sentence_id": "18d9649689664ef96479e63dc319a628",
+    "page": 5,
+    "quote": "Continuous monoculture may lead to the extensive proliferation of certain pathogenic parasites, resulting in an increase in soil pathogens and posing a threat to crop health (Fones et al., 2020).",
+    "target": "continuous monoculture / may increase / pathogenic parasites",
+    "restrictions": "Preserve may and continuous monoculture, do not claim an unconditional universal effect.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "soil_health_summary",
+    "sentence_id": "1e4c20fa9824bb6c8a7d60c9e9584840",
+    "page": 37,
+    "quote": "High levels of lead and cadmium in soils reduce microbial activity and plant biomass.",
+    "target": "high soil levels of lead and cadmium / reduce / microbial activity",
+    "restrictions": "Preserve high levels and soil; joint wording is not separate controlled evidence for each metal.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "soil_health_summary",
+    "sentence_id": "a913f6aeda4d372989755108e67daae3",
+    "page": 37,
+    "quote": "Microplastics can change soil structure, affect water-holding capacity, and may enrich pathogens and antibiotic resistance genes in soil microbial communities.",
+    "target": "microplastics / may enrich / pathogens or antibiotic resistance genes in soil microbial communities",
+    "restrictions": "Preserve may and the soil microbial community context; distinguish can change soil structure.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "soil_health_summary",
+    "sentence_id": "284e06316c46e43d6a9c94af44c67cae",
+    "page": 31,
+    "quote": "A higher accumulation of yield-increasing macromolecules such as starch or protein may dilute micronutrient concentrations.",
+    "target": "higher yield-increasing starch or protein accumulation / may dilute / micronutrient concentrations",
+    "restrictions": "Preserve may; concentration is not total micronutrient content.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  },
+  {
+    "case": "soil_health_summary",
+    "sentence_id": "fa3b1d2f343bd415b0723e8c1ea487ea",
+    "page": 34,
+    "quote": "Other food-processing technologies, such as thermal treatment or fermentation, can enhance bioaccessibility or bioavailability of some nutrients and phytochemicals.",
+    "target": "thermal treatment or fermentation / can enhance / nutrient or phytochemical bioaccessibility or bioavailability",
+    "restrictions": "Preserve can, some nutrients, and distinguish processing-related losses in the next sentence.",
+    "annotation_kind": "source-text reference target, not expert scientific truth"
+  }
+]

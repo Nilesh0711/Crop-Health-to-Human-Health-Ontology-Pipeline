@@ -5,10 +5,10 @@
 
 deliverables/*
 ppt/*
-docs/*
-!docs/CONTEXT.md
-archive/*
+# Documentation is source; large presentation binaries remain local.
+docs/presentations/*.pptx
 # Python caches
+.pytest_cache/
 __pycache__/
 *.py[cod]
 
@@ -23,4 +23,8 @@ frontend/dist/
 # Fresh pipeline outputs (source PDFs stay versioned)
 ontology/*
 !ontology/.gitkeep
-rag/*.jsonl
+!ontology/README.md
+
+# Generated developer reports (keep the directory guide)
+reports/*
+!reports/README.md

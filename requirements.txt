@@ -8,3 +8,6 @@ pypdf>=5.0
 fonttools>=4.50
 python-multipart>=0.0.20
 httpx>=0.27
+jsonschema>=4.23,<5
+
+to reduce the number of llm call instead of making external validation before path path assemby, i have a new idea of intialize a trust factor number for each claim, the idea is each claims will into the context information and tries to connect dots/chains of relation i.e. path assembly then do the validation of that path for each supporting claim in that path, we will increase the trust factor of that claim, and for contraction we will reduce the trust factor of that claim this way we can have network to see which claims have more contribution in the path assembly, TRUST FACTOR

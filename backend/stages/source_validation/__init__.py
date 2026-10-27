@@ -1,0 +1,1 @@
+"""Source validation stage."""

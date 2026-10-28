@@ -13,6 +13,8 @@ import TrustEvidence from './components/claims/TrustEvidence.jsx'
 import { CitationTracking, JointAssessment, ClaimActions, ClaimContext, ValidationTrace, ExternalDecisionDetails, ExtractionDiscards } from './components/claims/ClaimDetails.jsx'
 import ModelPerformance from './components/diagnostics/ModelPerformance.jsx'
 import { watchJob } from './lib/jobPolling.js'
+import { canExecute as executionAllowed, isViewer } from './lib/capabilities.js'
+import SavedRunDetails from './components/workspace/SavedRunDetails.jsx'
 import RunRecoveryNotice from './components/workspace/RunRecoveryNotice.jsx'
 import { PdfQualityReport, ActivityLog, FindingsToolbar, PaperRunStatus, ResumeRunButton, StopRunButton, RunSetup, SidebarToggle, WorkspaceNavigation } from './components/workspace/WorkbenchPanels.jsx'
 
@@ -196,7 +198,7 @@ function DocumentScopeNotice({ documentScope }) {
   </section>
 }
 
-export function ClaimCard({ record, index, busy, onClaimAction, defaultExpanded = false }) {
+export function ClaimCard({ record, index, busy, onClaimAction, defaultExpanded = false, readOnly = false }) {
   const [expanded, setExpanded] = useState(defaultExpanded)
   const { candidate, validation } = record
   const decisions = validation?.attempts?.flatMap(attempt => attempt.decisions || []) || []
@@ -216,7 +218,7 @@ export function ClaimCard({ record, index, busy, onClaimAction, defaultExpanded 
       <StatusPill value={resultStatus} /><ChevronDown size={17} className={`chevron ${expanded ? 'open' : ''}`} />
     </button>
     {expanded && <div className="claim-expanded">
-      <ClaimActions candidate={candidate} validation={validation} repairEligibility={record.repair_eligibility} revisions={record.revisions}
+      <ClaimActions readOnly={readOnly} candidate={candidate} validation={validation} repairEligibility={record.repair_eligibility} revisions={record.revisions}
         busy={busy} onAction={action => onClaimAction(candidate.candidate_id, action)} />
       <TrustEvidence trust={record.trust || validation?.trust} />
       <ClaimContext candidate={candidate} />
@@ -262,6 +264,9 @@ export default function App() {
   const [pdfs, setPdfs] = useState([])
   const [selectedId, setSelectedId] = useState(() => typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('paper'))
   const [health, setHealth] = useState(null)
+  const [savedJobs, setSavedJobs] = useState([])
+  const readOnly = isViewer(health)
+  const canExecute = executionAllowed(health)
   const [graph, setGraph] = useState({ nodes: [], edges: [], counts: { nodes: 0, edges: 0, corroborated: 0 } })
   const [claims, setClaims] = useState([])
   const [discards, setDiscards] = useState([])
@@ -299,11 +304,11 @@ export default function App() {
 
   const selected = pdfs.find(item => item.id === selectedId)
   const filteredPdfs = pdfs.filter(item => item.title.toLowerCase().includes(search.toLowerCase()))
-  const isRunning = ['running', 'queued', 'stopping'].includes(job?.status)
+  const isRunning = canExecute && ['running', 'queued', 'stopping'].includes(job?.status)
   const [stopPending, setStopPending] = useState(false)
-  const needsRecovery = !!selected && !isRunning && (['failed', 'stopped'].includes(selected.status) || recoveryEvent?.pdfId === selectedId)
+  const needsRecovery = canExecute && !!selected && !isRunning && (['failed', 'stopped'].includes(selected.status) || recoveryEvent?.pdfId === selectedId)
   const recoveryData = recoveryInfo?.pdfId === selectedId ? recoveryInfo : null
-  const runDisabled = starting || isRunning || pdfs.some(item => ['running', 'queued', 'stopping'].includes(item.status))
+  const runDisabled = !canExecute || starting || isRunning || pdfs.some(item => ['running', 'queued', 'stopping'].includes(item.status))
   const claimCounts = { all: claims.length, source: claims.filter(record => record.candidate.source_validation?.decision === 'entailed').length, supported: 0, review: 0, rejected: 0 }
   claims.forEach(record => { claimCounts[claimGroup(record)] += 1 })
   const visibleClaims = claims.filter(record => (claimFilter === 'all' || (claimFilter === 'source' ? record.candidate.source_validation?.decision === 'entailed' : claimGroup(record) === claimFilter)) && matchesClaim(record, claimSearch))
@@ -375,6 +380,15 @@ export default function App() {
   useEffect(() => { setConfirmingRestart(false) }, [selectedId])
 
   useEffect(() => {
+    if (!readOnly || !selectedId) return
+    let cancelled = false
+    setSavedJobs([])
+    request(`/pdfs/${selectedId}/jobs`).then(rows => { if (!cancelled) setSavedJobs(rows) })
+      .catch(error => { if (!cancelled) setMessage(error.message) })
+    return () => { cancelled = true }
+  }, [readOnly, selectedId])
+
+  useEffect(() => {
     if (!needsRecovery) return
     let cancelled = false
     setRecoveryInfo({ pdfId: selectedId, loading: true })
@@ -391,14 +405,23 @@ export default function App() {
     setSelectedElement(null)
     setFilter('all')
     refreshDetails(selectedId, graphScope, graphMode).catch(error => setMessage(error.message))
-    const paper = pdfs.find(item => item.id === selectedId)
-    setJob(null)
-    setJobId(paper?.active_job_id || paper?.latest_job_id || null)
   }, [selectedId, graphScope, graphMode])
 
   useEffect(() => {
-    if (!jobId) return
+    const paper = pdfs.find(item => item.id === selectedId)
+    setJob(null)
+    setJobId(paper?.active_job_id || paper?.latest_job_id || null)
+  }, [selectedId, selected?.id])
+
+  useEffect(() => {
+    if (!jobId || !health) return
     let cancelled = false
+    if (readOnly) {
+      request(`/jobs/${jobId}`).then(current => { if (!cancelled) setJob(current) })
+        .catch(error => { if (!cancelled) setMessage(error.message) })
+      return () => { cancelled = true }
+    }
+    if (!canExecute) return
     const stop = watchJob({
       fetchJob: () => request(`/jobs/${jobId}`),
       onJob: async current => {
@@ -442,10 +465,10 @@ export default function App() {
       onError: error => { if (!cancelled) setMessage(error.message) },
     })
     return () => { cancelled = true; stop() }
-  }, [jobId, selectedId, graphScope, graphMode])
+  }, [jobId, selectedId, graphScope, graphMode, readOnly, canExecute, health])
 
   async function assembleSavedPaths() {
-    if (!selected || runDisabled) return
+    if (!canExecute || !selected || runDisabled) return
     setStarting(true)
     try {
       const started = await request(`/pdfs/${selected.id}/assemble-pathways`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(options) })
@@ -461,7 +484,7 @@ export default function App() {
   }
 
   async function stopRun() {
-    if (!job?.id || job.pdf_id !== selectedId || !isRunning || stopPending || job.status === 'stopping') return
+    if (!canExecute || !job?.id || job.pdf_id !== selectedId || !isRunning || stopPending || job.status === 'stopping') return
     setStopPending(true)
     try {
       const updated = await request(`/jobs/${job.id}/stop`, { method: 'POST' })
@@ -473,7 +496,7 @@ export default function App() {
   }
 
   async function startRun(resume = false, runOptions = options) {
-    if (!selected || runDisabled) return
+    if (!canExecute || !selected || runDisabled) return
     setStarting(true)
     setMessage(null)
     try {
@@ -505,7 +528,7 @@ export default function App() {
   }
 
   async function runClaimAction(candidateId, action) {
-    if (!selected) return
+    if (!canExecute || !selected) return
     setMessage(null)
     try {
       const started = await request(`/pdfs/${selected.id}/claims/${candidateId}/${action}`, {
@@ -521,6 +544,7 @@ export default function App() {
   }
 
   async function upload(event) {
+    if (!canExecute) return
     const file = event.target.files?.[0]
     if (!file) return
     const form = new FormData()
@@ -549,28 +573,29 @@ export default function App() {
             <PaperRunStatus paper={pdf} /></span></button>)}
         {!filteredPdfs.length && <div className="sidebar-empty">No papers match your search.</div>}
       </div>
-      <div className="sidebar-footer"><button className="upload-card" type="button" onClick={() => uploadRef.current?.click()}><span><Plus size={18} /></span><div><strong>Add a PDF</strong><small>Upload a research paper</small></div></button>
-        <input ref={uploadRef} type="file" accept="application/pdf,.pdf" hidden onChange={upload} />
-        <div className="local-status"><span className={`connection-dot ${health?.extraction?.ready && health?.validation?.ready ? 'online' : ''}`} />
-          <span>{health?.extraction?.ready && health?.validation?.ready ? 'Models connected' : 'Models unavailable'}</span><span className="local-label">Local</span></div>
+      <div className="sidebar-footer">{canExecute && <><button className="upload-card" type="button" onClick={() => uploadRef.current?.click()}><span><Plus size={18} /></span><div><strong>Add a PDF</strong><small>Upload a research paper</small></div></button>
+        <input ref={uploadRef} type="file" accept="application/pdf,.pdf" hidden onChange={upload} /></>}
+        <div className="local-status"><span className={`connection-dot ${readOnly || (health?.extraction?.ready && health?.validation?.ready) ? 'online' : ''}`} />
+          <span>{readOnly ? 'Published results' : !health ? 'Connecting' : health?.extraction?.ready && health?.validation?.ready ? 'Models connected' : 'Models unavailable'}</span><span className="local-label">{readOnly ? 'Read only' : 'Local'}</span></div>
       </div>
     </aside>
 
     <main className="main-area" id="workspace-content" tabIndex={-1}>
       <header className="topbar"><div className="topbar-left"><SidebarToggle hidden={sidebarHidden} onToggle={() => setSidebarHidden(previous => !previous)} />
         <div className="breadcrumbs"><span>Research</span><ArrowRight size={14} /><strong>Paper workspace</strong></div></div>
-        <div className="topbar-right"><span className="topbar-date">Soil · Crop · Human health</span><span className="workspace-badge"><Leaf size={13} /> Local workspace</span><span className="workspace-version" aria-label="Running pipeline version" title={health?.pipeline?.schema_version || 'Backend version unavailable'}>{health?.pipeline?.schema_version?.replace(/^external-validation-/, '') || 'Version unavailable'}</span></div></header>
+        <div className="topbar-right"><span className="topbar-date">Soil · Crop · Human health</span><span className="workspace-badge"><Leaf size={13} /> {readOnly ? 'Results viewer' : 'Local workspace'}</span><span className="workspace-version" aria-label="Running pipeline version" title={health?.pipeline?.schema_version || 'Backend version unavailable'}>{health?.pipeline?.schema_version?.replace(/^external-validation-/, '') || 'Version unavailable'}</span></div></header>
       <div className="page-content">
         {message && <div className="toast" role="alert"><CircleAlert size={18} /><span>{message}</span><button type="button" aria-label="Dismiss notification" onClick={() => setMessage(null)}><X size={17} /></button></div>}
-        {!selected ? <Empty icon={FolderOpen} title="Your research workspace is ready">Add a PDF to begin extracting and validating claims.</Empty> : <>
+        {readOnly && <div className="snapshot-banner" role="status"><strong>Published research snapshot · Read only</strong><span>{new Date(health.snapshot.created_at).toLocaleString()} · {health.snapshot.id}</span><p>Explore saved findings, evidence and run history. Pipeline execution is available only in the local workspace.</p>{health.snapshot.warnings?.map((warning, index) => <p key={index}>{warning}</p>)}</div>}
+        {!selected ? <Empty icon={FolderOpen} title={readOnly ? 'No published papers' : 'Your research workspace is ready'}>{readOnly ? 'No saved results are available in this snapshot.' : 'Add a PDF to begin extracting and validating claims.'}</Empty> : <>
           <div className="page-heading"><div className="paper-heading-copy"><div className="paper-heading-meta"><span className="eyebrow accent">PAPER WORKSPACE</span><StatusPill value={selected.status} /></div>
             <h1>{selected.title}</h1><p>Review the claims, follow the evidence, and explore how findings connect.</p></div>
-            <div className="heading-actions"><a className="button secondary" href={`${API}/pdfs/${selected.id}/file`} target="_blank" rel="noreferrer"><BookOpen size={16} /> View PDF</a>
-              <button className="button secondary" type="button" onClick={() => { setView('details'); setSettingsOpen(true) }}><Settings2 size={16} /> Run settings</button>
-              <StopRunButton active={isRunning && job?.pdf_id === selectedId} stopping={stopPending || job?.status === 'stopping'} onStop={stopRun} />
+            <div className="heading-actions">{selected.pdf_available !== false && <a className="button secondary" href={`${API}/pdfs/${selected.id}/file`} target="_blank" rel="noreferrer"><BookOpen size={16} /> View PDF</a>}
+              <button className="button secondary" type="button" onClick={() => { setView('details'); setSettingsOpen(true) }}><Settings2 size={16} /> {readOnly ? 'Run details' : 'Run settings'}</button>
+              {canExecute && <><StopRunButton active={isRunning && job?.pdf_id === selectedId} stopping={stopPending || job?.status === 'stopping'} onStop={stopRun} />
               <ResumeRunButton canResume={selected.can_resume} disabled={runDisabled || !recoveryData?.data?.can_continue} onResume={continueSavedRun} />
               <button className="button primary" type="button" disabled={runDisabled} onClick={() => needsRecovery ? setConfirmingRestart(true) : startRun(false)}>
-                {isRunning || starting ? <LoaderCircle className="spin" size={16} /> : <Play size={15} fill="currentColor" />}{isRunning ? 'Running pipeline' : starting ? 'Starting pipeline' : needsRecovery ? 'Restart pipeline' : selected.status === 'completed' ? 'Run again' : selected.status === 'blocked_text_quality' ? 'Retry pipeline' : 'Run pipeline'}</button></div>
+                {isRunning || starting ? <LoaderCircle className="spin" size={16} /> : <Play size={15} fill="currentColor" />}{isRunning ? 'Running pipeline' : starting ? 'Starting pipeline' : needsRecovery ? 'Restart pipeline' : selected.status === 'completed' ? 'Run again' : selected.status === 'blocked_text_quality' ? 'Retry pipeline' : 'Run pipeline'}</button></>}</div>
           </div>
 
           {needsRecovery && <RunRecoveryNotice kind={recoveryEvent?.pdfId === selectedId ? recoveryEvent.kind : recoveryData?.data?.job_missing ? 'missing' : selected.status === 'stopped' ? 'stopped' : recoveryData?.data?.interrupted ? 'interrupted' : 'failed'}
@@ -593,7 +618,7 @@ export default function App() {
             <div className={`findings-notice ${isRunning ? 'in-progress' : ''}`} role="status">
               {isRunning ? <LoaderCircle size={18} className="spin" /> : <CircleAlert size={18} />}
               <div><strong>{isRunning ? 'Analysis in progress' : selected.document_scope?.text_quality === 'unusable' ? 'The PDF needs clearer text' : 'Some findings need attention'}</strong>
-                <p>{isRunning ? 'You can explore available claims while the pipeline continues.' : selected.document_scope?.text_quality === 'unusable' ? 'Use a cleaner PDF or OCR, then retry the pipeline. Details are available in Run details.' : selected.summary?.external_incomplete > 0 ? `${selected.summary.external_incomplete} claims await completed external validation. An unfinished check is not a rejected claim.` : selected.summary?.extraction_coverage?.complete === false ? 'Some extraction regions were not processed. Check Run details for coverage.' : 'The last run stopped. Open the activity log to inspect the error.'}</p></div>
+                <p>{isRunning ? 'You can explore available claims while the pipeline continues.' : selected.document_scope?.text_quality === 'unusable' ? (readOnly ? 'The saved PDF has text-quality issues. Inspect Run details for the recorded diagnostics.' : 'Use a cleaner PDF or OCR, then retry the pipeline. Details are available in Run details.') : selected.summary?.external_incomplete > 0 ? `${selected.summary.external_incomplete} claims await completed external validation. An unfinished check is not a rejected claim.` : selected.summary?.extraction_coverage?.complete === false ? 'Some extraction regions were not processed. Check Run details for coverage.' : 'The last run stopped. Open the activity log to inspect the error.'}</p></div>
               <button type="button" className="text-button" onClick={() => setView('activity')}>View activity <ArrowRight size={15} /></button>
             </div>}
 
@@ -601,12 +626,12 @@ export default function App() {
             <WorkspaceNavigation view={view} onChange={setView} claims={claims.length} paths={pathView === 'trust' ? (trustData?.paths?.length ?? 0) : pathView === 'assembled' ? (pathwayData?.paths?.length ?? 0) : paths.length} errors={errorCount} />
             <div className="section-head"><div><span className="eyebrow">{view === 'details' ? 'CONFIGURATION & DIAGNOSTICS' : view === 'activity' ? 'RUN HISTORY' : 'RESEARCH FINDINGS'}</span>
               <h2>{({ claims: 'Extracted claims', graph: 'Knowledge graph', paths: 'Research pathways', activity: 'Activity log', details: 'Run details' })[view]}</h2>
-              <p>{({ claims: 'Inspect each claim, its source passage, and the external evidence.', graph: 'Explore source-supported, externally supported, and audit relations.', paths: 'Connect original triplets across papers using shared entities and source context.', activity: 'Follow every stage and inspect warnings or model errors.', details: 'Adjust the run, review coverage, and inspect model activity.' })[view]}</p></div>
+              <p>{({ claims: 'Inspect each claim, its source passage, and the external evidence.', graph: 'Explore source-supported, externally supported, and audit relations.', paths: 'Connect original triplets across papers using shared entities and source context.', activity: 'Follow every stage and inspect warnings or model errors.', details: readOnly ? 'Inspect saved settings, coverage and model activity.' : 'Adjust the run, review coverage, and inspect model activity.' })[view]}</p></div>
               {view === 'claims' && <span className="subtle-count">{claims.length} claims</span>}</div>
             {view === 'claims' && <>
               <FindingsToolbar search={claimSearch} onSearch={setClaimSearch} filter={claimFilter} onFilter={setClaimFilter} counts={claimCounts} shown={visibleClaims.length} />
-              <div className="claim-list">{visibleClaims.length ? visibleClaims.map(item => <ClaimCard key={item.candidate.candidate_id} record={item} index={claims.indexOf(item)} busy={isRunning || !!pdfs.find(pdf => ['running', 'queued', 'stopping'].includes(pdf.status))} onClaimAction={runClaimAction} />)
-                : <Empty icon={Layers3} title={claims.length ? 'No matching claims' : 'No claims extracted yet'}>{claims.length ? 'Try a different search or decision filter.' : 'Run the PDF to see its claims, source quotes, and article decisions.'}</Empty>}</div>
+              <div className="claim-list">{visibleClaims.length ? visibleClaims.map(item => <ClaimCard readOnly={!canExecute} key={item.candidate.candidate_id} record={item} index={claims.indexOf(item)} busy={isRunning || !!pdfs.find(pdf => ['running', 'queued', 'stopping'].includes(pdf.status))} onClaimAction={runClaimAction} />)
+                : <Empty icon={Layers3} title={claims.length ? 'No matching claims' : 'No claims extracted yet'}>{claims.length ? 'Try a different search or decision filter.' : readOnly ? 'No claims were included in this publication.' : 'Run the PDF to see its claims, source quotes, and article decisions.'}</Empty>}</div>
               <ExtractionDiscards records={discards} />
             </>}
             {view === 'graph' && <><div className="graph-controls"><div className="segmented"><button type="button" className={graphMode === 'main' ? 'active' : ''} onClick={() => setGraphMode('main')}>External graph</button><button type="button" className={graphMode === 'source' ? 'active' : ''} onClick={() => setGraphMode('source')}>Source-supported</button><button type="button" className={graphMode === 'audit' ? 'active' : ''} onClick={() => setGraphMode('audit')}>Audit view</button></div><div className="segmented"><button type="button" className={graphScope === 'paper' ? 'active' : ''} onClick={() => setGraphScope('paper')}>This paper</button><button type="button" className={graphScope === 'all' ? 'active' : ''} onClick={() => setGraphScope('all')}>All papers</button></div><select value={filter} onChange={event => setFilter(event.target.value)} aria-label="Filter graph edges"><option value="all">All evidence states</option>{graphMode === 'main' && <><option value="corroborated">Independently corroborated</option><option value="single_source">Independent article</option></>}{graphMode === 'source' && <option value="source_supported">Source supported</option>}{graphMode === 'audit' && <><option value="rejected">Rejected</option><option value="semantic_rejected">Semantic rejected</option><option value="semantic_needs_review">Review semantics</option><option value="source_unsupported">Source unsupported</option><option value="source_needs_review">Review source</option><option value="source_reference_supported">Source reference support</option><option value="extracted">Awaiting validation</option><option value="not_found">External evidence not found</option><option value="contested">Contested</option><option value="contradicted">Contradicted</option></>}</select></div>
@@ -616,7 +641,7 @@ export default function App() {
               <div className="graph-legend">{graphMode === 'main' ? <><span><i className="legend-dot corroborated" />Independently corroborated</span><span><i className="legend-dot single" />Independent article</span></> : graphMode === 'source' ? <span><i className="legend-dot single" />Faithful to source PDF</span> : <><span><i className="legend-dot extracted" />Awaiting validation or source-reference only</span><span><i className="legend-dot contested" />Contested</span><span><i className="legend-dot insufficient" />External evidence not found</span></>}</div></>}
             {view === 'paths' && <><PathwayNavigation value={pathView} onChange={setPathView}
               trustCount={trustData?.paths?.length} assembledCount={pathwayData?.paths?.length} healthCount={paths.length} />
-            {pathView !== 'corroborated' ? <PathwayPanel key={pathView} data={pathView === 'trust' ? trustData : pathwayData} busy={runDisabled} onAssemble={assembleSavedPaths}
+            {pathView !== 'corroborated' ? <PathwayPanel readOnly={!canExecute} key={pathView} data={pathView === 'trust' ? trustData : pathwayData} busy={runDisabled} onAssemble={assembleSavedPaths}
               onDepthChange={async maxHops => {
                 try { (pathView === 'trust' ? setTrustData : setPathwayData)(await request(`/pathways?view=${pathView === 'trust' ? 'provisional' : 'validated'}&max_hops=${maxHops}`)) }
                 catch (error) { setMessage(error.message) }
@@ -628,8 +653,8 @@ export default function App() {
                   (pathView === 'trust' ? setTrustData : setPathwayData)(previous => ({ ...next, paths: [...previous.paths, ...next.paths] }))
                 } catch (error) { setMessage(error.message) }
               }} /> : <CorroboratedPaths paths={paths} />}</>}
-            {view === 'activity' && <ActivityLog key={selected.id} logs={logs} running={isRunning && job?.pdf_id === selectedId} progress={job?.pdf_id === selectedId ? job.request_progress : null} />}
-            {view === 'details' && <div className="run-details"><RunSetup health={health} options={options} onOptions={setOptions} open={settingsOpen} onToggle={() => setSettingsOpen(!settingsOpen)} />
+            {view === 'activity' && <>{readOnly && <SavedRunDetails jobs={savedJobs} job={job?.pdf_id === selectedId ? job : null} jobId={jobId} onSelect={value => { setJob(null); setJobId(value) }} pipeline={health.pipeline} />}<ActivityLog key={selected.id} logs={readOnly && job?.pdf_id === selectedId ? job.logs || [] : logs} running={isRunning && job?.pdf_id === selectedId} progress={!readOnly && job?.pdf_id === selectedId ? job.request_progress : null} /></>}
+            {view === 'details' && <div className="run-details">{readOnly ? <SavedRunDetails jobs={savedJobs} job={job?.pdf_id === selectedId ? job : null} jobId={jobId} onSelect={value => { setJob(null); setJobId(value) }} pipeline={health.pipeline} /> : canExecute && <RunSetup health={health} options={options} onOptions={setOptions} open={settingsOpen} onToggle={() => setSettingsOpen(!settingsOpen)} />}
               <DocumentScopeNotice documentScope={selected.document_scope || selected.summary?.document_scope} />
               <PdfQualityReport quality={(selected.document_scope || selected.summary?.document_scope)?.pdf_quality} />
               <RunBreakdown summary={selected.summary} />

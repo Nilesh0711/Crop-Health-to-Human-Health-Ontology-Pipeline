@@ -256,3 +256,10 @@ input, select { accent-color: var(--accent); }
 .button.stop-button:hover:not(:disabled) { background: #fbe9e7; border-color: #d9b3b3; }
 .paper-run-status.stopped { color: #647280; background: #eef1f4; }
 .paper-run-status.stopping { color: #7e683a; background: #faf3e5; }
+.snapshot-banner { margin: 0 0 24px; padding: 16px 20px; border: 1px solid #cbded4; border-radius: 12px; background: #f2f8f4; color: #294c3b; }
+.snapshot-banner span { display: block; margin-top: 6px; font-size: 12px; overflow-wrap: anywhere; }
+.snapshot-banner p { margin: 8px 0 0; font-size: 13px; }
+.saved-run-details { margin: 0 0 20px; padding: 18px; }
+.saved-run-details select { display: block; width: 100%; margin: 8px 0 14px; padding: 9px; border: 1px solid #d6ded9; border-radius: 6px; background: white; }
+.saved-run-details pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.saved-run-details dd { overflow-wrap: anywhere; margin-bottom: 8px; }

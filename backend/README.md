@@ -1,5 +1,9 @@
 # Backend architecture
 
+`viewer/` is an isolated, read-only publication adapter. `viewer/app.py` serves
+validated snapshots with no inference dependencies; `viewer/export.py` uses local
+display contracts during export only. See [Render deployment](../docs/deployment/render_viewer.md).
+
 Stage functions perform work; pipelines coordinate them; API/CLI adapters expose
 those operations. Shared scientific rules and infrastructure sit outside stages.
 

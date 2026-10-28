@@ -1,5 +1,10 @@
 # Crop Health Research Workbench
 
+To share saved results without running models, use the existing UI's read-only
+viewer and the prepared Render Free configuration. See the
+[deployment guide](docs/deployment/render_viewer.md) for snapshot export, local
+preview, deployment and updates.
+
 A local-first application for extracting soil-to-human-health claims from research PDFs, checking source fidelity and external research support, and inspecting an evidence-aware knowledge graph. The bounded extractor emits up to four provenance-anchored claims per packet by default. OpenCode uses Go DeepSeek Flash for extraction/source fidelity, MiMo Flash for queries, and one joint MiMo Pro external judgement per claim. BGE-base, BM25, MedCPT, and an NLI conflict detector support retrieval and validation. A supported graph edge is still a provisional research finding, not established causality.
 
 ## Start from Git Bash

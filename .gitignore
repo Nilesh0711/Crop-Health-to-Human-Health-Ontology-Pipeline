@@ -28,3 +28,6 @@ ontology/*
 # Generated developer reports (keep the directory guide)
 reports/*
 !reports/README.md
+
+# Export staging and previous publications stay local. The checked snapshot is deployable source.
+deploy/render/.snapshot-*/

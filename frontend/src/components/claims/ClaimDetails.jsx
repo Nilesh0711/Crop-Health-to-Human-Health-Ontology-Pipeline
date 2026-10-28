@@ -85,7 +85,7 @@ export function ExtractionDiscards({ records }) {
     {open && records.map((record, index) => <article className="discard-record" key={index}><strong>{record.proposed_claim?.subject || 'Malformed claim'} → {readable(record.proposed_claim?.relation)} → {record.proposed_claim?.object || '?'}</strong><p className="trace-reason">{readable(record.reason)}</p>{record.proposed_claim_text && <p>{record.proposed_claim_text}</p>}<small>Packet {record.packet_number} · {record.section_heading}</small>{record.source_evidence_span && <blockquote>{record.source_evidence_span}</blockquote>}<p>Subject anchor: {record.proposed_source_anchors?.subject || 'Not saved in this run'}<br />Object anchor: {record.proposed_source_anchors?.object || 'Not saved in this run'}<br />Relation anchor: {record.proposed_source_anchors?.relation || 'Not saved in this run'}</p></article>)}
   </section>
 }
-export function ClaimActions({ candidate, validation, repairEligibility, revisions = [], busy = false, onAction }) {
+export function ClaimActions({ candidate, validation, repairEligibility, revisions = [], busy = false, onAction, readOnly = false }) {
   const source = candidate.source_validation || {}
   const semantic = candidate.semantic_validation || {}
   const conflict = repairEligibility?.external_contradictions?.[0]
@@ -100,7 +100,7 @@ export function ClaimActions({ candidate, validation, repairEligibility, revisio
       : [...(source.reasons || semantic.reasons || []), source.rationale || semantic.rationale].filter(Boolean).join(' / '))
     : validation?.error || (canReassess ? 'Reassess this saved claim using the current external-validation method.' : 'External validation has not completed for this claim.')
   return <>
-    {(canRepair || canRetry || canReassess) && <div className="claim-repair-action">
+    {!readOnly && (canRepair || canRetry || canReassess) && <div className="claim-repair-action">
       <p><strong>{proofContradiction ? 'Proof-backed contradiction: ' : canRepair ? 'Source correction needed: ' : canReassess ? 'External reassessment: ' : 'External validation unfinished: '}</strong>{reason}</p>
       {proofContradiction && <blockquote>{conflict.evidence?.[0]?.quoted_span}</blockquote>}
       <button type="button" className="button secondary" disabled={busy || !onAction}

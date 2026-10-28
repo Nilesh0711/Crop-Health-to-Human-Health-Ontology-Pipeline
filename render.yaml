@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: crop-health-results
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: "off"

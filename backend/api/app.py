@@ -293,7 +293,8 @@ def health() -> dict[str, Any]:
     if settings.external_judgement_mode in {'per_paper_synthesis', 'trust_graph'} or settings.knowledge_building_mode == 'trust_graph':
         ready['external'] = all(phase_ready.values())
     extraction_ready, validation_ready, helper_ready = (ready[task] for task in ('extraction', 'external', 'query'))
-    return {"status": "ok", "model": settings.external_model, "model_ready": all(ready.values()),
+    return {"status": "ok", "capabilities": {"execute": True, "upload": True, "read_only": False},
+            "model": settings.external_model, "model_ready": all(ready.values()),
             "available_models": opencode_models,
             "extraction": {"provider": "opencode", "model": settings.extraction_model,
                            "ready": extraction_ready, "available_models": opencode_models},

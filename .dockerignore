@@ -1,0 +1,17 @@
+**
+!backend/
+!backend/**
+!frontend/
+!frontend/**
+!deploy/
+!deploy/render/
+!deploy/render/Dockerfile
+!deploy/render/requirements.txt
+!deploy/render/snapshot/
+!deploy/render/snapshot/**
+**/__pycache__/
+**/*.pyc
+frontend/node_modules/
+frontend/dist/
+**/.env
+**/.env.*

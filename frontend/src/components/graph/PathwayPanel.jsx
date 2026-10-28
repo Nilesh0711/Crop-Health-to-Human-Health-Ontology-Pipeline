@@ -5,7 +5,7 @@ import TrustEvidence from '../claims/TrustEvidence.jsx'
 import { EvidenceBadge, PathwayCard, PathwayEmpty } from './PathwayCards.jsx'
 import { entityLabel, evidenceState, matchesEdge, matchesPath, orderClaims, readable } from '../../lib/pathways.js'
 
-export default function PathwayPanel({ data, busy, onAssemble, onLoadMore, onDepthChange }) {
+export default function PathwayPanel({ data, busy, onAssemble, onLoadMore, onDepthChange, readOnly = false }) {
   const [showGraph, setShowGraph] = useState(false)
   const [selection, setSelection] = useState(null)
   const [sortBy, setSortBy] = useState('score')
@@ -62,7 +62,7 @@ export default function PathwayPanel({ data, busy, onAssemble, onLoadMore, onDep
     <div className="pathway-actions"><button type="button" className={`button secondary ${showGraph ? 'is-selected' : ''}`}
       aria-expanded={showGraph} aria-controls="assembled-pathway-graph" onClick={() => setShowGraph(!showGraph)}>
       <Network size={15} />{showGraph ? 'Hide assembled graph' : 'Show assembled graph'}</button>
-      {!provisional && <button type="button" className="button secondary" disabled={busy} onClick={onAssemble}>
+      {!readOnly && !provisional && <button type="button" className="button secondary" disabled={busy} onClick={onAssemble}>
         <GitBranch size={15} />{busy ? 'Pipeline running' : 'Assemble validated claims'}</button>}
       <label>Path length (edges)<select aria-label="Path length in edges" value={data?.max_hops ?? 6} disabled={loadingDepth || loadingMore}
         onChange={event => changeDepth(Number(event.target.value))}>
@@ -71,9 +71,9 @@ export default function PathwayPanel({ data, busy, onAssemble, onLoadMore, onDep
     <details className="pathway-guidance"><summary><Info size={14} />How to read these findings</summary>
       <p>{provisional ? 'Candidate connections are assembled before external validation. Evidence balance measures distinct original study support minus contradiction; graph contribution counts adjacent two-edge connections. Neither is a probability or proof of a whole causal pathway.' : 'Only source-entailed, in-scope claims with accepted independent external support enter assembly. MiMo Flash aligns their entities; connections retain conditions and do not establish causal-chain validity.'}</p>
     </details>
-    {data?.stale && <p className="pathway-notice" role="status"><CircleAlert size={16} />Saved claims have changed. {provisional ? 'Resume the pipeline to update this network.' : 'Assemble again to update these connections.'}</p>}
+    {data?.stale && <p className="pathway-notice" role="status"><CircleAlert size={16} />Saved claims have changed. {readOnly ? 'This snapshot preserves the saved assembly and its stale-data warning.' : provisional ? 'Resume the pipeline to update this network.' : 'Assemble again to update these connections.'}</p>}
     {data?.status === 'failed' && <p className="pathway-notice error" role="alert">Assembly stopped: {data.error}. Saved claims remain available.</p>}
-    {data?.status === 'running' && <p className="pathway-notice" role="status">Global assembly is in progress. Saved findings remain available.</p>}
+    {data?.status === 'running' && <p className="pathway-notice" role="status">{readOnly ? 'Assembly was recorded as in progress when published. This viewer does not run it.' : 'Global assembly is in progress. Saved findings remain available.'}</p>}
     {showGraph && <div id="assembled-pathway-graph" className="pathway-graph"><GraphView graph={graph} activeFilter="all" onSelect={inspect} /></div>}
     {selection && <section className="pathway-selection" aria-label="Selected pathway evidence" tabIndex={-1} ref={selectedRef}>
       <div className="pathway-section-heading"><span className="eyebrow">{selection.kind === 'edge' ? 'SELECTED CLAIM' : 'ALIGNED ENTITY'}</span>
@@ -104,7 +104,7 @@ export default function PathwayPanel({ data, busy, onAssemble, onLoadMore, onDep
         <PathwayCard key={path.map(e => e.id).join('|')} path={path} number={number} provisional={provisional} onSelect={inspect} />)
         : <PathwayEmpty title={paths.length ? 'No matching pathways' : 'No connected pathways yet'}
           action={<button type="button" className="button secondary" onClick={() => setPane('claims')}>View network claims</button>}>
-          {paths.length ? 'Try a different entity or evidence state. Filters search the currently loaded paths.' : provisional
+          {paths.length ? 'Try a different entity or evidence state. Filters search the currently loaded paths.' : readOnly ? 'No connected paths were saved in this snapshot. Explore the available network claims.' : provisional
             ? 'Source-grounded standalone claims remain in the trust table under Network claims. Run or resume the pipeline to build this network.'
             : 'You can assemble eligible saved claims without repeating extraction or external validation.'}</PathwayEmpty>}</div>
       {data?.has_more && <div className="pathway-load-more"><button type="button" className="button secondary" disabled={loadingMore || loadingDepth} aria-busy={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading paths…' : 'Show more paths'}</button>
@@ -121,7 +121,7 @@ export default function PathwayPanel({ data, busy, onAssemble, onLoadMore, onDep
           <td><EvidenceBadge edge={edge} /></td>{provisional && <><td className="pathway-numeric">{edge.trust?.score > 0 ? '+' : ''}{edge.trust?.score ?? 0}</td>
           <td className="pathway-numeric">{edge.trust?.contribution?.two_edge_connections ?? 0}</td></>}
           <td><small>Source: {readable(edge.source_status) || 'Not recorded'}</small><small>External: {readable(edge.external_status) || 'Not assessed'}</small></td></tr>)}</tbody></table>
-        {!visibleClaims.length && <PathwayEmpty title={graph.edges.length ? 'No matching claims' : 'No network claims yet'}>Try different filters or resume the saved pipeline.</PathwayEmpty>}</div>
+        {!visibleClaims.length && <PathwayEmpty title={graph.edges.length ? 'No matching claims' : 'No network claims yet'}>{readOnly ? 'Try different filters. Only published findings are available.' : 'Try different filters or resume the saved pipeline.'}</PathwayEmpty>}</div>
     </>}
     {pane === 'connections' && <div className="pathway-connections"><div className="pathway-section-heading"><div><h3>Cross-paper connection compatibility assessments</h3>
       <p>Conditions and entity identity are compared for adjacent edges. Missing connections remain unassessed; compatibility does not establish a causal chain.</p></div></div>

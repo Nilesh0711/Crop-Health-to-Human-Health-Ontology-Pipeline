@@ -1,0 +1,176 @@
+{
+  "format": "research-viewer-v1",
+  "created_at": "2026-10-28T15:29:40.371456+00:00",
+  "files": {
+    "documents/3472929fb034edf1/claims.json": {
+      "size": 9794125,
+      "sha256": "0a830bd80b025df0fb2985ea4ac0ed3491616e6020e25b168953a120bef49a5a"
+    },
+    "documents/3472929fb034edf1/logs.json": {
+      "size": 82415,
+      "sha256": "62b0fe9d7e5f44fd5b9a8bfe8cbc033d9dc314cd1c039386908c92e91de9b051"
+    },
+    "documents/3472929fb034edf1/graph.json": {
+      "size": 84377,
+      "sha256": "e80aea8bd7d71acce76f79676bc576a826e778369f8704be44d5bbbbd542e256"
+    },
+    "documents/3472929fb034edf1/audit-graph.json": {
+      "size": 337051,
+      "sha256": "cb6982014a8eabaec0e6468e047cac7e52e0e8744d5b1718869b9d88715e91ba"
+    },
+    "documents/3472929fb034edf1/source-graph.json": {
+      "size": 416319,
+      "sha256": "1bda9d7f348e13556037422807cd39ba24e0222fa2cfff499994bfc3794f64e9"
+    },
+    "documents/3472929fb034edf1/paths.json": {
+      "size": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "documents/3472929fb034edf1/trust.json": {
+      "size": 361565,
+      "sha256": "8a743b99314ada9a6e63077e9b31089461d3e1fe51ce2a6f1722612310ea66e9"
+    },
+    "documents/3472929fb034edf1/jobs/31dc4a9908a84bbd887c80a8cd79e267.json": {
+      "size": 23959,
+      "sha256": "3650212e058d40f5a8307e2e437cc2e8936c89f38b0f91ecb3ea896457270795"
+    },
+    "documents/3472929fb034edf1/jobs/33ba6ad01bab4886bf283247f4af43f8.json": {
+      "size": 42258,
+      "sha256": "b1e1002f2691b69e61ab7488330365a3c4dba6759378a3af9d384861b56b5fc7"
+    },
+    "documents/3472929fb034edf1/jobs/412fc8c09da347928e63f5401c5b42b2.json": {
+      "size": 49216,
+      "sha256": "bce17e6193b7884e27102c20ff46acace1d70e7573a5d67c2d173180db0117c9"
+    },
+    "documents/3472929fb034edf1/jobs/4348c2dae8a34c1db07b16c6de63af50.json": {
+      "size": 60140,
+      "sha256": "f2f7cb3d3339ac412dafc6492cc087b0666ba93718f0bd7f2e0c57c3eecacdd4"
+    },
+    "documents/3472929fb034edf1/jobs/5a3ef7b7bf2e453aaaa60de2336eab27.json": {
+      "size": 39245,
+      "sha256": "3ea95d34dd43c8d6e0fa28978c732867ad951f804dc26c94406a648a514f11f3"
+    },
+    "documents/3472929fb034edf1/jobs/6383db82b09944ec9b62c99bfffd8df8.json": {
+      "size": 20257,
+      "sha256": "29d932a2287704f0f90b0291cffd1296a7093f93dd6412335d7e7138dd3e60ef"
+    },
+    "documents/3472929fb034edf1/jobs/916336cc5423448a8ac3939b251d1f47.json": {
+      "size": 7101,
+      "sha256": "a9ac4329c7979cdf00d29db544190b20e9ed603d4bb6e7e7ab12b78c0e801244"
+    },
+    "documents/3472929fb034edf1/jobs/9cc2e22c18bb440eb87d67891d33a081.json": {
+      "size": 22481,
+      "sha256": "44a80ac7667bb678f1c26b8c8412ea7b5ba698dc823e9f3f1bec4ac1d01b5563"
+    },
+    "documents/3472929fb034edf1/jobs/a13a2307caa8456bba2d02f4efd9163f.json": {
+      "size": 93203,
+      "sha256": "3cef6580253c07989c82907859d7e3f88e6ef73b8d313c0b009e92974a38eeef"
+    },
+    "documents/3472929fb034edf1/jobs/ad64d0493b8940c39f68182eeb078698.json": {
+      "size": 44092,
+      "sha256": "1f7a7d96531d28a3c348579723cb0ae71268e47625122a6213deb907159f497e"
+    },
+    "documents/3472929fb034edf1/jobs/f0bc2d162027455db72f0d7f8889b94d.json": {
+      "size": 96876,
+      "sha256": "d0787bd9f06e888edb2d68e3d980d77e6dfa67ed0d7f1be5ca52a2fb2a4d90b7"
+    },
+    "documents/3472929fb034edf1/source.pdf": {
+      "size": 2493550,
+      "sha256": "8260b33511de8bea655d6ef758fed872f366c94db8c88fc27e7b082b62199efe"
+    },
+    "documents/3472929fb034edf1/knowledge_graph.graphml": {
+      "size": 13096,
+      "sha256": "b58dec146b111870a34f1cc857da0cbb363f51311a7780af0dd13466563e5f96"
+    },
+    "catalog.json": {
+      "size": 17572,
+      "sha256": "cfe179bcda45d47064c90e205e20d544f446c524f7cc569e26b54aa99aac4322"
+    },
+    "global/graph.json": {
+      "size": 84377,
+      "sha256": "e80aea8bd7d71acce76f79676bc576a826e778369f8704be44d5bbbbd542e256"
+    },
+    "global/audit-graph.json": {
+      "size": 337051,
+      "sha256": "cb6982014a8eabaec0e6468e047cac7e52e0e8744d5b1718869b9d88715e91ba"
+    },
+    "global/source-graph.json": {
+      "size": 416319,
+      "sha256": "1bda9d7f348e13556037422807cd39ba24e0222fa2cfff499994bfc3794f64e9"
+    },
+    "global/pathways-validated.json": {
+      "size": 19239,
+      "sha256": "c30f9cc5a02c94b5f7fc08b1dbc49123d2416dd39e398d06590480de6d30a0de"
+    },
+    "global/pathways-provisional.json": {
+      "size": 463725,
+      "sha256": "03f4d4b45d8fed9c21f072e043965bb8509e3d1b2182f6eca04d1f287b8a5766"
+    }
+  },
+  "documents": {
+    "3472929fb034edf1": {
+      "jobs": {
+        "31dc4a9908a84bbd887c80a8cd79e267": "documents/3472929fb034edf1/jobs/31dc4a9908a84bbd887c80a8cd79e267.json",
+        "33ba6ad01bab4886bf283247f4af43f8": "documents/3472929fb034edf1/jobs/33ba6ad01bab4886bf283247f4af43f8.json",
+        "412fc8c09da347928e63f5401c5b42b2": "documents/3472929fb034edf1/jobs/412fc8c09da347928e63f5401c5b42b2.json",
+        "4348c2dae8a34c1db07b16c6de63af50": "documents/3472929fb034edf1/jobs/4348c2dae8a34c1db07b16c6de63af50.json",
+        "5a3ef7b7bf2e453aaaa60de2336eab27": "documents/3472929fb034edf1/jobs/5a3ef7b7bf2e453aaaa60de2336eab27.json",
+        "6383db82b09944ec9b62c99bfffd8df8": "documents/3472929fb034edf1/jobs/6383db82b09944ec9b62c99bfffd8df8.json",
+        "916336cc5423448a8ac3939b251d1f47": "documents/3472929fb034edf1/jobs/916336cc5423448a8ac3939b251d1f47.json",
+        "9cc2e22c18bb440eb87d67891d33a081": "documents/3472929fb034edf1/jobs/9cc2e22c18bb440eb87d67891d33a081.json",
+        "a13a2307caa8456bba2d02f4efd9163f": "documents/3472929fb034edf1/jobs/a13a2307caa8456bba2d02f4efd9163f.json",
+        "ad64d0493b8940c39f68182eeb078698": "documents/3472929fb034edf1/jobs/ad64d0493b8940c39f68182eeb078698.json",
+        "f0bc2d162027455db72f0d7f8889b94d": "documents/3472929fb034edf1/jobs/f0bc2d162027455db72f0d7f8889b94d.json"
+      },
+      "claims": "documents/3472929fb034edf1/claims.json",
+      "logs": "documents/3472929fb034edf1/logs.json",
+      "graph": "documents/3472929fb034edf1/graph.json",
+      "audit-graph": "documents/3472929fb034edf1/audit-graph.json",
+      "source-graph": "documents/3472929fb034edf1/source-graph.json",
+      "paths": "documents/3472929fb034edf1/paths.json",
+      "trust": "documents/3472929fb034edf1/trust.json",
+      "pdf": "documents/3472929fb034edf1/source.pdf",
+      "graphml": "documents/3472929fb034edf1/knowledge_graph.graphml"
+    }
+  },
+  "jobs": {
+    "31dc4a9908a84bbd887c80a8cd79e267": "documents/3472929fb034edf1/jobs/31dc4a9908a84bbd887c80a8cd79e267.json",
+    "33ba6ad01bab4886bf283247f4af43f8": "documents/3472929fb034edf1/jobs/33ba6ad01bab4886bf283247f4af43f8.json",
+    "412fc8c09da347928e63f5401c5b42b2": "documents/3472929fb034edf1/jobs/412fc8c09da347928e63f5401c5b42b2.json",
+    "4348c2dae8a34c1db07b16c6de63af50": "documents/3472929fb034edf1/jobs/4348c2dae8a34c1db07b16c6de63af50.json",
+    "5a3ef7b7bf2e453aaaa60de2336eab27": "documents/3472929fb034edf1/jobs/5a3ef7b7bf2e453aaaa60de2336eab27.json",
+    "6383db82b09944ec9b62c99bfffd8df8": "documents/3472929fb034edf1/jobs/6383db82b09944ec9b62c99bfffd8df8.json",
+    "916336cc5423448a8ac3939b251d1f47": "documents/3472929fb034edf1/jobs/916336cc5423448a8ac3939b251d1f47.json",
+    "9cc2e22c18bb440eb87d67891d33a081": "documents/3472929fb034edf1/jobs/9cc2e22c18bb440eb87d67891d33a081.json",
+    "a13a2307caa8456bba2d02f4efd9163f": "documents/3472929fb034edf1/jobs/a13a2307caa8456bba2d02f4efd9163f.json",
+    "ad64d0493b8940c39f68182eeb078698": "documents/3472929fb034edf1/jobs/ad64d0493b8940c39f68182eeb078698.json",
+    "f0bc2d162027455db72f0d7f8889b94d": "documents/3472929fb034edf1/jobs/f0bc2d162027455db72f0d7f8889b94d.json"
+  },
+  "graphs": {
+    "graph": "global/graph.json",
+    "audit-graph": "global/audit-graph.json",
+    "source-graph": "global/source-graph.json"
+  },
+  "pathways": {
+    "validated": "global/pathways-validated.json",
+    "provisional": "global/pathways-provisional.json"
+  },
+  "warnings": [],
+  "pipeline": {
+    "schema_version": "external-validation-v36",
+    "task_models": {
+      "extraction": "opencode-go/deepseek-v4.1-flash",
+      "source": "opencode-go/deepseek-v4.1-flash",
+      "query": "opencode-go/mimo-v2.6-flash",
+      "external": "opencode-go/mimo-v2.6-pro",
+      "pathway_assembly": "opencode-go/mimo-v2.6-flash"
+    },
+    "external_phase_models": {
+      "paper": "opencode-go/deepseek-v4.1-flash",
+      "synthesis": "opencode-go/mimo-v2.6-pro"
+    },
+    "knowledge_building_mode": "trust_graph"
+  },
+  "catalog": "catalog.json",
+  "snapshot_id": "829fa6f676a8aa194c282879"
+}

@@ -1,5 +1,10 @@
 # Frontend
 
+The same application supports the local pipeline and the published read-only
+viewer. `/api/health` supplies explicit capabilities; execution controls fail
+closed until the server permits them. Viewer mode preserves result inspection
+and archived settings/logs. See [deployment](../docs/deployment/render_viewer.md).
+
 React/Vite/Cytoscape research workbench. Run these commands in this directory:
 
 ```bash

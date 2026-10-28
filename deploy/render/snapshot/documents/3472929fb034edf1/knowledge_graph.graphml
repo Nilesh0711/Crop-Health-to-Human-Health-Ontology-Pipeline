@@ -1,0 +1,227 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d17" for="edge" attr.name="quote" attr.type="string" />
+  <key id="d16" for="edge" attr.name="paper" attr.type="string" />
+  <key id="d15" for="edge" attr.name="trust_score_kind" attr.type="string" />
+  <key id="d14" for="edge" attr.name="trust_contradiction_groups" attr.type="long" />
+  <key id="d13" for="edge" attr.name="trust_support_groups" attr.type="long" />
+  <key id="d12" for="edge" attr.name="trust_status" attr.type="string" />
+  <key id="d11" for="edge" attr.name="trust_score" attr.type="long" />
+  <key id="d10" for="edge" attr.name="claim_text_source_verified" attr.type="boolean" />
+  <key id="d9" for="edge" attr.name="qualifiers" attr.type="string" />
+  <key id="d8" for="edge" attr.name="certainty" attr.type="string" />
+  <key id="d7" for="edge" attr.name="claim_text" attr.type="string" />
+  <key id="d6" for="edge" attr.name="contradiction_count" attr.type="long" />
+  <key id="d5" for="edge" attr.name="support_count" attr.type="long" />
+  <key id="d4" for="edge" attr.name="status" attr.type="string" />
+  <key id="d3" for="edge" attr.name="relation" attr.type="string" />
+  <key id="d2" for="edge" attr.name="candidate_id" attr.type="string" />
+  <key id="d1" for="node" attr.name="entity_type" attr.type="string" />
+  <key id="d0" for="node" attr.name="label" attr.type="string" />
+  <graph edgedefault="directed">
+    <node id="Crop:infected wheat grains">
+      <data key="d0">infected wheat grains</data>
+      <data key="d1">Crop</data>
+    </node>
+    <node id="Contaminant:mycotoxins">
+      <data key="d0">mycotoxins</data>
+      <data key="d1">Contaminant</data>
+    </node>
+    <node id="PlantPathogen:pathogen spores">
+      <data key="d0">pathogen spores</data>
+      <data key="d1">PlantPathogen</data>
+    </node>
+    <node id="Crop:healthy seeds">
+      <data key="d0">healthy seeds</data>
+      <data key="d1">Crop</data>
+    </node>
+    <node id="PlantPathogen:ustilaginoidea virens">
+      <data key="d0">Ustilaginoidea virens</data>
+      <data key="d1">PlantPathogen</data>
+    </node>
+    <node id="Contaminant:ustiloxin">
+      <data key="d0">ustiloxin</data>
+      <data key="d1">Contaminant</data>
+    </node>
+    <node id="Contaminant:ustilaginoidin">
+      <data key="d0">ustilaginoidin</data>
+      <data key="d1">Contaminant</data>
+    </node>
+    <node id="PlantDisease:recent coffee rust epidemics">
+      <data key="d0">Recent coffee rust epidemics</data>
+      <data key="d1">PlantDisease</data>
+    </node>
+    <node id="PlantTrait:coffee yield">
+      <data key="d0">coffee yield</data>
+      <data key="d1">PlantTrait</data>
+    </node>
+    <node id="PlantDisease:brown spot">
+      <data key="d0">brown spot</data>
+      <data key="d1">PlantDisease</data>
+    </node>
+    <node id="PlantTrait:grain and cooking quality of rice">
+      <data key="d0">grain and cooking quality of rice</data>
+      <data key="d1">PlantTrait</data>
+    </node>
+    <node id="PlantDisease:plant diseases">
+      <data key="d0">plant diseases</data>
+      <data key="d1">PlantDisease</data>
+    </node>
+    <node id="PlantTrait:loss of food quality">
+      <data key="d0">loss of food quality</data>
+      <data key="d1">PlantTrait</data>
+    </node>
+    <node id="PlantPathogen:magnaporthe oryzae">
+      <data key="d0">Magnaporthe oryzae</data>
+      <data key="d1">PlantPathogen</data>
+    </node>
+    <node id="PlantDisease:rice blast">
+      <data key="d0">rice blast</data>
+      <data key="d1">PlantDisease</data>
+    </node>
+    <edge source="Crop:infected wheat grains" target="Contaminant:mycotoxins" id="candidate-b94349abb8c91a8caf655379f2989657">
+      <data key="d2">candidate-b94349abb8c91a8caf655379f2989657</data>
+      <data key="d3">may_contain</data>
+      <data key="d4">corroborated</data>
+      <data key="d5">5</data>
+      <data key="d6">0</data>
+      <data key="d7">Fusarium head blight is a primary concern because mycotoxins may be produced in infected grains.</data>
+      <data key="d8">conditional</data>
+      <data key="d9">{"crop_or_species": "wheat", "population": "", "condition": "Fusarium head blight infection", "comparator": "", "metric": ""}</data>
+      <data key="d10">True</data>
+      <data key="d11">3</data>
+      <data key="d12">supported</data>
+      <data key="d13">3</data>
+      <data key="d14">0</data>
+      <data key="d15">evidence_balance_not_probability</data>
+      <data key="d16">Crop health and its global impacts on the components of food security</data>
+      <data key="d17">FHB does cause important yield reductions, but the disease has become a primary concern because of the mycotoxins that may be produced in infected grains (Parry et al. 1995; McMullen et al. 1997;X u 2003; Xu and Nicholson 2009; Bateman et al. 2007).</data>
+    </edge>
+    <edge source="PlantPathogen:pathogen spores" target="Crop:healthy seeds" id="candidate-f05db847f2ec2f5e26deedabadbf9466">
+      <data key="d2">candidate-f05db847f2ec2f5e26deedabadbf9466</data>
+      <data key="d3">may_contaminate</data>
+      <data key="d4">single_source</data>
+      <data key="d5">1</data>
+      <data key="d6">0</data>
+      <data key="d7">Spores of pathogens may contaminate healthy seeds during harvesting and threshing.</data>
+      <data key="d8">conditional</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "during harvesting and threshing", "comparator": "", "metric": ""}</data>
+      <data key="d10">True</data>
+      <data key="d11">0</data>
+      <data key="d12">supported</data>
+      <data key="d13">0</data>
+      <data key="d14">0</data>
+      <data key="d15">evidence_balance_not_probability</data>
+      <data key="d16">Crop health and its global impacts on the components of food security</data>
+      <data key="d17">Spores of pathogens may contaminate healthy seeds during harvesting and threshing.</data>
+    </edge>
+    <edge source="PlantPathogen:ustilaginoidea virens" target="Contaminant:ustiloxin" id="candidate-6ee6545ee82b157f767e1a2e39fd9ea7">
+      <data key="d2">candidate-6ee6545ee82b157f767e1a2e39fd9ea7</data>
+      <data key="d3">produces</data>
+      <data key="d4">single_source</data>
+      <data key="d5">3</data>
+      <data key="d6">0</data>
+      <data key="d7">The false smut pathogen Ustilaginoidea virens produces the mycotoxin ustiloxin.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "rice", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">True</data>
+      <data key="d11">1</data>
+      <data key="d12">supported</data>
+      <data key="d13">1</data>
+      <data key="d14">0</data>
+      <data key="d15">evidence_balance_not_probability</data>
+      <data key="d16">Crop health and its global impacts on the components of food security</data>
+      <data key="d17">The pathogen produces two kinds of mycotoxins, namely ustiloxin (Koiso et al.1992, 1998) and ustilaginoidin (Koyama and Natori 1988; Meng et al. 2015), which are toxic to animals.</data>
+    </edge>
+    <edge source="PlantPathogen:ustilaginoidea virens" target="Contaminant:ustilaginoidin" id="candidate-8f8efa845d3db6493d0e07330376e42f">
+      <data key="d2">candidate-8f8efa845d3db6493d0e07330376e42f</data>
+      <data key="d3">produces</data>
+      <data key="d4">single_source</data>
+      <data key="d5">5</data>
+      <data key="d6">0</data>
+      <data key="d7">The false smut pathogen Ustilaginoidea virens produces the mycotoxin ustilaginoidin.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "rice", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">True</data>
+      <data key="d11">1</data>
+      <data key="d12">supported</data>
+      <data key="d13">1</data>
+      <data key="d14">0</data>
+      <data key="d15">evidence_balance_not_probability</data>
+      <data key="d16">Crop health and its global impacts on the components of food security</data>
+      <data key="d17">The pathogen produces two kinds of mycotoxins, namely ustiloxin (Koiso et al.1992, 1998) and ustilaginoidin (Koyama and Natori 1988; Meng et al. 2015), which are toxic to animals.</data>
+    </edge>
+    <edge source="PlantDisease:recent coffee rust epidemics" target="PlantTrait:coffee yield" id="candidate-2a152d1807374d5d3b95de0031b7dc47">
+      <data key="d2">candidate-2a152d1807374d5d3b95de0031b7dc47</data>
+      <data key="d3">affects</data>
+      <data key="d4">single_source</data>
+      <data key="d5">1</data>
+      <data key="d6">0</data>
+      <data key="d7">Recent coffee rust epidemics in Central America were strong and early enough to have a measurable direct effect on coffee yield.</data>
+      <data key="d8">causal</data>
+      <data key="d9">{"crop_or_species": "coffee", "population": "", "condition": "", "comparator": "", "metric": "coffee yield"}</data>
+      <data key="d10">True</data>
+      <data key="d11">1</data>
+      <data key="d12">supported</data>
+      <data key="d13">1</data>
+      <data key="d14">0</data>
+      <data key="d15">evidence_balance_not_probability</data>
+      <data key="d16">Crop health and its global impacts on the components of food security</data>
+      <data key="d17">Recent epidemics in Central America were actually strong and early enough to have a measurable direct effect on coffee yield.</data>
+    </edge>
+    <edge source="PlantDisease:brown spot" target="PlantTrait:grain and cooking quality of rice" id="candidate-ee8220548d9f577e05578b59b4d68edb">
+      <data key="d2">candidate-ee8220548d9f577e05578b59b4d68edb</data>
+      <data key="d3">affects</data>
+      <data key="d4">single_source</data>
+      <data key="d5">1</data>
+      <data key="d6">0</data>
+      <data key="d7">Brown spot affects the grain and cooking quality of rice.</data>
+      <data key="d8">causal</data>
+      <data key="d9">{"crop_or_species": "rice", "population": "", "condition": "", "comparator": "", "metric": "grain and cooking quality"}</data>
+      <data key="d10">True</data>
+      <data key="d11">0</data>
+      <data key="d12">supported</data>
+      <data key="d13">0</data>
+      <data key="d14">0</data>
+      <data key="d15">evidence_balance_not_probability</data>
+      <data key="d16">Crop health and its global impacts on the components of food security</data>
+      <data key="d17">Another feature of brown spot (Barnwal et al.2013) is that it affects the grain and cooking quality of rice, and thus, brown spot does have a negative impact on Component 6.</data>
+    </edge>
+    <edge source="PlantDisease:plant diseases" target="PlantTrait:loss of food quality" id="candidate-2d6bbf93b9ad3b34086aad5a0fa4064d">
+      <data key="d2">candidate-2d6bbf93b9ad3b34086aad5a0fa4064d</data>
+      <data key="d3">leads_to</data>
+      <data key="d4">single_source</data>
+      <data key="d5">1</data>
+      <data key="d6">0</data>
+      <data key="d7">Plant diseases that cause loss of food quality and accumulation of toxins are threats to food security components.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">True</data>
+      <data key="d11">0</data>
+      <data key="d12">supported</data>
+      <data key="d13">0</data>
+      <data key="d14">0</data>
+      <data key="d15">evidence_balance_not_probability</data>
+      <data key="d16">Crop health and its global impacts on the components of food security</data>
+      <data key="d17">Plant diseases leading to loss of food quality, and even the accumulation of toxins, represent another group of threats to food security components.</data>
+    </edge>
+    <edge source="PlantPathogen:magnaporthe oryzae" target="PlantDisease:rice blast" id="candidate-d93b57a7efe6473df04d6ba2b19baa6e">
+      <data key="d2">candidate-d93b57a7efe6473df04d6ba2b19baa6e</data>
+      <data key="d3">causes</data>
+      <data key="d4">single_source</data>
+      <data key="d5">2</data>
+      <data key="d6">0</data>
+      <data key="d7">Rice blast, caused by the fungus Magnaporthe oryzae, occurs in all rice-growing areas of the world.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "rice", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">True</data>
+      <data key="d11">1</data>
+      <data key="d12">supported</data>
+      <data key="d13">1</data>
+      <data key="d14">0</data>
+      <data key="d15">evidence_balance_not_probability</data>
+      <data key="d16">Crop health and its global impacts on the components of food security</data>
+      <data key="d17">Rice blast, caused by the fungus Magnaporthe oryzae occurs in all rice-growing areas in the world (Ou 1985).</data>
+    </edge>
+  </graph>
+</graphml>

@@ -52,9 +52,11 @@ def interrupt_job(record):
     now = datetime.now(timezone.utc).isoformat(timespec='seconds')
     record.update(status='failed', interrupted=True, error=INTERRUPTED_MESSAGE,
                   finished_at=now, updated_at=now)
+    record.pop('active_request_progress', None)
     entry = {'at': now, 'level': 'error', 'message': INTERRUPTED_MESSAGE}
     if isinstance(record.get('request_progress'), dict):
         progress = {**record['request_progress'], 'status': 'interrupted',
+                    'active_request_count': 0,
                     'provider_status': 'Backend stopped; completion of the in-flight provider request is unknown'}
         record['request_progress'] = progress
         entry['progress'] = progress

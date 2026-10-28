@@ -11,6 +11,7 @@ Run from Git Bash; each launcher resolves the repository from its own location.
 | `extraction_audit.py` | Snapshot/compare extraction results; writes developer reports under `reports/` by default |
 | [`research/packet_comparison/`](research/packet_comparison/README.md) | Paired real-provider extraction experiments, source audits and reproducible reports |
 | [`research/reasoning_comparison.py`](research/reasoning_comparison.py) | Isolated DeepSeek reasoning-mode pilot with source audits; leaves production settings unchanged |
+| [`research/validation_speed.py`](research/validation_speed.py) | Offline cache/scheduling benchmark and saved-duration replay; makes no model or search API calls |
 
 The backend launcher disables automatic reload so edits do not terminate long
 pipeline runs. For development only, use `BACKEND_RELOAD=1 bash scripts/run_backend.sh`.

@@ -10,13 +10,14 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 import time
-from backend.shared.cancellation import check_cancelled
+from backend.shared.cancellation import check_cancelled, current_token
 from typing import Any
 
 from pypdf import PdfReader
 
 from backend.config.settings import Settings
 from backend.shared.text_structure import REFERENCE_HEADING_TEXT
+from backend.shared.metadata_http import MetadataError
 
 
 SEARCH_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
@@ -35,6 +36,10 @@ def fetch_json(url: str, settings: Settings) -> dict[str, Any]:
     model verdict, changes a query, or turns absent evidence into support.
     """
     check_cancelled()
+    if current_token() is not None:
+        from backend.shared.metadata_http import request_json
+        return request_json('GET', url, headers={'User-Agent': settings.user_agent, 'Accept': 'application/json'},
+                            timeout=settings.metadata_timeout_seconds, max_bytes=settings.max_fulltext_bytes)
     request = urllib.request.Request(url, headers={"User-Agent": settings.user_agent, "Accept": "application/json"})
     for attempt in range(2):
         check_cancelled()
@@ -68,6 +73,10 @@ def resolve_bibliographic_reference(reference: dict[str, Any], settings: Setting
                                      "select": "DOI,title,author,published-print,published-online,container-title"})
     try:
         items = fetch_json(f"{CROSSREF_URL}?{params}", settings).get("message", {}).get("items", [])
+    except MetadataError as exc:
+        if exc.status in {404, 410}:
+            return None
+        raise
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError):
         return None
     if not items:
@@ -105,7 +114,14 @@ def openalex_open_access_copy(doi: str, settings: Settings) -> dict[str, Any] | 
     doi_url = urllib.parse.quote(f"https://doi.org/{normalized_doi}", safe="")
     try:
         work = fetch_json(OPENALEX_WORK_URL.format(doi_url=doi_url), settings)
+    except MetadataError as exc:
+        if exc.status in {404, 410}:
+            return None
+        raise
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError):
+        return None
+    actual_doi = str(work.get('doi') or '').strip().casefold().removeprefix('https://doi.org/')
+    if actual_doi and actual_doi != normalized_doi:
         return None
     location = work.get("best_oa_location") or work.get("primary_location") or {}
     pdf_url = str(location.get("pdf_url") or "").strip()
@@ -273,8 +289,6 @@ def fetch_open_access_pdf_pages(url: str, settings: Settings) -> list[dict[str, 
                 if re.match(r"^(?:acknowledg(?:e)?ments?|author contributions|funding|conflicts? of interest)\s*$",
                             line, re.IGNORECASE):
                     break
-                if re.match(r"^(?:figure|table)\s+\d+\s*[.:]", line, re.IGNORECASE):
-                    continue
                 kept.append(line)
             if references_started:
                 break
@@ -303,10 +317,43 @@ def paragraphs_from_pdf_pages(pages: list[dict[str, Any]]) -> list[dict[str, Any
     paragraphs: list[dict[str, Any]] = []
     for page in pages:
         for text in paragraphs_from_plain_text(str(page.get("text") or "")):
-            if re.match(r"^(?:figure|table)\s+\d+\s*[.:]", text, re.IGNORECASE):
-                continue
-            paragraphs.append({"page_number": page.get("page_number"), "text": text})
+            caption = re.match(r"^(figure|table)\s+\d+\s*[.:]", text, re.IGNORECASE)
+            paragraphs.append({"page_number": page.get("page_number"), "text": text,
+                               **({'source_kind': 'pdf_caption', 'layout_verified': False} if caption else {})})
     return paragraphs
+
+
+def _xml_table_and_figure_blocks(root):
+    """Explicit source-cell serialization, retaining spans instead of guessing headers."""
+    blocks = []
+    for number, table in enumerate(root.findall('.//table-wrap'), 1):
+        identifier = table.get('id') or f'table-{number}'
+        caption = normalize_text(' '.join(table.find('caption').itertext())) if table.find('caption') is not None else ''
+        header_rows = []
+        for row in table.findall('.//thead/tr'):
+            header_rows.append([{'text': normalize_text(' '.join(cell.itertext())),
+                                 'colspan': cell.get('colspan', '1'), 'rowspan': cell.get('rowspan', '1')}
+                                for cell in row if cell.tag in {'th', 'td'}])
+        notes = [normalize_text(' '.join(n.itertext())) for n in table.findall('.//table-wrap-foot')]
+        rows = table.findall('.//tbody/tr') or table.findall('.//table/tr')
+        for index, row in enumerate(rows, 1):
+            cells = [{'text': normalize_text(' '.join(cell.itertext())), 'colspan': cell.get('colspan', '1'),
+                      'rowspan': cell.get('rowspan', '1')} for cell in row if cell.tag in {'th', 'td'}]
+            text = f'TABLE CELL SERIALIZATION [{identifier}, row {index}]. Caption: {caption}. '
+            text += 'Header rows: ' + json.dumps(header_rows, ensure_ascii=False) + '. '
+            text += 'Cells in source order: ' + json.dumps(cells, ensure_ascii=False) + '. '
+            text += 'Footnotes: ' + ' '.join(notes)
+            blocks.append({'text': text, 'source_kind': 'table_row', 'table_id': identifier,
+                           'row_number': index, 'table_headers': header_rows, 'table_cells': cells,
+                           'table_footnotes': notes, 'section_heading': caption,
+                           'layout_verified': False, 'paragraph_references': []})
+    for number, figure in enumerate(root.findall('.//fig'), 1):
+        caption = figure.find('caption')
+        if caption is not None:
+            blocks.append({'text': normalize_text(' '.join(caption.itertext())), 'source_kind': 'figure_caption',
+                           'figure_id': figure.get('id') or f'figure-{number}', 'layout_verified': False,
+                           'section_heading': 'Figure caption', 'paragraph_references': []})
+    return blocks
 
 
 def normalize_text(value: str) -> str:
@@ -361,7 +408,8 @@ def extract_paragraphs(xml_text: str, with_sections: bool = False) -> list[Any]:
                 paragraphs.append({"text": text, "section_heading": heading, 'paragraph_references': links})
             else:
                 paragraphs.append(text)
-    return paragraphs
+    blocks = _xml_table_and_figure_blocks(root)
+    return paragraphs + (blocks if with_sections else [b['text'] for b in blocks])
 
 
 def scholarly_sentences(text: str) -> list[str]:

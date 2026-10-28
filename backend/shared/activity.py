@@ -60,6 +60,7 @@ def research_activity(entry):
         r'^(?:source|query) batch \d+:',
         r'^extracting .+ \(pages ', r'accepted candidates so far$',
         r'^external validation: paper \d+/', r'^resuming retained evidence packet',
+        r'^grouped external assessment:',
         r'^pathway assembly new/changed endpoints',
     )
     return text != 'external validation' and not any(re.search(pattern, text) for pattern in routine)

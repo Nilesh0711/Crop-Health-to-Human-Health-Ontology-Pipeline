@@ -54,16 +54,19 @@ For one-server use, run `npm.cmd run build` inside `frontend/`, then start FastA
 ## Pipeline
 
 1. Extract section-aware packets of about 4,000 words from the source PDF, with a 500-word overlap. Preserve author-year citations across `et al.`, retain conservative unnumbered topic headings, and resolve comma-free or compact citations such as `Ding et al. 1997` and `Barnwal et al.2013` against APA bibliography entries.
-2. Rank likely mechanistic sentences as an attention index, then ask DeepSeek Flash for bounded atomic claims using the full rich packet, exact one-to-three-sentence evidence spans, and distinct noun-phrase entity anchors. The attention index does not discard packet text.
-3. Reject malformed claims and relations outside the automatic relation policy. Explicit causal predicates are deferred to a stricter causal workflow.
-4. Check controlled entity/relation labels in code. No standalone semantic or keyword-sampled document scope model call is made. Deterministic unusable-text detection remains.
+2. Ask DeepSeek Flash for atomic claims from explicit target regions while preserving surrounding reading context. Whole-packet extraction remains selectable. Exact sentence IDs reconstruct source evidence, including multi-sentence references.
+3. Check valid JSON, required fields, data types and literal source anchors. Relation names are open; the default numeric claim cap is zero. Finite generation budgets still apply.
+4. No standalone semantic or keyword-sampled document scope model call is made. Deterministic unusable-text detection remains; scientific scope and contextual types require retrieved evidence assessment.
 5. Normalize only high-confidence local vocabulary matches; preserve original labels and never invent ontology IDs.
 6. Validate source fidelity with a separate stateless source-verifier call plus deterministic anchor and modality checks. A generic disease mention may use an exact local section heading as a bounded antecedent; distant context cannot prove the claim. Explicit hedges such as `may`, `can`, and `could` remain conditional.
 7. Resolve all references attached to source evidence, using bibliography DOIs directly and conservative Crossref matching only when needed. Search Europe PMC and OpenAlex with literal and measurement queries. Rank metadata using BM25/BGE fusion and MedCPT; retain a small allowance for potentially accessible papers lacking indexed abstracts. Fetch up to 8 search papers by default (UI: 1..30), plus all usable attached source citations.
-8. Prefer Europe PMC full-text XML; fall back to an explicit OpenAlex open-access PDF and then an indexed abstract. External files are processed in memory, and only selected page-labelled passages are stored.
-9. Rank sentence-aligned chunks against both the full claim/qualifiers and a neutral exposure/outcome query; retain 4 per paper by default. Send all selected paper packets in ONE MiMo Pro request. Assess types/scope and cross-paper findings together, then locally enforce exact per-paper quote, endpoint, qualifier and modality checks. Evidence cannot migrate between papers. Preserve source-cited versus search-discovered provenance. A context-budget failure is visible; papers are never silently trimmed to fit.
+8. Prefer Europe PMC full-text XML, then an explicit OpenAlex open-access PDF or indexed abstract. Original file bytes stay transient. A bounded, expiring shared index reuses parsed text, sentence-indexed chunks and versioned embeddings across runs; selected proof also stays in each claim's audit.
+9. Rank sentence-aligned chunks against the full claim/qualifiers and a neutral exposure/outcome query; retain 4 per paper by default. Trust graph mode assembles provisional paths, shares related claims' DeepSeek paper assessments, and uses MiMo Pro for cross-paper synthesis. Paper calls start as documents become ready. Every edge retains its own proof and decision; source citations remain distinct from independent findings. Pending retrieval and oversized inputs remain visible rather than silently losing papers.
 
-The starter automatic graph is restricted to direct pathway/material relations: `affects`, `increases`, `reduces`, `has_nutrient`, `has_contaminant`, `contains`, and `has_trait`. Association-only and comparative observations are retained for later observational-evidence modelling rather than being treated as universal graph edges.
+Only eligible validated edges enter the final graph. Provisional pathways and
+evidence balance remain separately inspectable; connecting A-to-B and B-to-C
+does not establish a direct causal A-to-C finding. The previous validated-first
+flow is selectable. See [evidence reuse and scheduling](docs/protocols/validation_speed.md).
 10. Write a stratified evaluation sample with blank gold-label fields for independent review and measurable precision/recall.
 
 Repeated claims from different source spans remain separate validation units. Only exact overlapping duplicate occurrences are collapsed. This prevents a good occurrence from hiding a weak or incorrectly typed occurrence.

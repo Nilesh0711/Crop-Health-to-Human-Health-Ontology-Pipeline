@@ -7,7 +7,29 @@ from typing import Any
 from collections import OrderedDict
 from hashlib import sha256
 import re
+from pathlib import Path
 from backend.config.settings import Settings
+from backend.providers.runtime_pool import runtime, inference
+
+
+def embedding_revision(backend, model, name):
+    """Persist vectors only for identifiable weights, never a mutable name alone."""
+    encoder = model[2] if backend == 'transformers-fallback' else model
+    if backend == 'sentence-transformers':
+        try:
+            encoder = getattr(model[0], 'auto_model', model)
+        except (TypeError, IndexError, KeyError):
+            encoder = model
+    revision = getattr(getattr(encoder, 'config', None), '_commit_hash', None)
+    if isinstance(revision, str) and revision:
+        return revision
+    directory = Path(name)
+    if directory.is_dir():
+        files = sorted(p for p in directory.rglob('*') if p.is_file() and p.suffix in
+                       {'.json', '.safetensors', '.bin', '.model', '.txt'})
+        return sha256(repr([(str(p.relative_to(directory)), p.stat().st_size, p.stat().st_mtime_ns)
+                            for p in files]).encode()).hexdigest() if files else None
+    return None
 
 
 class SemanticReranker:
@@ -19,8 +41,15 @@ class SemanticReranker:
         self._cross_runtime: Any | None = None
         self._embedding_cache: OrderedDict[str, Any] = OrderedDict()
         self.embedding_cache_hits = 0
+        self.evidence_index = None
 
     def _load_embedding_model(self) -> Any:
+        if self._embedding_runtime is None:
+            key = ("embedding", self.settings.embedding_model, self.settings.embedding_device, type(self)._create_embedding_model)
+            self._embedding_runtime = runtime(key, self._create_embedding_model)
+        return self._embedding_runtime
+
+    def _create_embedding_model(self) -> Any:
         if self._embedding_runtime is None:
             try:
                 from sentence_transformers import SentenceTransformer
@@ -42,6 +71,12 @@ class SemanticReranker:
         return self._embedding_runtime
 
     def _load_cross_encoder(self) -> Any:
+        if self._cross_runtime is None:
+            key = ("cross", self.settings.cross_encoder_model, self.settings.cross_encoder_device, type(self)._create_cross_encoder)
+            self._cross_runtime = runtime(key, self._create_cross_encoder)
+        return self._cross_runtime
+
+    def _create_cross_encoder(self) -> Any:
         if self._cross_runtime is None:
             try:
                 from sentence_transformers import CrossEncoder
@@ -83,17 +118,33 @@ class SemanticReranker:
         # behavior explicit if a future embedding model needs no instruction.
         query = f"{self.settings.embedding_query_instruction}{hypothesis}"
         values = [query, *texts]
-        keys = [sha256(f"{self.settings.embedding_model}|{value}".encode("utf-8")).hexdigest() for value in values]
+        revision = embedding_revision(backend, model, self.settings.embedding_model)
+        identity = revision or f'process-runtime:{id(model)}'
+        keys = [sha256(f"{backend}|{self.settings.embedding_model}|{identity}|{value}".encode("utf-8")).hexdigest() for value in values]
         vectors = {key: self._embedding_cache[key] for key in keys if key in self._embedding_cache}
         self.embedding_cache_hits += sum(key in vectors for key in keys)
+        if self.evidence_index is not None and revision:
+            import numpy as np
+            stored_vectors = self.evidence_index.get_many(['embedding-v1:' + key for key in dict.fromkeys(keys)
+                                                          if key not in vectors], expiring=False)
+            for key in dict.fromkeys(keys):
+                if key not in vectors:
+                    stored = stored_vectors.get('embedding-v1:' + key)
+                    if stored is not None:
+                        vectors[key] = np.asarray(stored, dtype=np.float32)
+                        self._embedding_cache[key] = vectors[key]
+                        self.embedding_cache_hits += 1
         missing = list(dict.fromkeys(key for key in keys if key not in vectors))
         text_by_key = dict(zip(keys, values))
         for start in range(0, len(missing), self.settings.embedding_batch_size):
             batch_keys = missing[start:start + self.settings.embedding_batch_size]
-            embeddings = self._encode(backend, model, [text_by_key[key] for key in batch_keys])
+            with inference(self.settings.embedding_device):
+                embeddings = self._encode(backend, model, [text_by_key[key] for key in batch_keys])
             for key, vector in zip(batch_keys, embeddings):
                 vectors[key] = vector
                 self._embedding_cache[key] = vector
+            if self.evidence_index is not None and revision:
+                self.evidence_index.put_many({'embedding-v1:' + key: vectors[key].tolist() for key in batch_keys})
         for key in keys:
             if key in self._embedding_cache:
                 self._embedding_cache.move_to_end(key)
@@ -114,6 +165,10 @@ class SemanticReranker:
                     encoder(**batch).last_hidden_state[:, 0], p=2, dim=1).cpu().numpy()
 
     def cross_scores(self, query: str, texts: list[str]) -> list[float]:
+        with inference(self.settings.cross_encoder_device):
+            return self._cross_scores(query, texts)
+
+    def _cross_scores(self, query: str, texts: list[str]) -> list[float]:
         """Score query/passage pairs jointly with a genuine cross-encoder."""
         if not texts:
             return []
@@ -189,6 +244,8 @@ class SemanticReranker:
                 'neutral_cross_encoder_score': round(float(neutral_cross_by_id[index]), 6),
                 "passage_kind": kinds[index],
                 "text": texts[index],
+                **{key: record[key] for key in ('source_kind', 'table_id', 'row_number', 'table_headers',
+                    'table_cells', 'table_footnotes', 'figure_id', 'layout_verified') if key in record},
                 'paragraph_references': record.get('paragraph_references', []),
                 **({"page_number": record["page_number"]} if record.get("page_number") else {}),
                 **({"section_heading": record["section_heading"]} if record.get("section_heading") else {}),

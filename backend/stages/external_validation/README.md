@@ -1,5 +1,11 @@
 # External evidence validation
 
+Web runs now default to [Trust graph mode](../trust_graph/README.md), which uses
+these same paper proof contracts in small shared-paper DeepSeek requests and
+grouped Pro syntheses after provisional assembly. Select `validated_first` in
+run settings for the independent per-claim flow documented below. Scores never
+replace per-edge evidence admission or imply probabilities.
+
 The default is DeepSeek Flash per-paper judgements followed by MiMo Pro cross-paper
 synthesis, sharing one external Thinking toggle. `EXTERNAL_JUDGEMENT_MODE=joint`
 retains the previous single-call method for comparison. See the

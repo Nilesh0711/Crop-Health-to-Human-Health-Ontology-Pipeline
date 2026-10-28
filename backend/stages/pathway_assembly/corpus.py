@@ -13,7 +13,7 @@ SUPPORTED_EXTERNAL_STATUSES = {'world_independently_corroborated_pending_review'
                                'world_independent_supported_pending_corroboration'}
 
 
-def collect_corpus(root):
+def collect_corpus(root, provisional=False):
     edges, endpoints = [], []
     for path in sorted(root.glob('*/candidates.jsonl')):
         if path.parent.name == ASSEMBLY_DIRECTORY:
@@ -28,10 +28,10 @@ def collect_corpus(root):
             # Require a PDF fidelity pass and accepted independent external
             # support. Other evidence states remain in document audit views.
             if ((c.get('source_validation') or {}).get('decision') != 'entailed'
-                    or external_project_scope(result) is not True
+                    or (not provisional and (external_project_scope(result) is not True
                     or result.get('validation_status') not in SUPPORTED_EXTERNAL_STATUSES
                     or not (support - reference_support)
-                    or status not in {'single_source', 'corroborated'}):
+                    or status not in {'single_source', 'corroborated'}))):
                 continue
             edge_id = 'edge-' + stable_hash(f"{path.parent.name}|{c['candidate_id']}", 28)
             edge = dict(id=edge_id, candidate_id=c['candidate_id'], document_key=path.parent.name,
@@ -48,7 +48,7 @@ def collect_corpus(root):
                         source_page=c.get('source_page'), source_status=(c.get('source_validation') or {}).get('decision', 'not_run'),
                         external_status=results.get(c['candidate_id'], {}).get('validation_status', 'not_evaluated'),
                         status=status, support_count=len(support), contradiction_count=len(contradict),
-                        causal_chain_validated=False)
+                        causal_chain_validated=False, **({'provisional': True} if provisional else {}))
             edges.append(edge)
             for role in ('subject', 'object'):
                 endpoints.append(dict(endpoint_id=f'{edge_id}:{role}', edge_id=edge_id, role=role,
@@ -60,7 +60,9 @@ def collect_corpus(root):
     return edges, endpoints
 
 
-def corpus_signature(edges, endpoints, model, thinking=True):
-    return stable_hash(json.dumps(dict(version=ASSEMBLY_VERSION, eligibility_policy=ASSEMBLY_ELIGIBILITY_POLICY,
+def corpus_signature(edges, endpoints, model, thinking=True, *, provisional=False):
+    if provisional:
+        edges = [{k: v for k, v in edge.items() if k not in {'external_status', 'status', 'support_count', 'contradiction_count'}} for edge in edges]
+    return stable_hash(json.dumps(dict(version=ASSEMBLY_VERSION, eligibility_policy='source-entailed-provisional-v1' if provisional else ASSEMBLY_ELIGIBILITY_POLICY,
                                   model=model, edges=edges, endpoints=endpoints, **({} if thinking else {'thinking': 'disabled'})),
                                   sort_keys=True, ensure_ascii=False), 64)

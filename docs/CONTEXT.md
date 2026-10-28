@@ -2,6 +2,44 @@
 
 Last updated: 2026-10-27. Pipeline contract: `external-validation-v36`.
 
+## Trust graph mode (current web default)
+
+Web run settings now default to `knowledge_building_mode=trust_graph`, group size
+3 (1..6), while `validated_first` retains the flow below for comparison. After
+PDF fidelity and one bounded reassessment of non-positive source readings,
+MiMo Flash assembles provisional identities before external validation.
+Related claims share DeepSeek paper calls and a grouped MiMo Pro synthesis;
+every edge retains its own guarded decision. Distinct original-result study
+support minus contradiction produces an evidence balance, never a probability.
+Graph contribution is separate and cannot raise evidence strength. Completed
+paper assessments and source-grounded corrections retain their history and reuse
+compatible caches. Validated graph membership is projected from the same
+alignment without another model call. There is no whole-chain causal validation.
+XML table rows/headers/footnotes and figure captions are retained for retrieval.
+See the [trust graph contract](../backend/stages/trust_graph/README.md) for
+persistence, cross-group compatibility limits and benchmark requirements. The
+extraction checkpoint version stays compatible; historical findings are unchanged
+until an explicit run/action. Thinking remains Off and assigned models unchanged.
+
+Multi-claim shared-paper responses use a claim-ID-keyed object. A one-claim paper
+request returns only decision/finding, with identity fixed by its request.
+Concise answer-length hints are separate from the large generation allowance.
+Trust mode runs up to three independent paper requests concurrently and
+prepares one future group during cloud judgement. Exact source-context text and
+source downloads are reused without removing selected evidence. See
+[scheduling and research notes](protocols/trust_graph_scheduling.md) for settings,
+recovery, traceability and benchmark limits.
+
+Paper-ready judgement now overlaps within unfinished groups. A shared persistent
+evidence index reuses parsed text, sentence-indexed chunks and versioned vectors;
+local model instances survive compatible resumes within one backend process.
+Search deadlines retain missing sources as `retrieval_pending`, preventing final
+graph admission until completed. Pro role-proof correction is field-scoped and
+uses the same one-extra-call limit. Search-platform documentation informs our
+own implementation; commercial search connectors are not part of this pipeline.
+See [the speed protocol](protocols/validation_speed.md)
+for defaults, storage limits, extra-call tradeoffs and offline benchmark limits.
+
 ## Scientific boundary
 
 Extract direct soil/crop/contaminant/nutrient/exposure/health pathway edges with
@@ -37,7 +75,7 @@ MiMo requests native schema formatting; DeepSeek requests JSON mode because
 configuration probes rejected its schema format. Application schema validation
 and scientific proof checks always run. See [model requests and recovery](../backend/providers/README.md).
 
-## Current flow
+## Existing claim-first flow (`validated_first` comparison mode)
 
 1. Parse PDF pages, chapter boundaries, headings, sentences and chapter-scoped
    bibliographies. Record page quality, missing text and unresolved citation links.

@@ -160,6 +160,7 @@ def _numbered_chunks(document: dict[str, Any], candidate: dict[str, Any] | None 
             priorities = []
         numbered.append({
             "chunk_id": chunk.get("chunk_id"),
+            **{key: chunk[key] for key in ('source_kind', 'table_id', 'row_number', 'figure_id', 'layout_verified') if key in chunk},
             "sentences": sentence_rows,
             "priority_sentence_numbers": priorities,
             "section_heading": chunk.get("section_heading", ""),

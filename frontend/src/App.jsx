@@ -7,6 +7,9 @@ import {
 } from 'lucide-react'
 import GraphView from './components/graph/GraphView.jsx'
 import PathwayPanel from './components/graph/PathwayPanel.jsx'
+import PathwayNavigation from './components/graph/PathwayNavigation.jsx'
+import { CorroboratedPaths } from './components/graph/PathwayCards.jsx'
+import TrustEvidence from './components/claims/TrustEvidence.jsx'
 import { CitationTracking, JointAssessment, ClaimActions, ClaimContext, ValidationTrace, ExternalDecisionDetails, ExtractionDiscards } from './components/claims/ClaimDetails.jsx'
 import ModelPerformance from './components/diagnostics/ModelPerformance.jsx'
 import { watchJob } from './lib/jobPolling.js'
@@ -31,6 +34,7 @@ const statusLabels = {
   not_started: 'Ready to run', running: 'In progress', completed: 'Completed',
   completed_with_warnings: 'Completed with warnings', failed: 'Run failed', stopping: 'Stopping', stopped: 'Stopped',
   external_in_progress: 'External check in progress',
+  retrieval_pending: 'Retrieval incomplete - resume missing sources',
   external_support_needs_review: 'Support found - review needed',
   external_assessment_needs_review: 'Evidence assessment needs review',
   external_needs_review: 'Review external evidence', out_of_scope: 'Outside project scope',
@@ -52,6 +56,7 @@ const statusLabels = {
 
 const colorClass = value => ({
   completed: 'positive', corroborated: 'positive', single_source: 'warning', source_reference_supported: 'warning',
+  retrieval_pending: 'warning',
   external_support_needs_review: 'warning', external_assessment_needs_review: 'warning', external_needs_review: 'warning',
   completed_with_warnings: 'warning', failed: 'negative', stopping: 'running', stopped: 'muted',
   world_supported_pending_corroboration: 'warning', running: 'running',
@@ -213,6 +218,7 @@ export function ClaimCard({ record, index, busy, onClaimAction, defaultExpanded 
     {expanded && <div className="claim-expanded">
       <ClaimActions candidate={candidate} validation={validation} repairEligibility={record.repair_eligibility} revisions={record.revisions}
         busy={busy} onAction={action => onClaimAction(candidate.candidate_id, action)} />
+      <TrustEvidence trust={record.trust || validation?.trust} />
       <ClaimContext candidate={candidate} />
       <ValidationTrace candidate={candidate} validation={validation} />
       <JointAssessment validation={validation} />
@@ -278,8 +284,9 @@ export default function App() {
   const [claimSearch, setClaimSearch] = useState('')
   const [selectedElement, setSelectedElement] = useState(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [options, setOptions] = useState({ max_pages: 0, max_claims: 0, articles_per_claim: 8, claims_per_packet: 0,
+  const [options, setOptions] = useState({ knowledge_building_mode: 'trust_graph', trust_batch_size: 3, max_pages: 0, max_claims: 0, articles_per_claim: 8, claims_per_packet: 0,
     extraction_mode: 'target_context', extraction_target_words: 800, extraction_generation_budget: 24576, thinking: defaultThinking() })
+  const [trustData, setTrustData] = useState(null)
   const [pathwayData, setPathwayData] = useState(null)
   const [pathView, setPathView] = useState('assembled')
   const [message, setMessage] = useState(null)
@@ -322,10 +329,11 @@ export default function App() {
       : mode === 'source'
         ? (scope === 'all' ? '/source-graph' : `/pdfs/${pdfId}/source-graph`)
         : (scope === 'all' ? '/graph' : `/pdfs/${pdfId}/graph`)
-    const [graphData, claimData, logData, pathData, assembledData] = await Promise.all([
+    const [graphData, claimData, logData, pathData, assembledData, trustGraphData] = await Promise.all([
       request(graphPath),
       request(`/pdfs/${pdfId}/claims`), request(`/pdfs/${pdfId}/logs`), request(`/pdfs/${pdfId}/paths`),
       request('/pathways').catch(error => ({ status: 'failed', error: error.message })),
+      request('/pathways?view=provisional').catch(error => ({ status: 'failed', error: error.message })),
     ])
     setGraph(graphData)
     setClaims(claimData.claims)
@@ -334,6 +342,7 @@ export default function App() {
     setLogs(logData)
     setPaths(pathData)
     setPathwayData(assembledData)
+    setTrustData(trustGraphData)
   }
 
   useEffect(() => {
@@ -341,6 +350,8 @@ export default function App() {
     request('/health').then(data => {
       setHealth(data)
       setOptions(previous => ({ ...previous, articles_per_claim: data.pipeline?.external_top_k ?? previous.articles_per_claim,
+        knowledge_building_mode: data.pipeline?.knowledge_building_mode ?? previous.knowledge_building_mode,
+        trust_batch_size: data.pipeline?.trust_batch_size ?? previous.trust_batch_size,
         extraction_mode: data.pipeline?.extraction_mode ?? previous.extraction_mode,
         extraction_target_words: data.pipeline?.extraction_target_words ?? previous.extraction_target_words,
         extraction_generation_budget: data.pipeline?.extraction_generation_budget ?? previous.extraction_generation_budget }))
@@ -587,7 +598,7 @@ export default function App() {
             </div>}
 
           <section className="analysis-panel" aria-label="Paper analysis">
-            <WorkspaceNavigation view={view} onChange={setView} claims={claims.length} paths={pathView === 'assembled' ? (pathwayData?.paths?.length ?? 0) : paths.length} errors={errorCount} />
+            <WorkspaceNavigation view={view} onChange={setView} claims={claims.length} paths={pathView === 'trust' ? (trustData?.paths?.length ?? 0) : pathView === 'assembled' ? (pathwayData?.paths?.length ?? 0) : paths.length} errors={errorCount} />
             <div className="section-head"><div><span className="eyebrow">{view === 'details' ? 'CONFIGURATION & DIAGNOSTICS' : view === 'activity' ? 'RUN HISTORY' : 'RESEARCH FINDINGS'}</span>
               <h2>{({ claims: 'Extracted claims', graph: 'Knowledge graph', paths: 'Research pathways', activity: 'Activity log', details: 'Run details' })[view]}</h2>
               <p>{({ claims: 'Inspect each claim, its source passage, and the external evidence.', graph: 'Explore source-supported, externally supported, and audit relations.', paths: 'Connect original triplets across papers using shared entities and source context.', activity: 'Follow every stage and inspect warnings or model errors.', details: 'Adjust the run, review coverage, and inspect model activity.' })[view]}</p></div>
@@ -603,21 +614,20 @@ export default function App() {
               {graphMode === 'main' && graphScope === 'paper' && ['completed', 'completed_with_warnings'].includes(selected.status) && <div className="graph-export"><a href={`${API}/pdfs/${selected.id}/graph.graphml`} download><ExternalLink size={13} /> Download GraphML</a></div>}
               {selectedElement && <div className="graph-selection"><button type="button" className="close-mini" aria-label="Close selected graph details" onClick={() => setSelectedElement(null)}><X size={16} /></button><span className="eyebrow">{selectedElement.kind === 'edge' ? 'SELECTED RELATION' : 'SELECTED ENTITY'}</span><strong>{selectedElement.kind === 'edge' ? `${selectedElement.source?.split(':').slice(1).join(':')} → ${selectedElement.relation} → ${selectedElement.target?.split(':').slice(1).join(':')}` : selectedElement.label}</strong><p>{selectedElement.kind === 'edge' ? `${statusLabels[selectedElement.status] || selectedElement.status} · ${selectedElement.support_count} supporting article(s) · ${selectedElement.paper}` : selectedElement.type}</p>{selectedElement.rejection_reason && <p>{selectedElement.rejection_reason}</p>}{selectedElement.quote && <blockquote>“{selectedElement.quote}”</blockquote>}</div>}
               <div className="graph-legend">{graphMode === 'main' ? <><span><i className="legend-dot corroborated" />Independently corroborated</span><span><i className="legend-dot single" />Independent article</span></> : graphMode === 'source' ? <span><i className="legend-dot single" />Faithful to source PDF</span> : <><span><i className="legend-dot extracted" />Awaiting validation or source-reference only</span><span><i className="legend-dot contested" />Contested</span><span><i className="legend-dot insufficient" />External evidence not found</span></>}</div></>}
-            {view === 'paths' && <><div className="graph-controls"><div className="segmented">
-              <button type="button" className={pathView === 'assembled' ? 'active' : ''} onClick={() => setPathView('assembled')}>Global pathway assembly</button>
-              <button type="button" className={pathView === 'corroborated' ? 'active' : ''} onClick={() => setPathView('corroborated')}>Corroborated health paths</button>
-            </div></div>
-            {pathView === 'assembled' ? <PathwayPanel data={pathwayData} busy={runDisabled} onAssemble={assembleSavedPaths}
+            {view === 'paths' && <><PathwayNavigation value={pathView} onChange={setPathView}
+              trustCount={trustData?.paths?.length} assembledCount={pathwayData?.paths?.length} healthCount={paths.length} />
+            {pathView !== 'corroborated' ? <PathwayPanel key={pathView} data={pathView === 'trust' ? trustData : pathwayData} busy={runDisabled} onAssemble={assembleSavedPaths}
               onDepthChange={async maxHops => {
-                try { setPathwayData(await request(`/pathways?max_hops=${maxHops}`)) }
+                try { (pathView === 'trust' ? setTrustData : setPathwayData)(await request(`/pathways?view=${pathView === 'trust' ? 'provisional' : 'validated'}&max_hops=${maxHops}`)) }
                 catch (error) { setMessage(error.message) }
               }}
               onLoadMore={async () => {
                 try {
-                  const next = await request(`/pathways?offset=${pathwayData.paths.length}&max_hops=${pathwayData.max_hops}`)
-                  setPathwayData(previous => ({ ...next, paths: [...previous.paths, ...next.paths] }))
+                  const current = pathView === 'trust' ? trustData : pathwayData
+                  const next = await request(`/pathways?view=${pathView === 'trust' ? 'provisional' : 'validated'}&offset=${current.paths.length}&max_hops=${current.max_hops}`);
+                  (pathView === 'trust' ? setTrustData : setPathwayData)(previous => ({ ...next, paths: [...previous.paths, ...next.paths] }))
                 } catch (error) { setMessage(error.message) }
-              }} /> : <div className="paths-list">{paths.length ? paths.map((path, index) => <div className="path-card" key={index}><span className="eyebrow">PATH {String(index + 1).padStart(2, '0')}</span><div>{path.map((edge, edgeIndex) => <span key={edge.id}>{edgeIndex === 0 && <strong>{edge.source.split(':').slice(1).join(':')}</strong>}<em>{edge.relation.replaceAll('_', ' ')}</em><strong>{edge.target.split(':').slice(1).join(':')}</strong></span>)}</div></div>) : <Empty icon={GitBranch} title="No supported reasoning paths yet">Paths appear when corroborated relations connect an agricultural factor to a human-health outcome.</Empty>}</div>}</>}
+              }} /> : <CorroboratedPaths paths={paths} />}</>}
             {view === 'activity' && <ActivityLog key={selected.id} logs={logs} running={isRunning && job?.pdf_id === selectedId} progress={job?.pdf_id === selectedId ? job.request_progress : null} />}
             {view === 'details' && <div className="run-details"><RunSetup health={health} options={options} onOptions={setOptions} open={settingsOpen} onToggle={() => setSettingsOpen(!settingsOpen)} />
               <DocumentScopeNotice documentScope={selected.document_scope || selected.summary?.document_scope} />

@@ -89,10 +89,26 @@ def test_progress_persists_running_status_and_job_identity(api):
     state = json.loads((output / 'run_state.json').read_text())
     assert state['id'] == 'job-1' and state['status'] == 'running'
     saved = read_job(output, 'job-1')
-    assert saved['request_progress'] == event
+    assert saved['request_progress'] == {**event, 'active_request_count': 1}
     assert not any(row.get('level') == 'progress' for row in saved['logs'])
     # A registered worker remains running; disk recovery must not interrupt it.
     assert client.get('/api/jobs/job-1').json()['status'] == 'running'
+
+
+def test_parallel_completion_does_not_hide_another_waiting_request(api):
+    module, _, client = api
+    module._jobs['job-1'] = job()
+    first = {'stage': 'external', 'model': 'primary', 'request_id': 1, 'task': 'paper one', 'status': 'waiting_for_provider'}
+    second = {**first, 'request_id': 2, 'task': 'paper two'}
+    for event in (first, second):
+        module._emit('job-1', 'progress', json.dumps(event))
+    assert client.get('/api/jobs/job-1').json()['request_progress']['active_request_count'] == 2
+    module._emit('job-1', 'progress', json.dumps({**first, 'status': 'ok'}))
+    progress = client.get('/api/jobs/job-1').json()['request_progress']
+    assert progress['request_id'] == 2 and progress['status'] == 'waiting_for_provider'
+    assert progress['active_request_count'] == 1
+    module._emit('job-1', 'progress', json.dumps({**second, 'status': 'ok'}))
+    assert client.get('/api/jobs/job-1').json()['request_progress']['active_request_count'] == 0
 
 
 def test_unknown_job_remains_a_real_404_and_invalid_ids_cannot_escape_output(api):
@@ -137,6 +153,7 @@ def test_recovery_check_restores_original_extraction_options_without_running_or_
     assert response.status_code == 200 and response.json()['can_continue']
     assert not response.json()['job_missing']
     assert response.json()['options'] == {
+        'knowledge_building_mode': 'validated_first', 'trust_batch_size': 3,
         'max_pages': 2, 'max_claims': 0, 'claims_per_packet': 3, 'articles_per_claim': 12,
         'extraction_mode': 'whole_packet', 'extraction_target_words': 800,
         'extraction_generation_budget': 24576, 'thinking': {stage: True for stage in module.ThinkingOptions.model_fields}}

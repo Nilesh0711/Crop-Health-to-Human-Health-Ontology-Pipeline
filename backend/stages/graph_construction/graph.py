@@ -13,6 +13,10 @@ from backend.domain.ontology import external_project_scope
 
 def _edge_status(candidate: dict[str, Any], result: dict[str, Any]) -> tuple[str, set[str], set[str], set[str]]:
     """Derive an auditable state without using model self-confidence."""
+    if result.get('claim_input_signature'):
+        from backend.stages.trust_graph.ledger import scientific_signature
+        if result['claim_input_signature'] != scientific_signature(candidate):
+            return 'external_needs_review', set(), set(), set()
     if candidate.get("schema_error"):
         return "rejected", set(), set(), set()
     semantic_decision = candidate.get("semantic_validation", {}).get("decision")
@@ -35,7 +39,7 @@ def _edge_status(candidate: dict[str, Any], result: dict[str, Any]) -> tuple[str
     contradicting = {decision["evidence_document_id"] for decision in decisions if decision.get("decision") == "contradicted"}
     if result.get("validation_status") == "pipeline_error":
         return "error", supporting, contradicting, reference_supporting
-    if result.get('validation_status') in {'external_support_needs_review', 'external_assessment_needs_review', 'external_in_progress'}:
+    if result.get('validation_status') in {'external_support_needs_review', 'external_assessment_needs_review', 'external_in_progress', 'retrieval_pending'}:
         return 'external_needs_review', supporting, contradicting, reference_supporting
     if contradicting:
         return ("contested" if supporting else "contradicted"), supporting, contradicting, reference_supporting
@@ -76,6 +80,7 @@ def graph_from_candidates(candidates: list[dict[str, Any]], results: list[dict[s
         nodes.setdefault(source, {"id": source, "label": candidate["subject"], "type": candidate["subject_type"]})
         nodes.setdefault(target, {"id": target, "label": candidate["object"], "type": candidate["object_type"]})
         edges.append({"id": candidate["candidate_id"], "source": source, "target": target,
+                      **({'trust': result['trust']} if result.get('trust') else {}),
                       "relation": candidate["relation"], "status": display_status,
                       "claim_text": candidate.get("claim_text", ""),
                       "claim_text_source_verified": ((candidate.get("source_validation") or {}).get("decision") == "entailed"
@@ -129,6 +134,11 @@ def write_graphml(graph: dict[str, Any], path: Path) -> None:
                         claim_text=edge.get("claim_text") or "", certainty=edge.get("certainty") or "",
                         qualifiers=json.dumps(edge.get("qualifiers") or {}, ensure_ascii=False),
                         claim_text_source_verified=bool(edge.get("claim_text_source_verified")),
+                        trust_score=(edge.get('trust') or {}).get('score', 0),
+                        trust_status=(edge.get('trust') or {}).get('status', 'not_assessed'),
+                        trust_support_groups=(edge.get('trust') or {}).get('support_count', 0),
+                        trust_contradiction_groups=(edge.get('trust') or {}).get('contradiction_count', 0),
+                        trust_score_kind='evidence_balance_not_probability',
                         paper=edge.get("paper") or "", quote=edge.get("quote") or "")
     nx.write_graphml(output, path)
 

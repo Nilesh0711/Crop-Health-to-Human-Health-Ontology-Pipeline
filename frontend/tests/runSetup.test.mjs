@@ -93,7 +93,7 @@ try {
   assert.match(pathMarkup, /Global pathway assembly/)
   assert.match(pathMarkup, /Original claims and passages/)
   assert.match(pathMarkup, /These infected grains may contain mycotoxins/)
-  assert.match(pathMarkup, /external_evidence_not_found/)
+  assert.match(pathMarkup, /external evidence not found/)
   assert.match(pathMarkup, /infection/)
   assert.match(pathMarkup, /Saved claims have changed/)
   assert.match(pathMarkup, /Show more paths/)

@@ -10,6 +10,7 @@ backend/
   pipelines/
     document.py                  Complete PDF-run orchestration and checkpoints
     claim_repair.py              Bounded repair and external-only retry workflows
+    trust.py                     Ready-paper scheduling and grouped checkpoints
   stages/
     pdf_parsing/                 Chapters, bibliography, sentences and text quality
     claim_extraction/            Prompt, JSON contract, extraction and deduplication
@@ -19,11 +20,12 @@ backend/
     evidence_ranking/            Metadata fusion and passage reranking
     external_validation/         Joint Pro judgement, proof guards and aggregation
     pathway_assembly/            Global MiMo Flash entity alignment and path assembly
+    trust_graph/                 Shared paper judgement, synthesis and evidence ledger
     graph_construction/         Graph snapshots, exports and provisional paths
     evaluation/                 Human-annotation samples and metrics
   domain/                        Ontology, vocabulary, alignment, context and modality
-  providers/                     LLM adapter and optional NLI model
-  shared/                        Storage, atomic artifacts, cache, batching and text
+  providers/                     LLM adapter, NLI and compatible local runtime pool
+  shared/                        Storage, persistent evidence index, caching and text
   config/                        Resource paths and model/settings contract
   cli/                           External validation, tuple ingestion and evaluation
 ```

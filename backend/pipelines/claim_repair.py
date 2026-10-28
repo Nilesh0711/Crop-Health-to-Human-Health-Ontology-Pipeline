@@ -24,6 +24,9 @@ from backend.stages.graph_construction.graph import graph_from_candidates, reaso
 from backend.stages.claim_extraction.extractor import extract_claims
 from backend.stages.pdf_parsing.packets import iter_pdf_context_packets
 from backend.stages.source_validation.checker import validate_source_claim
+from backend.pipelines.trust import run_trust_assessment
+from backend.shared.cache import RunCache
+from backend.stages.trust_graph.projection import publish_graphs
 from backend.stages.pathway_assembly.assembly import assemble_pathways
 from backend.domain.vocabulary import normalize_entity
 from backend.shared.artifacts import replace_row, save_json, save_rows
@@ -72,7 +75,7 @@ def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
     unfinished = [c['candidate_id'] for c in candidates
                   if c.get('source_validation', {}).get('decision') == 'entailed' and
                   by_id.get(c['candidate_id'], {}).get('validation_status', 'external_in_progress') in
-                  {'external_in_progress', 'pipeline_error'}]
+                  {'external_in_progress', 'pipeline_error', 'retrieval_pending'}]
     requests = read_jsonl(output / 'llm_requests.jsonl')
     task_calls = {task: {'requests': len([r for r in requests if r.get('stage') == task]),
                          'elapsed_seconds': round(sum(r.get('elapsed_seconds', 0) for r in requests if r.get('stage') == task), 3)}
@@ -90,8 +93,9 @@ def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
         'source_entailed': sum(r['decision'] == 'entailed' for r in source),
         'source_unsupported': sum(r['decision'] == 'unsupported' for r in source),
         'source_needs_review': sum(r['decision'] == 'needs_review' for r in source),
-        'externally_evaluated': sum(r.get('validation_status') not in {'pipeline_error', 'external_in_progress'} for r in results),
+        'externally_evaluated': sum(r.get('validation_status') not in {'pipeline_error', 'external_in_progress', 'retrieval_pending'} for r in results),
         'external_incomplete': len(unfinished),
+        'retrieval_pending': sum(r.get('validation_status') == 'retrieval_pending' for r in results),
         'graph': graphs['graph']['counts'], 'source_graph': graphs['source_graph']['counts'],
         'audit_graph': graphs['audit_graph']['counts'], 'reasoning_paths': len(paths),
         'evaluation_sample': 'evaluation_sample.jsonl', 'models_used': sorted({r['model'] for r in requests}),
@@ -105,7 +109,8 @@ def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
 
 
 def run_claim_action(pdf: Path, output: Path, candidate_id: str, action: str,
-                     articles_per_claim: int, emit: Callable[[str, str], None], thinking: dict[str, bool] | None = None) -> dict[str, Any]:
+                     articles_per_claim: int, emit: Callable[[str, str], None], thinking: dict[str, bool] | None = None,
+                     knowledge_building_mode: str | None = None, trust_batch_size: int | None = None) -> dict[str, Any]:
     candidates = read_jsonl(output / 'candidates.jsonl')
     original = next((row for row in candidates if row['candidate_id'] == candidate_id), None)
     if original is None:
@@ -122,13 +127,17 @@ def run_claim_action(pdf: Path, output: Path, candidate_id: str, action: str,
     if action not in {'repair', 'retry_external'}:
         raise ValueError('Unknown claim action')
     settings = replace(Settings(), thinking=thinking) if thinking is not None else Settings()
+    trust_mode = knowledge_building_mode == 'trust_graph'
+    if trust_mode:
+        settings = replace(settings, external_judgement_mode='trust_graph', knowledge_building_mode='trust_graph',
+                           trust_batch_size=trust_batch_size or settings.trust_batch_size)
     required = {'extraction', 'source', 'query', 'external'} if action == 'repair' else {'query', 'external'}
     required.add('pathway_assembly')
     available = OpenCodeClient(settings).health_check().get('models', [])
     for task in required:
         if settings.task_models[task].split('#', 1)[0] not in available:
             raise ValueError(f'Required primary unavailable for {task}: {settings.task_models[task]}')
-    if settings.external_judgement_mode == 'per_paper_synthesis' and settings.external_paper_model not in available:
+    if settings.external_judgement_mode in {'per_paper_synthesis', 'trust_graph'} and settings.external_paper_model not in available:
         raise ValueError(f'Required per-paper primary unavailable: {settings.external_paper_model}')
     results = read_jsonl(output / 'validation_runs.jsonl')
     before = next((r for r in results if r['candidate_id'] == candidate_id), None)
@@ -216,12 +225,21 @@ def run_claim_action(pdf: Path, output: Path, candidate_id: str, action: str,
         reusable = reusable_evidence(candidate, settings, resume, articles_per_claim, settings.external_top_chunks)
         translated = None if reusable else translate_query(clients['query'], candidate)
         emit('stage', f'External validation for only {candidate_id}')
-        validation = validate_candidate(candidate, clients['external'], ranker, settings,
+        if trust_mode:
+            provisional = assemble_pathways(output.parent, clients['pathway_assembly'], settings, emit, provisional=True)
+            run_trust_assessment([candidate], candidates, provisional, output, clients['external'], ranker, settings,
+                                 articles_per_claim, {candidate_id: translated} if translated else {}, RunCache(), results, emit,
+                                 resume=action == 'retry_external', nli_validator=nli)
+            validation = next(r for r in results if r['candidate_id'] == candidate_id)
+            publish_graphs(output.parent, provisional, settings)
+        else:
+            validation = validate_candidate(candidate, clients['external'], ranker, settings,
                                         articles_per_claim, settings.external_top_chunks, progress=lambda m: emit('info', m),
                                         nli_validator=nli, query_translation=translated,
                                         on_checkpoint=checkpoint, resume_record=resume)
         checkpoint(validation)
-        assemble_pathways(output.parent, clients['pathway_assembly'], settings, emit)
+        if not trust_mode:
+            assemble_pathways(output.parent, clients['pathway_assembly'], settings, emit)
         history.update(status='completed', revised_candidate=deepcopy(candidate), validation_status=validation['validation_status'])
         emit('success', f"Claim action completed: {validation['validation_status']}")
         return {'run_status': 'completed', 'candidate_id': candidate_id}

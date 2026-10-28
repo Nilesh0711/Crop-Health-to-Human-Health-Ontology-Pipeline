@@ -119,8 +119,10 @@ export function RequestProgress({ progress, running }) {
     <strong>{active ? regenerating ? 'Regenerating response (1 attempt)' : repairing ? 'Repairing response formatting (1 attempt)' : 'Waiting for model response' : 'Latest model request'} · {progress.model}</strong>
     <p>{progress.task}</p>
     <div className="request-metrics">
+      {active && progress.active_request_count > 1 && <span><b>{progress.active_request_count}</b> model requests running in parallel; showing one active request</span>}
       {progress.requested_thinking && <span>Thinking <b>{({ enabled: 'On', disabled: 'Off' })[progress.requested_thinking] || progress.requested_thinking}</b></span>}
       {progress.paper_count != null && <span><b>{progress.paper_count}</b> papers</span>}
+      {progress.claim_count != null && <span><b>{progress.claim_count}</b> claims sharing this request</span>}
       {progress.chunk_count != null && <span><b>{progress.chunk_count}</b> chunks</span>}
       {progress.output_limit_tokens != null && <span><b>{Number(progress.output_limit_tokens).toLocaleString()}</b> generation token limit (answer + reasoning)</span>}
       <span><b>{hasInputTokens ? progress.input_tokens.toLocaleString() : active ? 'Pending' : 'Unavailable'}</b> input tokens{hasInputTokens ? ' (provider-reported)' : ''}</span>
@@ -165,12 +167,24 @@ export function RunSetup({ health, options, onOptions, open, onToggle }) {
         <Settings2 size={16} />{open ? 'Hide settings' : 'Run settings'}<ChevronDown size={15} className={open ? 'chevron open' : 'chevron'} /></button></div>
     <div className="steps">{[
       ['Extract claims', FileText, modelName(tasks.extraction)], ['Check source', Check, modelName(tasks.source)],
+      ...(options.knowledge_building_mode !== 'validated_first' ? [['Candidate pathways', GitBranch, modelName(tasks.pathway_assembly)]] : []),
       ['Find papers', Search, modelName(tasks.query)], ['Assess evidence', Sparkles, phases.paper ? `${modelName(phases.paper)} → ${modelName(phases.synthesis)}` : modelName(tasks.external)],
-      ['Assemble pathways', GitBranch, modelName(tasks.pathway_assembly)], ['Build graph', GitBranch, 'Evidence states'],
+      ...(options.knowledge_building_mode === 'validated_first' ? [['Assemble pathways', GitBranch, modelName(tasks.pathway_assembly)]] : []), ['Build graph', GitBranch, 'Evidence states'],
     ].map(([label, Icon, detail], index) => <div className="step-group" key={label}>
       {index > 0 && <ArrowRight size={15} className="step-arrow" />}<div className="step"><span className="step-icon"><Icon size={18} /></span><span><strong>{label}</strong><small>{detail}</small></span></div>
     </div>)}</div>
     {open && <div id="run-settings" className="run-settings">
+      <div className="settings-section-title"><h3>Knowledge building</h3><p>Compare grouped trust assessment with the existing claim-first flow.</p></div>
+      <label>Knowledge building mode<select aria-label="Knowledge building mode" value={options.knowledge_building_mode ?? 'trust_graph'}
+        onChange={event => onOptions({ ...options, knowledge_building_mode: event.target.value })}>
+        <option value="trust_graph">Trust graph: assemble first, assess groups</option>
+        <option value="validated_first">Previous: validate claims, then assemble</option>
+      </select><small>Trust graph keeps per-edge verdicts, shares paper requests and records support minus contradiction. The score is not a probability.</small></label>
+      {options.knowledge_building_mode !== 'validated_first' && <label>Claims per shared assessment<input type="number" min={1} max={6}
+        aria-label="Claims per shared assessment" value={options.trust_batch_size ?? 3}
+        onChange={event => onOptions({ ...options, trust_batch_size: Number(event.target.value) })} />
+        <small>Default 3. Smaller groups reduce context and output pressure. Disconnected claims are assessed too. Up to {health?.pipeline?.external_paper_workers ?? 3} independent paper requests run in parallel; this is separate from the claim group size.</small></label>}
+      {options.knowledge_building_mode !== 'validated_first' && <p className="soft-note">Paper assessments appear as papers become ready. Compatible source text and local models are reused across runs. If a search service misses its deadline, available findings are saved and missing sources stay pending for resume.</p>}
       <div className="settings-section-title"><h3>Claim extraction</h3><p>Choose what each extraction call is responsible for.</p></div>
       <label>Extraction mode<select value={options.extraction_mode ?? 'target_context'}
         onChange={event => onOptions({ ...options, extraction_mode: event.target.value })}>
@@ -199,7 +213,7 @@ export function RunSetup({ health, options, onOptions, open, onToggle }) {
       {THINKING_STAGES.map(([key, label]) => {
         const enabled = options.thinking?.[key] ?? false
         return <div className="assigned-model" role="group" aria-label={`${label} model settings`} key={key}>
-          {key === 'external' && <label>Per-paper judgement model<input value={phases.paper || ''} readOnly placeholder="Loading model assignment…" /><small>Assesses each paper separately</small></label>}
+          {key === 'external' && <label>Per-paper judgement model<input value={phases.paper || ''} readOnly placeholder="Loading model assignment…" /><small>Assesses each paper; Trust graph mode groups related claims within the request</small></label>}
           <label>{key === 'external' ? 'Cross-paper synthesis' : label} model<input value={tasks[key] || ''} readOnly title={tasks[key] || 'Model assignment loading'}
             placeholder="Loading model assignment…" /><small>Configured on the backend</small></label>
           <label className="thinking-toggle"><span>Thinking</span>

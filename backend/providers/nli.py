@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from backend.config.settings import Settings
+from backend.providers.runtime_pool import runtime, inference
 
 
 class NLIValidator:
@@ -19,6 +20,12 @@ class NLIValidator:
         self._runtime: tuple[Any, Any, Any, str] | None = None
 
     def _load(self) -> tuple[Any, Any, Any, str]:
+        if self._runtime is None:
+            key = ("nli", self.settings.nli_model, self.settings.nli_device, type(self)._create)
+            self._runtime = runtime(key, self._create)
+        return self._runtime
+
+    def _create(self) -> tuple[Any, Any, Any, str]:
         if self._runtime is None:
             try:
                 import torch
@@ -40,6 +47,10 @@ class NLIValidator:
         return self.settings.nli_model
 
     def score(self, premise: str, hypothesis: str) -> dict[str, float]:
+        with inference(self.settings.nli_device):
+            return self._score(premise, hypothesis)
+
+    def _score(self, premise: str, hypothesis: str) -> dict[str, float]:
         torch, tokenizer, model, device = self._load()
         encoded = tokenizer(premise, hypothesis, truncation=True, max_length=512, return_tensors="pt")
         encoded = {name: value.to(device) for name, value in encoded.items()}

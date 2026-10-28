@@ -226,7 +226,7 @@ def test_request_progress_reaches_job_api_and_persistent_state_without_log_dupli
         app._emit('v34-progress', 'progress', json.dumps(event))
         response = TestClient(app.app).get('/api/jobs/v34-progress')
         assert response.status_code == 200
-        assert response.json()['request_progress'] == event
+        assert response.json()['request_progress'] == {**event, 'active_request_count': 1}
         assert response.json()['logs'] == []
     from backend.shared.jobs import read_job
     saved = read_job(tmp_path, 'v34-progress')

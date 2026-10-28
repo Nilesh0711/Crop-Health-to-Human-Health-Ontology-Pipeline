@@ -9,17 +9,20 @@ class PipelineStopped(BaseException):
 
 
 class CancellationToken:
-    def __init__(self):
+    def __init__(self, parent=None):
         self._event = Event()
+        self._parent = parent
 
     def request(self):
         self._event.set()
 
     @property
     def requested(self):
-        return self._event.is_set()
+        return self._event.is_set() or bool(self._parent and self._parent.requested)
 
     def check(self):
+        if self._parent:
+            self._parent.check()
         if self.requested:
             raise PipelineStopped('Stopped by user. Saved checkpoints are preserved.')
 

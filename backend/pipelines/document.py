@@ -13,6 +13,9 @@ from backend.config.settings import ONTOLOGY_DIR, SCHEMA_VERSION, Settings
 from backend.shared.batching import iter_batched_judgments
 from backend.shared.cache import RunCache
 from backend.pipelines.external import prefetch_evidence
+from backend.pipelines.trust import run_trust_assessment
+from backend.stages.trust_graph.projection import publish_graphs
+from backend.stages.trust_graph.ledger import scientific_signature
 from backend.shared.cancellation import check_cancelled
 from backend.shared.activity import TaggedMessage
 from backend.providers.llm import (
@@ -35,6 +38,7 @@ from backend.domain.claim_context import apply_source_provenance
 from backend.stages.evaluation.metrics import write_evaluation_sample
 from backend.stages.pdf_parsing.quality import assess_text_quality
 from backend.stages.source_validation.checker import validate_source_claim
+from backend.stages.source_validation.reassessment import reassess_source_claim
 from backend.stages.source_validation.abbreviations import SOURCE_VALIDATION_POLICY
 from backend.stages.source_validation.context import section_context
 from backend.domain.vocabulary import normalize_entity
@@ -54,7 +58,8 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                  resume: bool = False, extraction_mode: str | None = None,
                  extraction_target_words: int | None = None,
                  extraction_generation_budget: int | None = None,
-                 thinking: dict[str, bool] | None = None) -> dict[str, Any]:
+                 thinking: dict[str, bool] | None = None,
+                 knowledge_building_mode: str | None = None, trust_batch_size: int | None = None) -> dict[str, Any]:
     output_dir = ONTOLOGY_DIR / pdf_path.stem
     output_dir.mkdir(parents=True, exist_ok=True)
     run_started = time.monotonic()
@@ -70,6 +75,13 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         emit("info", f"{name.replace('_', ' ').capitalize()} elapsed: {stage_timings[name]:.1f}s")
 
     settings = Settings()
+    # Direct Python callers retain the previous flow unless explicitly selected;
+    # web run settings default to the new comparison mode.
+    mode = knowledge_building_mode or 'validated_first'
+    previous_judge = settings.external_judgement_mode if settings.external_judgement_mode != 'trust_graph' else 'per_paper_synthesis'
+    settings = replace(settings, knowledge_building_mode=mode,
+                       trust_batch_size=trust_batch_size or settings.trust_batch_size,
+                       external_judgement_mode='trust_graph' if mode == 'trust_graph' else previous_judge)
     settings = replace(settings, thinking=thinking if thinking is not None else settings.thinking,
                        extraction_mode=extraction_mode if extraction_mode is not None else settings.extraction_mode,
                        extraction_target_words=(extraction_target_words if extraction_target_words is not None
@@ -89,11 +101,13 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         'extraction_mode': settings.extraction_mode, 'extraction_target_words': settings.extraction_target_words,
         'extraction_generation_budget': settings.extraction_min_output_budget, 'targeting_version': TARGETING_VERSION}
     checkpoint['thinking'] = settings.task_thinking
+    checkpoint['knowledge_building_mode'] = mode
+    checkpoint['trust_batch_size'] = settings.trust_batch_size
     available_models = OpenCodeClient(settings).health_check().get("models", [])
     for task, model in settings.task_models.items():
         if model.split('#', 1)[0] not in available_models:
             raise RuntimeError(f"No configured OpenCode model is available for {task}: {model}")
-    if settings.external_judgement_mode == 'per_paper_synthesis' and settings.external_paper_model not in available_models:
+    if settings.external_judgement_mode in {'per_paper_synthesis', 'trust_graph'} and settings.external_paper_model not in available_models:
         raise RuntimeError(f'Configured per-paper primary is unavailable: {settings.external_paper_model}')
     def log_model_request(metrics: dict[str, Any]) -> None:
         with request_log_lock:
@@ -269,7 +283,26 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         save_rows(output_dir / "candidates.jsonl", candidates)
         emit("success" if source_result["decision"] == "entailed" else "warning",
              f"Source status: {source_result['decision']} | {candidate['subject']} -> {candidate['relation']} -> {candidate['object']}")
+    if mode == 'trust_graph':
+        reviewable = [c for c in semantic_accepted if c.get('source_validation', {}).get('decision') in {'unsupported', 'needs_review'}
+                      and not c['source_validation'].get('source_review_audit') and not c['source_validation'].get('batch_error')]
+        if reviewable:
+            emit('stage', f'Bounded source reassessment: {len(reviewable)} non-positive claims; original decisions retained')
+        for candidate, source_result in iter_batched_judgments(reviewable, task_clients['source'], reassess_source_claim,
+                settings.validation_batch_size, progress=lambda m: emit('info', m), label='Source reassessment'):
+            candidate['source_validation'] = source_result
+            apply_source_provenance(candidate, source_result)
+            source_result['input_signature'] = claim_stage_signature(candidate, settings.source_model, settings.task_thinking['source'])
+            source_results[:] = [r for r in source_results if r['candidate_id'] != candidate['candidate_id']]
+            source_results.append(source_result)
+            save_rows(output_dir / 'source_validation.jsonl', source_results)
+            save_rows(output_dir / 'candidates.jsonl', candidates)
     finish_stage("source_validation")
+    provisional = None
+    if mode == 'trust_graph':
+        emit('stage', 'Assembling provisional source-grounded pathways before external evidence assessment')
+        provisional = assemble_pathways(ONTOLOGY_DIR, task_clients['pathway_assembly'], settings, emit, provisional=True)
+        finish_stage('provisional_assembly')
     source_entailed = [candidate for candidate in semantic_accepted
                        if candidate["source_validation"]["decision"] == "entailed"]
     save_rows(output_dir / "source_entailed_candidates.jsonl",
@@ -288,8 +321,12 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                          if saved_external.get(candidate['candidate_id'], {}).get('validation_signature')
                          == validation_signature(candidate, settings, articles_per_claim, settings.external_top_chunks)
                          and saved_external[candidate['candidate_id']].get('validation_status')
-                         not in {None, 'pipeline_error', 'external_in_progress'}}
-    selected = [candidate for candidate in selected if candidate['candidate_id'] not in complete_external]
+                         not in {None, 'pipeline_error', 'external_in_progress', 'retrieval_pending'}}
+    if mode == 'trust_graph':
+        complete_external = {cid for cid in complete_external if saved_external[cid].get('claim_input_signature') ==
+                             scientific_signature(next(c for c in selected if c['candidate_id'] == cid))}
+    if mode != 'trust_graph':
+        selected = [candidate for candidate in selected if candidate['candidate_id'] not in complete_external]
     if resume:
         emit('info', f'Reusing {len(complete_external)} completed external judgements; {len(selected)} claims remain')
     saved_queries = {row['candidate_id']: row for row in read_jsonl(output_dir / 'query_translations.jsonl')} if resume else {}
@@ -304,14 +341,21 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
             'input_signature': claim_stage_signature(candidate, settings.query_model, settings.task_thinking['query'])}
         save_rows(output_dir / 'query_translations.jsonl', list(saved_queries.values()))
     query_translations.update(translate_queries(
-        [candidate for candidate in selected if candidate['candidate_id'] not in query_translations],
+        [candidate for candidate in selected if candidate['candidate_id'] not in query_translations
+         and candidate['candidate_id'] not in complete_external],
         task_clients['query'], settings.query_batch_size, progress=lambda message: emit("info", message),
         on_checkpoint=save_query))
     finish_stage("query_planning")
     run_cache = RunCache()
+    if settings.evidence_index_enabled:
+        from backend.shared.evidence_index import EvidenceIndex
+        run_cache.persistent = EvidenceIndex(ONTOLOGY_DIR / '.evidence_index',
+            max_bytes=settings.evidence_index_max_mb * 1024 * 1024,
+            ttl_seconds=settings.evidence_index_ttl_hours * 3600)
     emit("stage", f"Validating {len(selected)} claims against Europe PMC and OpenAlex literature")
     nli_validator: NLIValidator | None = None
-    if selected and settings.enable_nli:
+    has_external_work = bool(selected) and (mode != 'trust_graph' or len(complete_external) < len(selected))
+    if has_external_work and settings.enable_nli:
         emit("info", f"Loading external contradiction checker {settings.nli_model} on {settings.nli_device}")
         try:
             nli_validator = NLIValidator(settings)
@@ -319,7 +363,9 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
             emit("success", "External contradiction checker ready")
         except Exception as exc:
             emit("warning", f"External contradiction checker unavailable: {exc}")
-    reranker = SemanticReranker(settings) if selected else None
+    reranker = SemanticReranker(settings) if has_external_work else None
+    if reranker and run_cache.persistent is not None:
+        reranker.evidence_index = run_cache.persistent
     if reranker:
         emit("info", f"Loading semantic reranker {settings.embedding_model}")
         try:
@@ -331,6 +377,8 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                             "validation_status": "pipeline_error", "error": str(exc)}
                            for candidate in selected)
             save_rows(output_dir / "validation_runs.jsonl", results)
+            if mode == 'trust_graph':
+                raise
             selected = []
     emit('info', TaggedMessage(f"Retrieval lookahead: {'enabled' if settings.external_prefetch else 'disabled'}; one retrieval owner; cloud judgements remain sequential", 'literature_search'))
     def prepare_next(candidate):
@@ -338,7 +386,11 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         return prepare_evidence(candidate, client, reranker, settings, articles_per_claim, settings.external_top_chunks,
             progress=lambda message: emit('info', message), query_translation=query_translations.get(candidate['candidate_id']),
             cache=run_cache, resume_record=saved_external.get(candidate['candidate_id']) if resume else None)
-    with prefetch_evidence(selected, prepare_next, settings.external_prefetch) as evidence_iterator:
+    trust_stats = None
+    if mode == 'trust_graph':
+        trust_stats = run_trust_assessment(selected, candidates, provisional, output_dir, client, reranker, settings,
+                             articles_per_claim, query_translations, run_cache, results, emit, resume=resume, nli_validator=nli_validator)
+    with prefetch_evidence(selected if mode != 'trust_graph' else [], prepare_next, settings.external_prefetch) as evidence_iterator:
         for position, (candidate, evidence_future) in enumerate(evidence_iterator, 1):
             emit("info", f"Claim {position}/{len(selected)}: {candidate['subject']} â†’ {candidate['relation']} â†’ {candidate['object']}")
             def save_external_checkpoint(record: dict[str, Any]) -> None:
@@ -367,7 +419,8 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
             save_external_checkpoint(result)
             emit("success", f"Claim status: {result['validation_status']}")
     finish_stage("external_validation")
-    assembly = assemble_pathways(ONTOLOGY_DIR, task_clients['pathway_assembly'], settings, emit)
+    assembly = (publish_graphs(ONTOLOGY_DIR, provisional, settings) if mode == 'trust_graph' else
+                assemble_pathways(ONTOLOGY_DIR, task_clients['pathway_assembly'], settings, emit))
     finish_stage('pathway_assembly')
     emit("stage", "Building knowledge graph")
     graph = graph_from_candidates(candidates, results, view="main")
@@ -383,7 +436,9 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
     summary = {"pdf": pdf_path.name, "pdf_sha256": file_hash(pdf_path), "model": settings.extraction_model,
                "extraction_model": settings.extraction_model, "validation_model": settings.external_model, "completed_at": utc_now(),
                "external_phase_models": settings.external_phase_models,
-               "run_status": "completed_with_warnings" if failed_packets else "completed",
+               "run_status": "completed_with_warnings" if failed_packets or any(r.get('validation_status') == 'retrieval_pending' for r in results) else "completed",
+               "retrieval_pending": sum(r.get('validation_status') == 'retrieval_pending' for r in results),
+               "evidence_index": run_cache.persistent.stats() if run_cache.persistent else None,
                "extraction_coverage": {"complete": not failed_packets, "total_packets": len(packet_results),
                                        "completed_packets": completed_packets, 'failed_packets': failed_packets,
                                        'unit': 'targets' if settings.extraction_mode == 'target_context' else 'packets',
@@ -403,6 +458,8 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                "extraction_generation_budget": checkpoint.get('extraction_generation_budget', settings.extraction_min_output_budget),
                "targeting_version": checkpoint.get('targeting_version'),
                "external_judgement_policy": settings.external_judgement_mode,
+               "knowledge_building_mode": mode, "trust_batch_size": settings.trust_batch_size,
+               "trust_assessment": trust_stats,
                "external_top_k": articles_per_claim,
                "external_top_chunks": settings.external_top_chunks,
                "external_input_max_characters": settings.external_input_max_characters,
@@ -432,7 +489,8 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                "source_entailed": len(source_entailed),
                "source_needs_review": sum(item["decision"] == "needs_review" for item in source_results),
                "source_unsupported": sum(item["decision"] == "unsupported" for item in source_results),
-               "externally_evaluated": len(results),
+               "externally_evaluated": sum(r.get('validation_status') not in
+                   {None, 'pipeline_error', 'external_in_progress', 'retrieval_pending'} for r in results),
                "extraction_rejections": sum(value for key, value in extraction_rejection_counts.items()
                                             if key != "overlap_occurrence_deduplicated"),
                "extraction_overlap_duplicates_removed": extraction_rejection_counts.get("overlap_occurrence_deduplicated", 0),

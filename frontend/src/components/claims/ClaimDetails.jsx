@@ -35,7 +35,10 @@ export function ValidationTrace({ candidate, validation }) {
     { name: 'External literature', decision: validation?.validation_status, rationale: validation?.error || (validation ? `${validation.support_summary?.independent_groups ?? 0} independent supporting result group(s); ${validation.support_summary?.independent_document_groups == null ? '' : `${validation.support_summary.independent_document_groups} supporting document group(s); `}${validation.support_summary?.source_reference ?? 0} supporting source reference(s).` : 'Not evaluated. An earlier stage may have stopped the claim, or this run is still in progress.') },
   ]
   return <section className="validation-trace" aria-label="Validation decision trace"><span className="eyebrow">DECISION TRACE</span>
+    {validation?.validation_status === 'retrieval_pending' && <div className="quote-box"><strong>Retrieval is incomplete</strong><p>Available paper findings are shown below. Missing searches or citations remain pending; resume retries them. This claim has not entered the validated graph.</p>
+      {(validation.attempts?.at(-1)?.pending_sources || []).map((item, index) => <p key={index}>{item.provider || item.kind}: {item.reason}. {item.query || item.reference_id || ''}</p>)}</div>}
     {!!source?.applied_name_corrections?.length && <details className="context-packet"><summary>Source-verified full names</summary>{source.applied_name_corrections.map((edit, index) => <div key={index}><p>{readable(edit.field)}: {edit.before} → {edit.after}</p><blockquote>{edit.definition_quote}</blockquote><p>{edit.rationale}</p></div>)}</details>}
+    {source?.source_review_audit && <details className="context-packet"><summary>Bounded source reassessment · both readings preserved</summary><p>Original: {source.source_review_audit.original.decision}. {source.source_review_audit.original.rationale}</p><p>Reassessment: {source.source_review_audit.reassessment.decision}. {source.source_review_audit.reassessment.rationale}</p></details>}
     {!!source?.abbreviation_review?.unresolved?.length && <p className="inline-error">Unresolved source abbreviations: {source.abbreviation_review.unresolved.join(', ')}. Full names require an unambiguous definition in the supplied PDF context.</p>}
     {stages.map(stage => <div className="trace-row" key={stage.name}><span className="trace-stage">{stage.name}</span><div><strong>{readable(stage.decision) || 'Not run'}</strong><p>{stage.rationale || 'No decision recorded.'}</p>{stage.reasons?.map(reason => <p className="trace-reason" key={reason}>{reason}</p>)}</div></div>)}
     {!!candidate.extraction_review_hints?.length && <details className="context-packet"><summary>Extraction review notes · claim retained</summary><p>These heuristic notes do not reject or correct the claim. Evidence assessment determines their significance.</p>{candidate.extraction_review_hints.map(hint => <p key={hint}>{readable(hint)}</p>)}</details>}
@@ -90,7 +93,7 @@ export function ClaimActions({ candidate, validation, repairEligibility, revisio
   const canRepair = repairEligibility?.allowed ?? (['unsupported', 'needs_review'].includes(source.decision)
     || (!!candidate.repair_revision && source.decision !== 'entailed'))
   const canRetry = !candidate.schema_error && source.decision === 'entailed'
-    && (!validation || ['pipeline_error', 'external_in_progress'].includes(validation.validation_status))
+    && (!validation || ['pipeline_error', 'external_in_progress', 'retrieval_pending'].includes(validation.validation_status))
   const canReassess = !candidate.schema_error && source.decision === 'entailed' && validation && !canRetry && !canRepair
   const reason = canRepair
     ? (proofContradiction ? `${conflict.rationale || 'External evidence contains a verified quoted contradiction.'} A repair must still match the original PDF.`

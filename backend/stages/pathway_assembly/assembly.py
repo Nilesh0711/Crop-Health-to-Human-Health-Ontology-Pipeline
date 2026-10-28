@@ -86,7 +86,7 @@ def _resolve(node_id, redirects):
     return node_id
 
 
-def assemble_pathways(root, client, settings, emit=lambda *args: None):
+def assemble_pathways(root, client, settings, emit=lambda *args: None, *, provisional=False):
     """Read every saved document and align source/external-supported edges.
 
     Each incoming batch scans all frozen registry shards, plus its provisional
@@ -94,11 +94,12 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None):
     Checkpoints record batch/shard progress; an error never publishes a partial
     registry as a completed global snapshot.
     """
-    folder = root / ASSEMBLY_DIRECTORY
+    folder = root / ('.provisional_pathways' if provisional else ASSEMBLY_DIRECTORY)
+    eligibility = 'source-entailed-provisional-v1' if provisional else ASSEMBLY_ELIGIBILITY_POLICY
     request_overhead = len(SYSTEM) + len(json.dumps(RESPONSE_SCHEMA, ensure_ascii=False))
     folder.mkdir(parents=True, exist_ok=True)
-    edges, endpoints = collect_corpus(root)
-    signature = corpus_signature(edges, endpoints, settings.pathway_assembly_model, settings.task_thinking['pathway_assembly'])
+    edges, endpoints = collect_corpus(root, provisional=provisional)
+    signature = corpus_signature(edges, endpoints, settings.pathway_assembly_model, settings.task_thinking['pathway_assembly'], provisional=provisional)
     snapshot_path = folder / 'snapshot.json'
     previous = _read(snapshot_path)
     if previous and previous.get('input_signature') == signature:
@@ -124,7 +125,7 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None):
     pending = [by_id[identifier] for identifier in state['pending_ids']]
     state.update(status='running', error=None, updated_at=utc_now())
     save_json(state_path, state)
-    emit('stage', f"Pathway Assembly: {len(edges)} validated claims across {len({e['document_key'] for e in edges})} papers; MiMo Flash aligns endpoints globally")
+    emit('stage', f"Pathway Assembly: {len(edges)} {'provisional' if provisional else 'validated'} claims across {len({e['document_key'] for e in edges})} papers; MiMo Flash aligns endpoints globally")
     try:
         while state['cursor'] < len(pending):
             check_cancelled()
@@ -144,10 +145,10 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None):
             frozen = state['shard_ids']
             while True:
                 start = state['shard_cursor']
-                provisional = {assignments[r['endpoint_id']] for r in batch if r['endpoint_id'] in assignments}
+                provisional_ids = {assignments[r['endpoint_id']] for r in batch if r['endpoint_id'] in assignments}
                 chosen = {node_id:_profile(registry[node_id], by_id,
                     [r['endpoint_id'] for r in batch if assignments.get(r['endpoint_id']) == node_id])
-                    for node_id in sorted(provisional)}
+                    for node_id in sorted(provisional_ids)}
                 end = start
                 def packet():
                     return json.dumps(dict(incoming_endpoints=[{**r, 'provisional_node_id':assignments.get(r['endpoint_id'])}
@@ -197,7 +198,7 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None):
             graph_edges.append({**edge, 'source':source, 'target':target,
                                 'source_label':registry[source]['label'], 'target_label':registry[target]['label']})
         snapshot = dict(version=ASSEMBLY_VERSION, input_signature=signature, completed_at=utc_now(),
-                        eligibility_policy=ASSEMBLY_ELIGIBILITY_POLICY,
+                        eligibility_policy=eligibility,
                         model=settings.pathway_assembly_model, thinking=settings.task_thinking['pathway_assembly'], causal_chain_validated=False,
                         graph=dict(nodes=[{**n, 'type':n['types'][0]} for n in registry.values()], edges=graph_edges,
                                    counts=dict(nodes=len(registry), edges=len(graph_edges))),
@@ -219,11 +220,12 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None):
         raise
 
 
-def read_assembly(root, model):
-    snapshot = _read(root / ASSEMBLY_DIRECTORY / 'snapshot.json')
-    state = _read(root / ASSEMBLY_DIRECTORY / 'checkpoint.json') or {}
-    edges, endpoints = collect_corpus(root)
-    current = corpus_signature(edges, endpoints, model, (snapshot or state).get('thinking', True))
+def read_assembly(root, model, *, provisional=False):
+    folder = root / ('.provisional_pathways' if provisional else ASSEMBLY_DIRECTORY)
+    snapshot = _read(folder / 'snapshot.json')
+    state = _read(folder / 'checkpoint.json') or {}
+    edges, endpoints = collect_corpus(root, provisional=provisional)
+    current = corpus_signature(edges, endpoints, model, (snapshot or state).get('thinking', True), provisional=provisional)
     stale = bool(snapshot and snapshot.get('input_signature') != current)
     if snapshot:
         # Never display newly excluded edges through an older saved snapshot.

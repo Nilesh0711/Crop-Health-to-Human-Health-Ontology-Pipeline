@@ -1,5 +1,11 @@
 # Pathway Assembly
 
+The [Trust graph run mode](../trust_graph/README.md) additionally uses this
+registry before external validation with `provisional=True`, stored separately
+under `.provisional_pathways`. It admits source-entailed candidate edges without
+external support. Its validated projection still follows the admission policy
+below; provisional connections never change scientific evidence strength.
+
 After external validation, **MiMo Flash** aligns entity occurrences across
 validated PDF claims in `ontology/`. Code connects the existing directed edges
 through those shared entities. This is global graph assembly, without a causal

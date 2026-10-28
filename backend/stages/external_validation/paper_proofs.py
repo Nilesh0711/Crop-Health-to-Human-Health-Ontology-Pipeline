@@ -39,7 +39,8 @@ def selected_context(document, selection, *, finding=False):
     if finding and sum(len(fragment.split()) for fragment in fragments) > 180:
         return None, 'A finding quotation exceeds 180 words; choose a shorter finding and separate context'
     gap = ' [NON-ADJACENT EVIDENCE] ' if finding else ' [NON-ADJACENT CONTEXT] '
-    return {**selection, 'fragments': fragments, 'is_contiguous': len(fragments) == 1,
+    return {**selection, **{key: chunk[key] for key in ('source_kind', 'table_id', 'row_number', 'figure_id') if key in chunk},
+            'fragments': fragments, 'is_contiguous': len(fragments) == 1,
             'intervening_context': [{'number': number, 'text': sentences[number - 1]}
                                     for number in range(numbers[0], numbers[-1] + 1) if number not in numbers] if finding else [],
             'quoted_span': gap.join(fragments)}, None

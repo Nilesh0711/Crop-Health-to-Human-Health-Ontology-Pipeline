@@ -417,6 +417,11 @@ def validate_source_claim(candidate: dict[str, Any], client: OpenCodeClient,
         "in that restatement must be supported by this same evidence and explicit local referents. Extra inferred "
         "mechanisms, health consequences, causal upgrades, or changed measured outcomes make it false. "
         "A faithful paraphrase need not be verbatim; require exact substrings for proof anchors only. "
+        "Read compressed causal and explanatory constructions in their full sentence context. "
+        "An implicitly expressed relationship is not automatically a reversed relationship. "
+        "Identify which endpoints a causal connector actually joins; if more than one reading is plausible, "
+        "choose needs_review and describe the ambiguity instead of inventing an opposite direction. "
+        "Numerical values must describe the same measured outcome, unit and denominator as the extracted edge. "
         "Do not reject neutral reporting language alone, but 'samples' requires an explicit sampling setting. "
         "A neutral structured_rendering is just the structured claim repeated, not additional evidence. "
         "Return JSON with decision (entailed, unsupported, needs_review), relation_match, direction_match, "
@@ -451,6 +456,7 @@ def validate_source_claim(candidate: dict[str, Any], client: OpenCodeClient,
         "relation_trigger": relation_trigger if has_relation_trigger else None,
         "selected_evidence_span": span,
         "nearby_context": _nearby_context(candidate, span),
+        **({'source_reassessment': candidate['_source_reassessment']} if candidate.get('_source_reassessment') else {}),
     }
     def check_response(response):
         _check_source_response_complete(response)

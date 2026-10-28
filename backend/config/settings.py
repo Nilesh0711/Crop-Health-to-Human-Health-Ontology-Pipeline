@@ -39,6 +39,15 @@ class Settings:
     external_top_k: int = int(os.getenv('EXTERNAL_TOP_K', '8'))
     external_top_chunks: int = int(os.getenv('EXTERNAL_TOP_CHUNKS', '4'))
     external_judgement_mode: str = os.getenv('EXTERNAL_JUDGEMENT_MODE', 'per_paper_synthesis')
+    knowledge_building_mode: str = os.getenv('KNOWLEDGE_BUILDING_MODE', 'trust_graph')
+    trust_batch_size: int = int(os.getenv('TRUST_BATCH_SIZE', '3'))
+    external_paper_workers: int = int(os.getenv('EXTERNAL_PAPER_WORKERS', '3'))
+    evidence_index_enabled: bool = os.getenv('EVIDENCE_INDEX_ENABLED', '1') != '0'
+    evidence_index_max_mb: int = int(os.getenv('EVIDENCE_INDEX_MAX_MB', '512'))
+    evidence_index_ttl_hours: int = int(os.getenv('EVIDENCE_INDEX_TTL_HOURS', '168'))
+    paper_ready_judgement: bool = os.getenv('PAPER_READY_JUDGEMENT', '1') != '0'
+    search_wait_seconds: float = float(os.getenv('SEARCH_WAIT_SECONDS', '20'))
+    metadata_timeout_seconds: float = float(os.getenv('METADATA_TIMEOUT_SECONDS', '20'))
     external_input_max_characters: int = int(os.getenv('EXTERNAL_INPUT_MAX_CHARACTERS', '240000'))
     opencode_response_format: str = os.getenv('OPENCODE_RESPONSE_FORMAT', 'model_default')
     json_repair_attempts: int = int(os.getenv('JSON_REPAIR_ATTEMPTS', '1'))
@@ -75,8 +84,18 @@ class Settings:
     user_agent: str = "crop-to-human-health-ontology/0.2 (external evidence validation)"
 
     def __post_init__(self) -> None:
-        if self.external_judgement_mode not in {'per_paper_synthesis', 'joint'}:
-            raise ValueError('EXTERNAL_JUDGEMENT_MODE must be per_paper_synthesis or joint')
+        if self.knowledge_building_mode not in {'trust_graph', 'validated_first'}:
+            raise ValueError('Knowledge building mode must be trust_graph or validated_first')
+        if not 1 <= self.trust_batch_size <= 6:
+            raise ValueError('Trust batch size must be 1..6')
+        if not 1 <= self.external_paper_workers <= 4:
+            raise ValueError('External paper workers must be 1..4')
+        if self.evidence_index_max_mb < 1 or self.evidence_index_ttl_hours < 1:
+            raise ValueError('Evidence index size and refresh period must be positive')
+        if self.search_wait_seconds <= 0 or self.metadata_timeout_seconds <= 0:
+            raise ValueError('Search deadlines must be positive')
+        if self.external_judgement_mode not in {'per_paper_synthesis', 'joint', 'trust_graph'}:
+            raise ValueError('External judgement mode must be per_paper_synthesis, joint or trust_graph')
         if not isinstance(self.thinking, dict) or set(self.thinking) - TASK_DEFAULT_MODELS.keys() or any(type(v) is not bool for v in self.thinking.values()):
             raise ValueError('Thinking settings require known stage names and boolean values')
         if self.extraction_mode not in {'target_context', 'whole_packet'}:

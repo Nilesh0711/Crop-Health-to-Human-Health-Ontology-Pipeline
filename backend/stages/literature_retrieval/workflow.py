@@ -28,11 +28,13 @@ from backend.stages.literature_retrieval.clients import (
     search,
     search_openalex,
     europe_pmc_open_access_pdf,
+    scholarly_sentences,
 )
 from backend.shared.storage import stable_hash, utc_now
 from backend.domain.search_terms import _TITLE_STOPWORDS
 from backend.stages.evidence_ranking.articles import _hybrid_order
 from backend.stages.query_planning.planner import evidence_query_plan, translate_query
+from backend.stages.literature_retrieval.scheduling import collect_searches
 
 
 _TITLE_WORD_RE = re.compile(r"[a-z0-9]+")
@@ -247,15 +249,48 @@ def _independence_group(document: dict[str, Any]) -> str:
     return f"fallback:{first_author}|{year}|{title}"
 
 
+def _paper_material(result, identifiers, settings, cache):
+    """Reuse parsed source text by exact access identity, independent of abstracts.
+
+    Indexes can return different abstract strings for the same full-text copy.
+    Those strings must not cause the same XML/PDF to be downloaded repeatedly.
+    Unavailable access results are run-local only; abstract choice stays local
+    to the metadata record. Parsed text is persisted in the bounded shared
+    index when enabled; original PDF/XML bytes are transient.
+    """
+    for source, identifier in identifiers:
+        check_cancelled()
+        def fetch_xml():
+            xml = fetch_fulltext_xml(source, identifier, settings)
+            return {'paragraphs': extract_paragraphs(xml, with_sections=True) if xml else []}
+        key = 'parsed-xml-table-v1:' + json.dumps([source, identifier])
+        material = cache.get_or_compute(key, lambda: cache.persistent.material(key, fetch_xml)
+                                       if cache.persistent else fetch_xml())
+        if material['paragraphs']:
+            return material['paragraphs'], 'full_text'
+    pdf_url = str(result.get('_open_access_pdf_url') or '').strip()
+    if pdf_url:
+        key = 'parsed-pdf-v1:' + pdf_url
+        def fetch_pdf():
+            return {'paragraphs': paragraphs_from_pdf_pages(fetch_open_access_pdf_pages(pdf_url, settings))}
+        material = cache.get_or_compute(key, lambda: cache.persistent.material(key, fetch_pdf)
+                                       if cache.persistent else fetch_pdf())
+        if material['paragraphs']:
+            return material['paragraphs'], 'full_text'
+    abstract = str(result.get('abstractText') or '').strip()
+    return ([abstract], 'abstract') if len(abstract) >= 80 else ([], 'unavailable')
+
+
 def retrieve_round(candidate: dict[str, Any], client: OpenCodeClient, reranker: SemanticReranker, settings: Settings,
                    articles_per_candidate: int, top_chunks: int,
                    progress: Callable[[str], None] | None = None,
                    query_translation: dict[str, Any] | None = None,
-                   cache: RunCache | None = None) -> dict[str, Any]:
+                   cache: RunCache | None = None, on_document=None) -> dict[str, Any]:
     check_cancelled()
     started_at = time.monotonic()
     raw_progress = progress
-    progress = (lambda message: raw_progress(TaggedMessage(message, 'literature_search', candidate['candidate_id']))) if raw_progress else None
+    progress = (lambda message: raw_progress(message if isinstance(message, TaggedMessage) else
+                TaggedMessage(message, 'literature_search', candidate['candidate_id']))) if raw_progress else None
     def report(stage, message):
         if raw_progress:
             raw_progress(TaggedMessage(message, stage, candidate['candidate_id']))
@@ -282,38 +317,53 @@ def retrieve_round(candidate: dict[str, Any], client: OpenCodeClient, reranker: 
         key = f"search:{provider}:{page_size}:{query}"
         try:
             function = search if provider == "europe_pmc" else search_openalex
-            return cache.get_or_compute(key, lambda: function(query, settings, page_size)), ""
+            def find():
+                saved = cache.persistent.get(key) if cache.persistent else None
+                if saved and time.time() - saved['fetched_at'] < 3600:
+                    return saved['results']
+                found = function(query, settings, page_size)
+                if cache.persistent:
+                    cache.persistent.put(key, {'results': found, 'fetched_at': time.time()})
+                return found
+            return cache.get_or_compute(key, find), ""
         except (OSError, ValueError):
             return [], f"{provider}_search_unavailable"
 
-    # Citation resolution and the independent index queries are I/O tasks.
-    # Process their results in plan order so concurrency does not change ranks.
-    with ThreadPoolExecutor(max_workers=settings.retrieval_workers, thread_name_prefix="literature-search") as executor:
-        search_futures = [(provider, query, submit_work(executor, search_index, provider, query))
-                          for provider in ("europe_pmc", "openalex") for query in query_plan[provider]]
-        citation_futures = [submit_work(executor, _citation_results, {**candidate, "source_references": [reference]}, settings, notes, cache, citation_ledger[index])
-                            for index, reference in enumerate(candidate.get("source_references") or [])]
-        for provider, query, future in search_futures:
-            check_cancelled()
-            found, error = future.result()
-            if error:
-                notes.append({"article_id": f"{provider}-broad-search", "reason": error})
-            target, counts = ((broad_results, europe_query_counts) if provider == "europe_pmc"
-                              else (openalex_results, openalex_query_counts))
-            target.extend({**result, "_query_rank": rank} for rank, result in enumerate(found, 1))
-            counts.append({"query": query, "result_count": len(found)})
-        cited_results = []
-        for index, future in enumerate(citation_futures):
-            try:
-                cited_results.extend(future.result())
-            except (OSError, ValueError):
-                notes.append({"article_id": "source-reference", "reason": "citation_lookup_unavailable"})
-                citation_ledger[index].update(status='unavailable', reason='citation_lookup_unavailable')
+    # Interleave sources so one slow index cannot occupy every initial slot.
+    search_plan = [(provider, query) for n in range(max(len(query_plan[p]) for p in ('europe_pmc', 'openalex')))
+                   for provider in ('europe_pmc', 'openalex') for query in query_plan[provider][n:n+1]]
+    tasks = [(f'search-{i}', search_index, (provider, query)) for i, (provider, query) in enumerate(search_plan)]
+    references = candidate.get('source_references') or []
+    tasks += [(f'citation-{i}', _citation_results, ({**candidate, 'source_references': [reference]}, settings, notes, cache, citation_ledger[i]))
+              for i, reference in enumerate(references)]
+    completed_searches, deferred = collect_searches(tasks, settings.retrieval_workers,
+        settings.search_wait_seconds if settings.external_judgement_mode == 'trust_graph' else float('inf'))
+    pending_searches = []
+    for i, (provider, query) in enumerate(search_plan):
+        reply, failure = completed_searches.get(f'search-{i}', (None, 'deadline'))
+        found, error = reply if reply is not None else ([], failure)
+        if error:
+            notes.append({'article_id': f'{provider}-broad-search', 'reason': error})
+            pending_searches.append({'kind': 'search', 'provider': provider, 'query': query, 'reason': error})
+        target, counts = ((broad_results, europe_query_counts) if provider == 'europe_pmc' else (openalex_results, openalex_query_counts))
+        target.extend({**result, '_query_rank': rank} for rank, result in enumerate(found, 1))
+        counts.append({'query': query, 'result_count': len(found), 'status': 'pending' if error else 'complete'})
+    cited_results = []
+    for i, reference in enumerate(references):
+        found, error = completed_searches.get(f'citation-{i}', (None, 'deadline'))
+        if error:
+            pending_searches.append({'kind': 'citation', 'reference_id': citation_ledger[i]['reference_id'], 'reason': error})
+            citation_ledger[i].update(status='pending', reason='citation_lookup_pending')
+        else:
+            cited_results.extend(found)
+    if pending_searches and progress:
+        progress(TaggedMessage(f'Retrieval pending: {len(pending_searches)} searches or citations did not complete; available papers continue, resume retries missing sources', 'external_validation'))
     search_seconds = time.monotonic() - started_at
     results: list[dict[str, Any]] = []
     seen_results: dict[str, dict[str, Any]] = {}
     seen_bibliography: dict[str, dict[str, Any]] = {}
-    for result in [*cited_results, *broad_results, *openalex_results]:
+    local_results = cache.persistent.search_papers(' '.join(str(candidate.get(k) or '') for k in ('subject', 'object'))) if cache.persistent else []
+    for result in [*cited_results, *broad_results, *openalex_results, *local_results]:
         key = _result_key(result)
         bibliography = _bibliographic_key(result)
         existing = seen_results.get(key) or (seen_bibliography.get(bibliography) if bibliography else None)
@@ -371,7 +421,7 @@ def retrieve_round(candidate: dict[str, Any], client: OpenCodeClient, reranker: 
 
     # Rank search-result titles/abstracts before downloading XML. This prevents
     # the first open-access hits from crowding out more relevant papers while
-    # still keeping complete external papers transient and in memory only.
+    # retaining exact parsed material in the shared index when enabled.
     ranked_at = time.monotonic()
     report('article_ranking', f"Ranking articles: {len(eligible)} accessible metadata records")
     ranked_results = _hybrid_order(hypothesis, candidate, eligible, reranker)
@@ -388,18 +438,13 @@ def retrieve_round(candidate: dict[str, Any], client: OpenCodeClient, reranker: 
         direct_pdf_url = str(result.get("_open_access_pdf_url") or "").strip()
 
         def fetch() -> tuple[list[Any], str]:
-            xml_text = next((text for source, identifier in identifiers
-                             if (text := fetch_fulltext_xml(source, identifier, settings))), None)
-            paragraphs = extract_paragraphs(xml_text, with_sections=True) if xml_text else []
-            if not paragraphs and direct_pdf_url:
-                paragraphs = paragraphs_from_pdf_pages(fetch_open_access_pdf_pages(direct_pdf_url, settings))
-            if paragraphs:
-                return paragraphs, "full_text"
-            abstract = str(result.get("abstractText") or "").strip()
-            return ([abstract], "abstract") if len(abstract) >= 80 else ([], "unavailable")
+            material, access = _paper_material(result, identifiers, settings, cache)
+            if material and cache.persistent:
+                cache.persistent.catalogue(_result_key(result), result, material)
+            return material, access
 
-        # Only parsed text lives in this bounded in-memory run cache. Nothing
-        # persists except the final selected, provenance-bearing passages.
+        # Run-local singleflight prevents repeated downloads; the shared index
+        # also reuses successful parsed text across runs, within its TTL.
         return cache.get_or_compute("article:" + _result_key(result) + ":" + stable_hash(
             str((identifiers, direct_pdf_url, result.get("abstractText"))), 32), fetch)
 
@@ -419,8 +464,18 @@ def retrieve_round(candidate: dict[str, Any], client: OpenCodeClient, reranker: 
         paragraphs, access = load_material(entry)
         fetched = time.monotonic()
         # Chunk boundaries are claim-independent; reuse them across claims.
-        chunks = cache.get_or_compute('chunks:' + _result_key(entry[1][0]) + ':' + stable_hash(
-            json.dumps(paragraphs, ensure_ascii=False), 32), lambda: make_chunks(paragraphs)) if paragraphs else []
+        key = 'chunks-index-v1:' + _result_key(entry[1][0]) + ':' + stable_hash(json.dumps(paragraphs, ensure_ascii=False), 32)
+        def build_chunks():
+            saved = cache.persistent.get(key, expiring=False) if cache.persistent else None
+            if saved is not None:
+                return saved['chunks']
+            built = make_chunks(paragraphs)
+            if cache.persistent:
+                cache.persistent.put(key, {'chunks': built, 'paper_identity': _result_key(entry[1][0]),
+                    'sentence_index': [[{'number': n, 'text': sentence} for n, sentence in enumerate(
+                        scholarly_sentences(c['text'] if isinstance(c, dict) else str(c)), 1)] for c in built]})
+            return built
+        chunks = cache.get_or_compute(key, build_chunks) if paragraphs else []
         return chunks, access, {'fetch_seconds': round(fetched - began, 3),
                                 'chunk_seconds': round(time.monotonic() - fetched, 3)}
 
@@ -488,6 +543,8 @@ def retrieve_round(candidate: dict[str, Any], client: OpenCodeClient, reranker: 
                           "evidence_chunks": chunks}
         document["independence_group"] = _independence_group(document)
         documents.append(document)
+        if on_document:
+            on_document(document)
         for row in citation_ledger:
             if row['reference_id'] in document['source_reference_ids']:
                 row.update(fetched=True, status='fetched', evidence_access=evidence_access,
@@ -504,9 +561,10 @@ def retrieve_round(candidate: dict[str, Any], client: OpenCodeClient, reranker: 
     documents.sort(key=lambda d: article_order[d['evidence_document_id']])
     report('chunk_preparation', f"Passage preparation completed: {len(documents)} papers; {time.monotonic() - fetch_rank_started:.1f}s fetch/prepare/rank wall time")
     for row in citation_ledger:
-        if row['resolved'] and not row['fetched']:
+        if row['resolved'] and not row['fetched'] and row['status'] != 'pending':
             row.update(status='unavailable', reason=row['reason'] or 'No usable text/chunks retrieved; see retrieval notes')
     return {"query_translation": translated, "query_plan": query_plan, 'citation_ledger': citation_ledger,
+            'retrieval_pending': bool(pending_searches), 'pending_sources': pending_searches,
             'retrieval_coverage': {'unique_metadata_records': len(results), 'accessible_candidates': len(eligible),
                                    'missing_abstract_candidates': sum(len(str(e[0].get('abstractText') or '')) < 80 for e in eligible),
                                    'fetch_attempts': attempts, 'papers_retained': len(documents),
@@ -518,6 +576,7 @@ def retrieve_round(candidate: dict[str, Any], client: OpenCodeClient, reranker: 
             "result_count": len(broad_results) + len(openalex_results),
             "europe_pmc_result_count": len(broad_results),
             "openalex_result_count": len(openalex_results),
+            'shared_index_result_count': len(local_results),
             "cited_result_count": len(cited_results),
             "evidence_documents_count": len(documents),
             "open_access_evidence_documents": sum(document.get("evidence_access") == "full_text" for document in documents),

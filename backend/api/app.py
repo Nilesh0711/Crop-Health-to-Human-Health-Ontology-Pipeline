@@ -35,6 +35,7 @@ from backend.stages.pathway_assembly.assembly import read_assembly
 from backend.stages.pathway_assembly.corpus import ASSEMBLY_ELIGIBILITY_POLICY
 from backend.stages.source_validation.abbreviations import SOURCE_VALIDATION_POLICY
 from backend.stages.pathway_assembly.paths import assembled_paths
+from backend.stages.trust_graph.ledger import evidence_balance, decorate_graph, connection_assessments
 
 
 app = FastAPI(title="Crop to Human Health Workbench", version="1.0.0")
@@ -52,6 +53,8 @@ class ThinkingOptions(BaseModel):
 
 
 class RunOptions(BaseModel):
+    knowledge_building_mode: Literal['trust_graph', 'validated_first'] = Field(default_factory=lambda: Settings().knowledge_building_mode)
+    trust_batch_size: int = Field(default_factory=lambda: Settings().trust_batch_size, ge=1, le=6)
     thinking: ThinkingOptions = Field(default_factory=ThinkingOptions)
     max_pages: int = Field(default=0, ge=0, le=1000, description="0 means all text pages")
     max_claims: int = Field(default=0, ge=0, le=500, description="0 means all extracted claims")
@@ -176,7 +179,15 @@ def _emit(job_id: str, level: str, message: str) -> None:
             return
         job['activity_stage'] = entry['stage']
         if level == 'progress':
-            job['request_progress'] = progress
+            active = job.setdefault('active_request_progress', {})
+            key = f"{progress.get('stage')}:{progress.get('model')}:{progress.get('request_id')}"
+            if progress.get('status') in {'waiting_for_provider', 'repairing_format', 'regenerating_response'}:
+                active[key] = progress
+            else:
+                active.pop(key, None)
+            # A completed sibling must not hide another request still waiting.
+            shown = next(iter(active.values()), progress)
+            job['request_progress'] = {**shown, 'active_request_count': len(active)}
         if visible:
             job["logs"].append(entry)
         job["updated_at"] = entry["at"]
@@ -218,7 +229,8 @@ def _run_worker(job_id: str, options: RunOptions) -> None:
         elif _jobs[job_id].get('action'):
             result = run_claim_action(pdf, _output_dir(pdf), _jobs[job_id]['candidate_id'],
                                       _jobs[job_id]['action'], options.articles_per_claim,
-                                      lambda level, message: _emit(job_id, level, message), thinking=options.thinking.model_dump())
+                                      lambda level, message: _emit(job_id, level, message), thinking=options.thinking.model_dump(),
+                                      knowledge_building_mode=options.knowledge_building_mode, trust_batch_size=options.trust_batch_size)
         else:
             result = run_pipeline(pdf, options.max_pages, options.max_claims, options.articles_per_claim,
                                   lambda level, message: _emit(job_id, level, message),
@@ -227,6 +239,7 @@ def _run_worker(job_id: str, options: RunOptions) -> None:
                                   extraction_target_words=options.extraction_target_words,
                                   extraction_generation_budget=options.extraction_generation_budget,
                                   thinking=options.thinking.model_dump(),
+                                  knowledge_building_mode=options.knowledge_building_mode, trust_batch_size=options.trust_batch_size,
                                   resume=bool(_jobs[job_id].get('resume')))
         with _lock:
             check_cancelled()
@@ -259,6 +272,9 @@ def _run_worker(job_id: str, options: RunOptions) -> None:
             _emit(job_id, 'error', f'Could not refresh partial results: {refresh_error}')
     finally:
         with _lock:
+            _jobs[job_id].pop('active_request_progress', None)
+            if isinstance(_jobs[job_id].get('request_progress'), dict):
+                _jobs[job_id]['request_progress']['active_request_count'] = 0
             _jobs[job_id]["finished_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
             _persist_job(job_id)
 
@@ -274,7 +290,7 @@ def health() -> dict[str, Any]:
         return model.split('#', 1)[0] in opencode_models
     ready = {task: route_ready(model, task) for task, model in settings.task_models.items()}
     phase_ready = {phase: route_ready(model, 'external') for phase, model in settings.external_phase_models.items()}
-    if settings.external_judgement_mode == 'per_paper_synthesis':
+    if settings.external_judgement_mode in {'per_paper_synthesis', 'trust_graph'} or settings.knowledge_building_mode == 'trust_graph':
         ready['external'] = all(phase_ready.values())
     extraction_ready, validation_ready, helper_ready = (ready[task] for task in ('extraction', 'external', 'query'))
     return {"status": "ok", "model": settings.external_model, "model_ready": all(ready.values()),
@@ -288,7 +304,9 @@ def health() -> dict[str, Any]:
                          "artifact_write_policy": ARTIFACT_WRITE_POLICY,
                          "pathway_assembly_policy": ASSEMBLY_ELIGIBILITY_POLICY,
                          "source_validation_policy": SOURCE_VALIDATION_POLICY,
-                         "external_judgement_mode": settings.external_judgement_mode,
+                         "external_judgement_mode": 'trust_graph' if settings.knowledge_building_mode == 'trust_graph' else settings.external_judgement_mode,
+                         "knowledge_building_mode": settings.knowledge_building_mode,
+                         "trust_batch_size": settings.trust_batch_size,
                          "validation_batch_size": settings.validation_batch_size,
                          "model_policy": "primary_only",
                          "task_models": settings.task_models,
@@ -309,6 +327,11 @@ def health() -> dict[str, Any]:
                          "thinking": settings.task_thinking,
                          "query_batch_size": settings.query_batch_size,
                          "retrieval_workers": settings.retrieval_workers,
+                         "external_paper_workers": settings.external_paper_workers,
+                         "paper_ready_judgement": settings.paper_ready_judgement,
+                         "evidence_index_enabled": settings.evidence_index_enabled,
+                         "evidence_index_ttl_hours": settings.evidence_index_ttl_hours,
+                         "search_wait_seconds": settings.search_wait_seconds,
                          "external_prefetch": settings.external_prefetch,
                          "embedding_batch_size": settings.embedding_batch_size,
                          "cross_encoder_batch_size": settings.cross_encoder_batch_size,
@@ -351,7 +374,7 @@ def list_pdfs() -> list[dict[str, Any]]:
                           "size_bytes": pdf.stat().st_size,
                            "status": active["status"] if active else saved_status,
                            "summary": summary, "document_scope": document_scope,
-                           "can_resume": saved_status in {'failed', 'stopped'} and resume_available(output),
+                           "can_resume": (saved_status in {'failed', 'stopped'} or bool((summary or {}).get('retrieval_pending'))) and resume_available(output),
                            "latest_job_id": state.get('id'),
                            "active_job_id": active["id"] if active else None})
     return items
@@ -401,6 +424,7 @@ def recovery_options(pdf_id: str) -> dict[str, Any]:
     state = state if isinstance(state, dict) else {}
     saved = state.get('options') or {}
     saved = saved if isinstance(saved, dict) else {}
+    saved.setdefault('knowledge_building_mode', 'validated_first')
     options = {key: value for key, value in saved.items() if key in RunOptions.model_fields}
     reason, can_continue = None, False
     try:
@@ -445,6 +469,8 @@ def _saved_extraction_options(output: Path) -> dict[str, Any]:
     # on recovery even though fresh runs now default to Off.
     saved_thinking = metadata.get('thinking') or ({task: True for task in defaults.task_models} if metadata else defaults.task_thinking)
     restored = {'thinking': saved_thinking, 'extraction_mode': metadata.get('extraction_mode', 'whole_packet'),
+            'knowledge_building_mode': metadata.get('knowledge_building_mode', 'validated_first'),
+            'trust_batch_size': metadata.get('trust_batch_size', defaults.trust_batch_size),
             'extraction_target_words': metadata.get('extraction_target_words') or defaults.extraction_target_words,
             'extraction_generation_budget': metadata.get('extraction_generation_budget') or defaults.extraction_min_output_budget}
     for key in ('max_pages', 'claims_per_packet'):
@@ -573,7 +599,7 @@ def pdf_claims(pdf_id: str) -> dict[str, Any]:
     for candidate in candidates:
         validation = by_id.get(candidate['candidate_id'])
         conflicts = verified_contradictions(candidate, validation)
-        claims.append({'candidate': candidate, 'validation': validation,
+        claims.append({'candidate': candidate, 'validation': validation, 'trust': evidence_balance(candidate, validation),
                        'repair_eligibility': {'allowed': bool(conflicts) or repairable(candidate),
                                               'external_contradictions': conflicts},
                        'revisions': [row for row in revisions if row['candidate_id'] == candidate['candidate_id']]})
@@ -633,12 +659,26 @@ def pdf_paths(pdf_id: str) -> list[Any]:
 
 @app.get('/api/pathways')
 def global_pathways(limit: int = Query(default=100, ge=1, le=500),
-                    max_hops: int = Query(default=6, ge=2, le=12), offset: int = Query(default=0, ge=0)):
-    data = read_assembly(ONTOLOGY_DIR, Settings().pathway_assembly_model)
+                    max_hops: int = Query(default=6, ge=2, le=12), offset: int = Query(default=0, ge=0),
+                    view: Literal['validated', 'provisional'] = 'validated'):
+    data = read_assembly(ONTOLOGY_DIR, Settings().pathway_assembly_model, provisional=True) if view == 'provisional' else read_assembly(ONTOLOGY_DIR, Settings().pathway_assembly_model)
     snapshot = data.pop('snapshot') or {}
     graph = snapshot.get('graph', {'nodes':[], 'edges':[], 'counts':{}})
+    if view == 'provisional':
+        graph = decorate_graph(ONTOLOGY_DIR, graph)
     return {**data, 'graph':graph, 'counts':snapshot.get('counts', {}),
+            'view': view, 'score_is_probability': False,
+            'pathway_connections': connection_assessments(ONTOLOGY_DIR) if view == 'provisional' else [],
             'completed_at':snapshot.get('completed_at'), **assembled_paths(graph, limit, max_hops, offset)}
+
+
+@app.get('/api/pdfs/{pdf_id}/trust')
+def pdf_trust(pdf_id: str):
+    output = _output_dir(_pdf_path(pdf_id))
+    result = {r['candidate_id']: r for r in read_jsonl(output / 'validation_runs.jsonl')}
+    return {'claims': [evidence_balance(c, result.get(c['candidate_id'])) for c in read_jsonl(output / 'candidates.jsonl')],
+            'connections': [r for r in connection_assessments(ONTOLOGY_DIR) if r['document_key'] == output.name],
+            'summary': _read_json(output / 'trust_summary.json', {}), 'score_is_probability': False}
 
 
 @app.post('/api/pdfs/{pdf_id}/assemble-pathways', status_code=202)

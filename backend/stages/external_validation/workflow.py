@@ -10,6 +10,7 @@ from typing import Any, Callable
 from backend.config.settings import SCHEMA_VERSION, Settings
 from backend.shared.cache import RunCache
 from backend.providers.llm import OpenCodeClient
+from backend.stages.external_validation.aggregation import aggregate_assessment
 from backend.stages.external_validation.joint import judge_evidence_pack
 from backend.stages.external_validation.synthesis import judge_with_synthesis, POLICY
 from backend.providers.nli import NLIValidator
@@ -27,11 +28,14 @@ def _signature(candidate: dict[str, Any], settings: Settings, top_k=None, top_ch
                                                                        if k != 'pathway_assembly'},
                                   "nli": [settings.enable_nli, settings.nli_model, settings.enable_nli_promotion],
                                   "selection": [top_k or settings.external_top_k, top_chunks or settings.external_top_chunks],
-                                  "joint": True, **policy, **({"thinking": {task: False for task in ("query", "external") if not settings.task_thinking[task]}} if any(not settings.task_thinking[task] for task in ("query", "external")) else {})}, sort_keys=True), 32)
+                                  "joint": True, **policy,
+                                  **({'trust_retrieval_policy': 'table-context-v1'} if settings.external_judgement_mode == 'trust_graph' else {}),
+                                  **({"thinking": {task: False for task in ("query", "external") if not settings.task_thinking[task]}} if any(not settings.task_thinking[task] for task in ("query", "external")) else {})}, sort_keys=True), 32)
 
 
 def validation_signature(candidate, settings, top_k=None, top_chunks=None):
     policy = {} if settings.external_judgement_mode == 'joint' else {'judgement_policy': POLICY, 'paper_model': settings.external_paper_model,
+        **({'trust_policy': 'evidence-balance-v1'} if settings.external_judgement_mode == 'trust_graph' else {}),
         'source_scope_context': stable_hash(json.dumps([candidate.get('source_evidence_span'), candidate.get('source_local_context')]), 32)}
     return _signature(candidate, settings, top_k, top_chunks, **policy)
 
@@ -40,12 +44,12 @@ def reusable_evidence(candidate, settings, record, top_k=None, top_chunks=None):
     retrieval_settings = replace(settings, thinking={**settings.task_thinking, 'external': True})
     compatible = {_signature(candidate, retrieval_settings, top_k, top_chunks),
                   validation_signature(candidate, retrieval_settings, top_k, top_chunks)}
-    return bool(record and record.get('attempts') and
+    return bool(record and record.get('attempts') and not record['attempts'][-1].get('retrieval_pending') and
                 record.get('retrieval_signature', record.get('validation_signature')) in compatible)
 
 
 def prepare_evidence(candidate, client, reranker, settings, articles_per_candidate=None, top_chunks=None,
-                     progress=None, query_translation=None, cache=None, resume_record=None):
+                     progress=None, query_translation=None, cache=None, resume_record=None, on_document=None):
     articles_per_candidate = articles_per_candidate or settings.external_top_k
     top_chunks = top_chunks or settings.external_top_chunks
     signature = validation_signature(candidate, settings, articles_per_candidate, top_chunks)
@@ -60,7 +64,11 @@ def prepare_evidence(candidate, client, reranker, settings, articles_per_candida
             progress('Resuming retained evidence packet; compatible paper judgements will be reused')
     else:
         result = retrieve_round(candidate, client, reranker, settings, articles_per_candidate, top_chunks, progress,
-                                query_translation=query_translation, cache=cache)
+                                query_translation=query_translation, cache=cache,
+                                **({'on_document': on_document} if on_document else {}))
+    if reusable and on_document:
+        for document in result['evidence_documents']:
+            on_document(document)
     result['retrieval_signature'] = retrieval_signature
     result['prepared_for_candidate_id'] = candidate['candidate_id']
     result['prepared_validation_signature'] = signature
@@ -142,47 +150,7 @@ def validate_candidate(candidate: dict[str, Any], client: OpenCodeClient, rerank
         checkpoint('external_in_progress', decisions)
     else:
         decisions = []
-    attempts = [{"attempt": 1, **result, "decisions": decisions}]
-    document_by_id = {document["evidence_document_id"]: document for document in result["evidence_documents"]}
-    support_ids = {d.get("evidence_document_id") for d in decisions if d.get("decision") == "supported"}
-    reference_support_ids = {identifier for identifier in support_ids
-                             if document_by_id.get(identifier, {}).get("evidence_level") == "source_reference"}
-    independent_support_ids = {identifier for identifier in support_ids
-                               if document_by_id.get(identifier, {}).get("evidence_level") == "independent_external"}
-    independent_document_groups = {document_by_id[identifier].get("independence_group") for identifier in independent_support_ids}
-    independent_groups = ({document_by_id[d['evidence_document_id']].get('independence_group') for d in decisions
-                           if d.get('evidence_document_id') in independent_support_ids
-                           and (d.get('finding') or {}).get('evidence_origin') == 'original_result'}
-                          if mode == 'per_paper_synthesis' else independent_document_groups)
-    contradiction_ids = {d.get("evidence_document_id") for d in decisions if d.get("decision") == "contradicted"}
-    if ((result.get('joint_assessment') or {}).get('semantic_assessment') or {}).get('in_scope') is False:
-        status = 'out_of_scope'
-    elif (result.get('joint_assessment') or {}).get('semantic_review_required'):
-        status = 'external_support_needs_review' if support_ids else 'external_assessment_needs_review'
-    elif support_ids and contradiction_ids:
-        status = "world_contested_pending_review"
-    elif len(independent_groups) >= 2:
-        status = "world_independently_corroborated_pending_review"
-    elif independent_support_ids:
-        status = "world_independent_supported_pending_corroboration"
-    elif reference_support_ids:
-        status = "source_reference_supported_pending_independent_corroboration"
-    elif contradiction_ids:
-        status = "world_contradicted_or_contested"
-    elif any(d.get('decision') == 'needs_review' for d in decisions):
-        status = 'external_assessment_needs_review'
-    elif attempts[0]["evidence_documents"]:
-        status = "external_evidence_not_found"
-    else:
-        status = "retrieval_failed_or_no_open_access_evidence"
-    return {"schema_version": SCHEMA_VERSION, "candidate_id": candidate["candidate_id"], "candidate": candidate,
-            "validation_signature": signature, "retrieval_signature": result.get("retrieval_signature"),
-            "attempts": attempts, "validation_status": status,
-            "support_summary": {"source_reference": len(reference_support_ids),
-                                "independent_external": len(independent_support_ids),
-                                "independent_groups": len(independent_groups),
-                                "independent_document_groups": len(independent_document_groups)},
-            "validated_at": utc_now()}
+    return aggregate_assessment(candidate, result, decisions, signature, mode)
 
 
 def evidence_ledger(records: list[dict[str, Any]]) -> list[dict[str, Any]]:

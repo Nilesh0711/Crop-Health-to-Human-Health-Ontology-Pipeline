@@ -9,12 +9,15 @@ from fastapi.responses import JSONResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from backend.viewer.snapshot import Snapshot, safe_path
+from backend.viewer.db import PublicationDB
 from backend.stages.pathway_assembly.paths import assembled_paths
 
 
 def create_app(snapshot_dir=None, frontend_dist=None):
     root = Path(__file__).resolve().parents[2]
-    snapshot = Snapshot(snapshot_dir or os.getenv('VIEWER_DATA_DIR', str(root / 'deploy/render/snapshot')))
+    snapshot_path = Path(snapshot_dir or os.getenv('VIEWER_DATA_DIR', str(root / 'deploy/render/snapshot'))).resolve()
+    snapshot = Snapshot(snapshot_path)
+    db = PublicationDB(snapshot_path / 'publication.db')
     dist = Path(frontend_dist or os.getenv('VIEWER_FRONTEND_DIR', str(root / 'frontend/dist')))
 
     @asynccontextmanager
@@ -57,7 +60,12 @@ def create_app(snapshot_dir=None, frontend_dist=None):
 
     @app.get('/api/pdfs')
     def pdfs():
-        return Response(snapshot.bytes(snapshot.manifest['catalog']), media_type='application/json')
+        data = snapshot.bytes(snapshot.manifest['catalog'])
+        if db.is_available():
+            catalog_raw = db.get_catalog_raw()
+            if catalog_raw:
+                return Response(catalog_raw, media_type='application/json')
+        return Response(data, media_type='application/json')
 
     @app.get('/api/pdfs/{identifier}/file')
     def pdf_file(identifier: str):
@@ -77,6 +85,11 @@ def create_app(snapshot_dir=None, frontend_dist=None):
 
     @app.get('/api/pdfs/{identifier}/jobs')
     def jobs(identifier: str):
+        if db.is_available():
+            doc = db.get_document(identifier)
+            if not doc:
+                raise HTTPException(404, 'Published document not found')
+            return db.get_jobs(identifier)
         entry = document(identifier)
         return [{k: row.get(k) for k in ('id', 'pdf_id', 'status', 'recorded_status', 'action', 'started_at', 'finished_at', 'error')}
                 for row in sorted((snapshot.read(p) for p in entry['jobs'].values()),
@@ -84,6 +97,11 @@ def create_app(snapshot_dir=None, frontend_dist=None):
 
     @app.get('/api/jobs/{job_id}')
     def job(job_id: str):
+        if db.is_available():
+            raw = db.get_job_raw(job_id)
+            if raw:
+                return Response(raw, media_type='application/json')
+            raise HTTPException(404, 'Saved job not included in this snapshot')
         relative = snapshot.manifest['jobs'].get(job_id)
         if not relative:
             raise HTTPException(404, 'Saved job not included in this snapshot')
@@ -95,9 +113,23 @@ def create_app(snapshot_dir=None, frontend_dist=None):
         return {'can_continue': False, 'reason': 'Published results are read-only.'}
 
     @app.get('/api/pdfs/{identifier}/{kind}')
-    def result(identifier: str, kind: str):
+    def result(identifier: str, kind: str, limit: int = Query(0, ge=0), offset: int = Query(0, ge=0)):
         if kind not in {'claims', 'logs', 'graph', 'audit-graph', 'source-graph', 'paths', 'trust', 'pathway-assessments'}:
             raise HTTPException(404, 'Result view not found')
+        if db.is_available():
+            if kind == 'claims':
+                claims_raw = db.get_claims_response_raw(identifier, limit=limit, offset=offset)
+                if claims_raw is not None:
+                    return Response(claims_raw, media_type='application/json')
+            elif kind == 'pathway-assessments':
+                pa_raw = db.get_document_pathway_assessments_raw(identifier)
+                if pa_raw is not None:
+                    return Response(pa_raw, media_type='application/json')
+                return JSONResponse({'records': [], 'counts': {}, 'historical_snapshot': True})
+            else:
+                view_raw = db.get_document_view_raw(identifier, kind)
+                if view_raw is not None:
+                    return Response(view_raw, media_type='application/json')
         entry = document(identifier)
         if kind == 'pathway-assessments' and kind not in entry:
             return JSONResponse({'records': [], 'counts': {}, 'historical_snapshot': True})
@@ -105,6 +137,10 @@ def create_app(snapshot_dir=None, frontend_dist=None):
 
     @app.get('/api/pathway-assessments')
     def assessments():
+        if db.is_available():
+            pa_raw = db.get_global_pathway_assessments_raw()
+            if pa_raw:
+                return Response(pa_raw, media_type='application/json')
         relative = snapshot.manifest.get('pathway_assessments')
         if not relative:
             return JSONResponse({'records': [], 'counts': {}, 'historical_snapshot': True})
@@ -115,6 +151,10 @@ def create_app(snapshot_dir=None, frontend_dist=None):
     @app.get('/api/source-graph')
     def global_graph(request: Request):
         kind = request.url.path.rsplit('/', 1)[-1]
+        if db.is_available():
+            raw = db.get_global_view_raw(kind)
+            if raw:
+                return Response(raw, media_type='application/json')
         relative = snapshot.manifest['graphs'].get(kind)
         if not relative:
             raise HTTPException(404, 'Graph not found')
@@ -147,6 +187,10 @@ def create_app(snapshot_dir=None, frontend_dist=None):
     @app.get('/api/pathways')
     def pathways(limit: int = Query(100, ge=1, le=500), max_hops: int = Query(6, ge=2, le=12),
                  offset: int = Query(0, ge=0), view: Literal['validated', 'provisional'] = 'validated'):
+        if db.is_available():
+            page_data = db.get_pathways_page(limit=limit, max_hops=max_hops, offset=offset, view=view)
+            if page_data is not None:
+                return page_data
         data = snapshot.read(snapshot.manifest['pathways'][view])
         if view == 'validated' and data.get('policy') in {'whole-pathway-v1','neighbor-pair-v1'}:
             records = get_validated_records()

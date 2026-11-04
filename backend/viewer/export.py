@@ -190,6 +190,8 @@ def export_snapshot(ontology, pdf_dir, output, *, include_pdfs=False, replace=Fa
             raise ValueError('Source files changed during export; finish local work and retry')
         manifest['snapshot_id'] = manifest_id(manifest)
         (staging / 'manifest.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
+        from backend.viewer.db import build_publication_db
+        build_publication_db(staging, staging / 'publication.db')
         Snapshot(staging).load()
         backup = None
         if output.exists():

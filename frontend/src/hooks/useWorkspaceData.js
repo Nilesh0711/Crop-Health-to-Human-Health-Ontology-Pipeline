@@ -40,13 +40,14 @@ export function useWorkspaceData({ selectedId, setSelectedId, graphScope, graphM
     }
     setPaperLoading(true)
     try {
-      loadPaperClaims(request, pdfId).then(claimData => {
+      const claimsPromise = loadPaperClaims(request, pdfId)
+      claimsPromise.then(claimData => {
         if (selection.current.selectedId === pdfId) {
           setDetails(previous => ({ ...previous, ...claimData }))
         }
       }).catch(() => {})
 
-      const loaded = await loadLatestDetails(request, pdfId, scope, mode)
+      const loaded = await loadLatestDetails(request, pdfId, scope, mode, claimsPromise)
       const current = selection.current
       if (!loaded || current.selectedId !== pdfId || current.graphScope !== scope || current.graphMode !== mode) return
       setDetails(loaded)

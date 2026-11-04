@@ -94,9 +94,17 @@ def create_app(snapshot_dir=None, frontend_dist=None):
 
     @app.get('/api/pdfs/{identifier}/{kind}')
     def result(identifier: str, kind: str):
-        if kind not in {'claims', 'logs', 'graph', 'audit-graph', 'source-graph', 'paths', 'trust'}:
+        if kind not in {'claims', 'logs', 'graph', 'audit-graph', 'source-graph', 'paths', 'trust', 'pathway-assessments'}:
             raise HTTPException(404, 'Result view not found')
-        return snapshot.read(document(identifier)[kind])
+        entry = document(identifier)
+        if kind == 'pathway-assessments' and kind not in entry:
+            return {'records': [], 'counts': {}, 'historical_snapshot': True}
+        return snapshot.read(entry[kind])
+
+    @app.get('/api/pathway-assessments')
+    def assessments():
+        relative = snapshot.manifest.get('pathway_assessments')
+        return snapshot.read(relative) if relative else {'records': [], 'counts': {}, 'historical_snapshot': True}
 
     @app.get('/api/graph')
     @app.get('/api/audit-graph')
@@ -108,6 +116,19 @@ def create_app(snapshot_dir=None, frontend_dist=None):
     def pathways(limit: int = Query(100, ge=1, le=500), max_hops: int = Query(6, ge=2, le=12),
                  offset: int = Query(0, ge=0), view: Literal['validated', 'provisional'] = 'validated'):
         data = snapshot.read(snapshot.manifest['pathways'][view])
+        if view == 'validated' and data.get('policy') in {'whole-pathway-v1','neighbor-pair-v1'}:
+            saved = assessments()
+            records = saved.get('historical_records', saved['records']) if data.get('policy')=='whole-pathway-v1' else saved['records']
+            rows = sorted((r for r in records if (r.get('eligible') or r.get('historical_eligible')) and not r.get('stale')
+                           and len(r['target']['edges']) <= max_hops), key=lambda r:r['pathway_id'])
+            page = rows[offset:offset+limit]
+            valid_ids = {e['id'] for r in rows for e in r['target']['edges']}
+            edges = [e for e in data['graph']['edges'] if e['id'] in valid_ids]
+            node_ids = {e[k] for e in edges for k in ('source','target')}
+            return {**data,'paths':[r['target']['edges'] for r in page],'pathway_assessments':page,
+                    'graph':{**data['graph'],'edges':edges,'nodes':[n for n in data['graph']['nodes'] if n['id'] in node_ids]},
+                    'counts':{'claims':len(edges),'entities':len(node_ids),'papers':len({e['document_key'] for e in edges})},
+                    'has_more':offset+limit<len(rows),'offset':offset,'limit':limit,'max_hops':max_hops}
         return {**data, **assembled_paths(data['graph'], limit, max_hops, offset)}
 
     @app.get('/api/{unknown:path}')

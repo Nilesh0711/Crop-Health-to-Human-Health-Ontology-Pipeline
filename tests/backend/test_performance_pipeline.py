@@ -5,8 +5,8 @@ from threading import Event
 from types import SimpleNamespace
 from dataclasses import replace
 import pytest
-from backend.config.settings import Settings
-from backend.pipelines.external import prefetch_evidence
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
+from archive.legacy_pipeline.research_historical.pipelines.external import prefetch_evidence
 from backend.shared.activity import TaggedMessage, display_log
 
 
@@ -95,7 +95,7 @@ def test_invalid_batch_sizes_fail_before_loading_models(name):
 
 
 def test_prepared_packet_cannot_be_attached_to_another_claim():
-    from backend.stages.external_validation.workflow import validate_candidate
+    from archive.legacy_pipeline.research_historical.external_validation.workflow import validate_candidate
     with pytest.raises(ValueError, match='does not match'):
         validate_candidate({'candidate_id':'wanted'}, None, None, Settings(),
                            prepared_evidence={'prepared_for_candidate_id':'different', 'evidence_documents':[]})

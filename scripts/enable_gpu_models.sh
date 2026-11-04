@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install the CUDA PyTorch wheel required by BGE, MedCPT, and DeBERTa NLI.
+# Install the CUDA PyTorch wheel used by BGE and MedCPT.
 # The NVIDIA driver supplies CUDA 13.4; PyTorch's CUDA 13.2 wheel is supported
 # by that newer driver. This wheel is approximately 2 GB and is a one-time
 # download. It does not install or start any local generative LLM.
@@ -29,4 +29,4 @@ if not torch.cuda.is_available():
 print(f"CUDA ready: {torch.cuda.get_device_name(0)} | torch={torch.__version__} | CUDA={torch.version.cuda}")
 PY
 
-echo "Done. Restart the backend; run_backend.sh will automatically place BGE, MedCPT, and NLI on cuda:0."
+echo "Done. Restart the backend; run_backend.sh will automatically place BGE and MedCPT on cuda:0."

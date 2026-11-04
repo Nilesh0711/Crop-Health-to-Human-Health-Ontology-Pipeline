@@ -23,6 +23,7 @@ def fixture():
         rationale='The source explicitly defines the disease abbreviation.')
         for field, before in [('subject', 'FHB'), ('claim_text', span), ('qualifiers.condition', 'FHB infection')]]
     answer = dict(decision='entailed', relation_match=True, direction_match=True, certainty_match=True,
+        project_scope={'decision': 'in_scope', 'rationale': 'A crop disease changes food-material quality.'},
         claim_text_match=True, occurrence_provenance_fields=[], rationale='The expanded claim preserves the source assertion.',
         proof={'subject': 'FHB', 'relation': 'reduces', 'object': 'grain quality'},
         entity_alignment={

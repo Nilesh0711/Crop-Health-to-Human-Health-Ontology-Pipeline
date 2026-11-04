@@ -15,21 +15,31 @@ try {
   const repair = render(ClaimActions, { candidate: { ...candidate,
     source_validation: { decision: 'needs_review', reasons: ['Subject is not grounded'] } }, onAction: () => {} })
   assert.match(repair, /Repair and revalidate claim/)
+  assert.match(repair, /Re-extract atomic claims/)
+  assert.doesNotMatch(render(ClaimActions, { candidate, readOnly: true, onAction: () => {} }), /Re-extract atomic claims/)
+  const superseded = render(ClaimActions, { candidate: { ...candidate, superseded_by: ['child-one','child-two'] }, onAction: () => {} })
+  assert.match(superseded, /superseded by 2 atomic source claims/)
+  assert.doesNotMatch(superseded, /Re-extract atomic claims/)
   assert.match(repair, /Subject is not grounded/)
   assert.match(repair, /One source-grounded correction per click/)
+  const representationHold = render(ClaimActions, { candidate: { ...candidate,
+    source_validation: { decision: 'needs_review', claim_text_match: false,
+      model_matches: { relation_match: true, direction_match: true, certainty_match: false },
+      reasons: ['claim_text bundles secondary proposition'] } }, onAction: () => {} })
+  assert.match(representationHold, /Source relation grounded · Needs atomic split or certainty adjustment/)
+  assert.match(representationHold, /button primary/)
   const busyRepair = render(ClaimActions, { candidate, busy: true, onAction: () => {} })
   assert.match(busyRepair, /disabled/)
   const retry = render(ClaimActions, { candidate: { ...candidate,
     semantic_validation: { decision: 'accepted' }, source_validation: { decision: 'entailed' } },
     validation: { validation_status: 'pipeline_error', error: 'HTTP timeout' }, onAction: () => {} })
-  assert.match(retry, /Retry unfinished external checks/)
-  assert.match(retry, /HTTP timeout/)
+  assert.doesNotMatch(retry, /Retry unfinished external checks/)
   assert.doesNotMatch(retry, /Repair and revalidate claim/)
   const finished = render(ClaimActions, { candidate: { ...candidate,
     semantic_validation: { decision: 'accepted' }, source_validation: { decision: 'entailed' } },
     validation: { validation_status: 'external_evidence_not_found' }, onAction: () => {} })
   assert.doesNotMatch(finished, /Retry unfinished|Repair and revalidate/)
-  assert.match(finished, /Reassess external evidence/)
+  assert.doesNotMatch(finished, /Reassess external evidence/)
   const conflict = render(ClaimActions, { candidate: { ...candidate, source_validation: { decision: 'entailed' } },
     validation: { validation_status: 'world_contested_pending_review' }, repairEligibility: { allowed: true,
       external_contradictions: [{ rationale: 'Opposite finding in a compatible experiment.', evidence: [{ quoted_span: 'A real opposite result.' }] }] }, onAction: () => {} })
@@ -194,7 +204,9 @@ try {
   assert.equal(initialWorkspaceView('#activity'), 'activity')
   assert.equal(initialWorkspaceView('#unrecognized'), 'claims')
   const navigation = render(WorkspaceNavigation, { view: 'claims', claims: 12, paths: 2, errors: 1, onChange: () => {} })
-  for (const label of ['Claims', 'Graph', 'Paths', 'Activity', 'Run details']) assert.ok(navigation.includes(label))
+  for (const label of ['Claims', 'Network &amp; pathways', 'Activity', 'Run details']) assert.ok(navigation.includes(label))
+  assert.doesNotMatch(navigation, />Graph<|>Paths</)
+  for (const hash of ['#graph', '#paths', '#network']) assert.equal(initialWorkspaceView(hash), 'network')
   assert.match(navigation, /aria-current="page"/)
   const toolbar = render(FindingsToolbar, { search: 'root growth', filter: 'source', counts: { all: 12, source: 9, supported: 7, review: 3, rejected: 2 }, shown: 2 })
   assert.match(toolbar, /Search claims and evidence/)
@@ -202,9 +214,9 @@ try {
   assert.match(toolbar, /Source supported/)
   const settings = render(RunSetup, { health: { pipeline: { task_models: {
     extraction: 'opencode-go/deepseek-v4.1-flash', source: 'opencode-go/deepseek-v4.1-flash',
-    query: 'opencode-go/mimo-v2.6-flash', external: 'opencode-go/mimo-v2.6-pro',
-  } } }, options: { max_pages: 0, claims_per_packet: 4, max_claims: 0, articles_per_claim: 8 }, open: true })
-  for (const label of ['PDF pages', 'Claims per extraction call', 'Claims to validate', 'Search papers per claim', 'MiMo Pro', 'DeepSeek Flash']) assert.ok(settings.includes(label))
+    query: 'opencode-go/mimo-v2.6-flash', external: 'opencode-go/muse-spark-1.3-contributor',
+  } } }, options: { max_pages: 0, claims_per_packet: 4, neighbor_max_pairs: 100, articles_per_pathway: 8 }, open: true })
+  for (const label of ['PDF pages', 'Claims per extraction call', 'Neighbor pairs to assess', 'Search papers per neighboring pair', 'Muse Spark 1.3 Contributor', 'DeepSeek Flash']) assert.ok(settings.includes(label))
   assert.doesNotMatch(settings, /Cat Jam|Semantic gate/)
   const activity = render(ActivityLog, { logs: [{ at: '2026-10-23T09:20:33Z', level: 'error', message: 'Request timed out after 600s' }], running: false })
   assert.match(activity, /Request timed out after 600s/)

@@ -27,4 +27,4 @@ def build_extraction_prompt(claims_per_packet: int, extraction_mode: str = 'whol
             + '. Use another precise predicate when needed to preserve the source meaning; prefer concise snake_case. '
               'Causal, associative, comparative, production and adaptation edges are eligible when explicitly supported and in scope.'
             + '\nProvisional entity labels (external evidence assesses correctness; use Unresolved if no label fits):\n'
-            + vocabulary + '\nScope policy:\n' + SCOPE_POLICY)
+            + vocabulary)

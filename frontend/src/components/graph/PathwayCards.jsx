@@ -8,7 +8,7 @@ export function EvidenceBadge({ edge }) {
   return <span className={`pathway-badge ${tone}`}>{readable(state)}</span>
 }
 
-export function PathwayCard({ path, number, provisional, onSelect, health = false }) {
+export function PathwayCard({ path, number, provisional, onSelect, health = false, pathwayOnly = false }) {
   const papers = new Set(path.map(edge => edge.paper || edge.document_key).filter(Boolean))
   const ledger = path.reduce((states, edge) => {
     const state = evidenceState(edge)
@@ -28,7 +28,7 @@ export function PathwayCard({ path, number, provisional, onSelect, health = fals
           title="Inspect this claim and its evidence">{readable(edge.relation)}</button> : <span>{readable(edge.relation)}</span>}</span>
         <span className="pathway-entity">{entityLabel(edge, 'target')}</span></li>)}
     </ol>
-    {provisional && <div className="pathway-ledger-summary" aria-label="Saved evidence ledger states">
+    {provisional && !pathwayOnly && <div className="pathway-ledger-summary" aria-label="Saved evidence ledger states">
       <span>Evidence ledger</span>{Object.entries(ledger).map(([state, count]) =>
         <span key={state} className="pathway-badge">{count} {readable(state)}</span>)}</div>}
     <details className="pathway-proof"><summary><BookOpen size={15} aria-hidden="true" />Original claims and passages<span>{path.length}</span></summary>
@@ -48,7 +48,7 @@ export function PathwayCard({ path, number, provisional, onSelect, health = fals
         {edge.quote ? <blockquote>{edge.quote}</blockquote> : <p className="soft-note">No source passage attached to this saved path edge.</p>}
         {edge.candidate_id && <small className="pathway-proof-id">Claim ID: {edge.candidate_id}</small>}
         {onSelect && <button type="button" className="text-button" onClick={() => onSelect({ ...edge, kind: 'edge' })}>
-          Inspect evidence balance <ArrowRight size={14} /></button>}
+          {pathwayOnly ? 'Inspect claim passage' : 'Inspect evidence balance'} <ArrowRight size={14} /></button>}
       </section>)}</div>
     </details>
   </article>

@@ -12,8 +12,11 @@ class CancellationToken:
     def __init__(self, parent=None):
         self._event = Event()
         self._parent = parent
+        self._reason = None
 
-    def request(self):
+    def request(self, reason=None):
+        if not self._event.is_set():
+            self._reason = reason
         self._event.set()
 
     @property
@@ -24,7 +27,7 @@ class CancellationToken:
         if self._parent:
             self._parent.check()
         if self.requested:
-            raise PipelineStopped('Stopped by user. Saved checkpoints are preserved.')
+            raise PipelineStopped(self._reason or 'Stopped by user. Saved checkpoints are preserved.')
 
 
 _current = ContextVar('pipeline_cancellation', default=None)

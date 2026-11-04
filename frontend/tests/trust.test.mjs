@@ -15,12 +15,11 @@ try {
   assert.match(render({ ...trust, status: 'not_assessed', assessment_complete: false }), /assessment unfinished/)
   const { RunSetup, RequestProgress } = await server.ssrLoadModule('/src/components/workspace/WorkbenchPanels.jsx')
   const setup = renderToStaticMarkup(React.createElement(RunSetup, { health: {}, options: {}, open: true }))
-  assert.match(setup, /Knowledge building mode/)
-  assert.match(setup, /value="trust_graph" selected/)
-  assert.match(setup, /Previous: validate claims, then assemble/)
-  assert.match(setup, /Claims per shared assessment/)
-  assert.match(setup, /independent paper requests run in parallel/)
-  assert.match(setup, /Paper assessments appear as papers become ready/)
+  assert.match(setup, /Neighboring-claim validation/)
+  assert.doesNotMatch(setup, /Knowledge building mode|Claims per shared assessment|value="trust_graph"/)
+  assert.match(setup, /Neighbor pairs to assess/)
+  assert.match(setup, /Search papers per neighboring pair/)
+  assert.match(setup, /two adjacent relationships and their local connection/)
   const { ValidationTrace } = await server.ssrLoadModule('/src/components/claims/ClaimDetails.jsx')
   const pending = renderToStaticMarkup(React.createElement(ValidationTrace, { candidate: {}, validation: {
     validation_status: 'retrieval_pending', attempts: [{pending_sources: [{provider: 'openalex', kind: 'search', reason: 'deadline'}]}],
@@ -39,7 +38,7 @@ try {
   assert.match(panel, /graph contribution/i)
   assert.match(panel, /contested/)
   assert.match(panel, /standalone claims remain/)
-  assert.doesNotMatch(panel, /Assemble validated claims/)
+  assert.doesNotMatch(panel, /Assemble source-grounded chains/)
 } finally {
   await server.close()
 }

@@ -8,12 +8,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from backend.config.settings import Settings
-from backend.stages.external_validation.joint import (
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
+from archive.legacy_pipeline.research_historical.external_validation.joint import (
     judge_evidence_pack,
-    verified_contradictions,
-    explicit_conflict,
 )
+from backend.stages.external_validation.history import verified_contradictions, explicit_conflict
 from backend.providers.llm import LLMServiceError
 from backend.stages.literature_retrieval.clients import (
     extract_paragraphs,

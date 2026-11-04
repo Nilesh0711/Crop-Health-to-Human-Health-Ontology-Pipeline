@@ -4,8 +4,9 @@ export const THINKING_STAGES = [
 ]
 export const defaultThinking = () => Object.fromEntries(THINKING_STAGES.map(([key]) => [key, false]))
 export function resumeWithThinking(saved, current) {
-  return { ...saved,
-    ...(current.knowledge_building_mode ? { knowledge_building_mode: current.knowledge_building_mode } : {}),
-    ...(current.trust_batch_size ? { trust_batch_size: current.trust_batch_size } : {}),
+  const { pathway_max_paths, pathway_max_hops, ...compatible } = saved
+  return { ...compatible,
+    neighbor_max_pairs: current.neighbor_max_pairs ?? 100,
+    articles_per_pathway: current.articles_per_pathway ?? saved.articles_per_pathway ?? saved.articles_per_claim ?? 8,
     thinking: { ...defaultThinking(), ...current.thinking } }
 }

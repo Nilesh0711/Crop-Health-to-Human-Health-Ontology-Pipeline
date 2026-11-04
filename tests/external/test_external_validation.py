@@ -173,7 +173,7 @@ class ExternalValidationTests(unittest.TestCase):
             "text": ("FHB-infected barley, wheat, rye, and triticale grains exhibited large increases in "
                      "trichothecene mycotoxins following malting. Fusarium spp. accounted for most fungal hyphae."),
         }]}
-        from backend.stages.external_validation.proofs import _numbered_chunks
+        from archive.legacy_pipeline.research_historical.external_validation.packing import _numbered_chunks
         chunks = _numbered_chunks(document, candidate)
         self.assertEqual(chunks[0]['sentences'][0]['number'], 1)
         self.assertIn('Fusarium spp. accounted', chunks[0]['sentences'][1]['text'])

@@ -153,8 +153,8 @@ def test_recovery_check_restores_original_extraction_options_without_running_or_
     assert response.status_code == 200 and response.json()['can_continue']
     assert not response.json()['job_missing']
     assert response.json()['options'] == {
-        'knowledge_building_mode': 'validated_first', 'trust_batch_size': 3,
-        'max_pages': 2, 'max_claims': 0, 'claims_per_packet': 3, 'articles_per_claim': 12,
+        'neighbor_max_pairs':100,
+        'max_pages': 2, 'claims_per_packet': 3, 'articles_per_pathway': 12,
         'extraction_mode': 'whole_packet', 'extraction_target_words': 800,
         'extraction_generation_budget': 24576, 'thinking': {stage: True for stage in module.ThinkingOptions.model_fields}}
     assert original == {p: p.read_bytes() for p in output.rglob('*') if p.is_file()}
@@ -170,6 +170,66 @@ def test_recovery_requires_a_valid_checkpoint_and_explains_why_restart_is_needed
     response = client.get('/api/pdfs/paper-id/recovery').json()
     assert not response['can_continue']
     assert 'changed' in response['reason']
+
+
+def test_redo_external_queues_a_fresh_assessment_without_clearing_saved_claims(api):
+    module, output, client = api
+    checkpoint(output, module._pdf_map()['paper-id'])
+    (output / 'source_validation.jsonl').write_text('{"candidate_id":"saved","decision":"entailed"}\n')
+    (output / 'validation_runs.jsonl').write_text('{"candidate_id":"saved","validation_status":"historical"}\n')
+    before = {name: (output / name).read_bytes() for name in ('candidates.jsonl', 'source_validation.jsonl', 'validation_runs.jsonl', 'pipeline_checkpoint.json')}
+    models = {'models': list(Settings().task_models.values())}
+    with patch.object(module.OpenCodeClient, 'health_check', return_value=models), patch.object(module.threading, 'Thread') as thread:
+        response = client.post('/api/pdfs/paper-id/redo-external-validation', json={})
+        assert response.status_code == 202
+        data = response.json()
+        assert data['resume'] and data['redo_external_validation']
+        assert data['external_assessment_id'] == data['id']
+        assert data['options']['max_pages'] == 2 and data['options']['claims_per_packet'] == 3
+        assert all((output / name).read_bytes() == value for name, value in before.items())
+        assert not (output.parent / '.historical_runs').exists()
+        thread.return_value.start.assert_called_once()
+        assert client.post('/api/pdfs/paper-id/redo-external-validation', json={}).status_code == 409
+        # Continuing an interrupted redo retains that assessment's checkpoint namespace.
+        module._jobs[data['id']]['status'] = 'stopped'
+        module._persist_job(data['id'])
+        continued = client.post('/api/pdfs/paper-id/resume', json={}).json()
+        assert continued['external_assessment_id'] == data['external_assessment_id']
+        assert not continued['redo_external_validation']
+        module._jobs[continued['id']]['status'] = 'completed'
+        module._persist_job(continued['id'])
+        another = client.post('/api/pdfs/paper-id/redo-external-validation', json={}).json()
+        assert another['external_assessment_id'] != data['external_assessment_id']
+
+
+def test_completed_documents_offer_external_redo_without_requiring_failure(api):
+    module, output, client = api
+    checkpoint(output, module._pdf_map()['paper-id'])
+    (output / 'summary.json').write_text('{"run_status":"completed"}')
+    item = client.get('/api/pdfs').json()[0]
+    assert item['can_redo_external_validation'] and not item['can_resume']
+
+
+def test_external_redo_requires_a_valid_complete_extraction_before_provider_calls(api):
+    module, output, client = api
+    with patch.object(module.OpenCodeClient, 'health_check') as health, patch.object(module.threading, 'Thread') as thread:
+        assert client.post('/api/pdfs/paper-id/redo-external-validation', json={}).status_code == 400
+        health.assert_not_called()
+        thread.assert_not_called()
+
+
+def test_external_redo_worker_forwards_its_identity_to_saved_pipeline(api):
+    module, output, client = api
+    pdf = module._pdf_map()['paper-id']
+    module._jobs['redo-job'] = {'id': 'redo-job', 'pdf_id': 'paper-id', 'pdf_path': str(pdf),
+        'status': 'queued', 'resume': True, 'redo_external_validation': True,
+        'external_assessment_id': 'redo-identity', 'logs': []}
+    with patch.object(module, 'run_pipeline', return_value={'run_status': 'completed'}) as run:
+        module._worker('redo-job', module.RunOptions())
+    assert module._jobs['redo-job']['status'] == 'completed'
+    assert run.call_args.kwargs['resume'] is True
+    assert run.call_args.kwargs['external_assessment_id'] == 'redo-identity'
+    assert any('Redoing external validation' in row['message'] for row in module._jobs['redo-job']['logs'])
 
 
 def test_missing_job_identity_does_not_prevent_continuation_from_verified_findings(api):
@@ -194,7 +254,7 @@ def test_completed_or_active_jobs_do_not_offer_duplicate_continuation(api):
     module, output, client = api
     checkpoint(output, module._pdf_map()['paper-id'])
     save_job(output, 'job-1', job('completed'))
-    assert 'already finished' in client.get('/api/pdfs/paper-id/recovery').json()['reason']
+    assert client.get('/api/pdfs/paper-id/recovery').json()['can_continue']  # completed extraction can assess saved pathways
     module._jobs['active'] = job()
     assert 'active run' in client.get('/api/pdfs/paper-id/recovery').json()['reason']
 
@@ -203,7 +263,7 @@ def test_completed_or_active_jobs_do_not_offer_duplicate_continuation(api):
 def test_run_options_reach_worker_and_are_persisted_without_touching_other_features(api, mode):
     module, output, client = api
     options = dict(extraction_mode=mode, extraction_target_words=600, extraction_generation_budget=32768,
-                   claims_per_packet=5, articles_per_claim=9)
+                   claims_per_packet=5, articles_per_pathway=9)
     with patch.object(module.OpenCodeClient, 'health_check', return_value={'models': list(Settings().task_models.values())}), \
             patch.object(module.threading, 'Thread'):
         started = client.post('/api/pdfs/paper-id/run', json=options)

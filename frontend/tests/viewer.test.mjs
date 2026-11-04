@@ -36,10 +36,10 @@ try {
   })
   test('read-only pathways keep browsing, filters and depth but omit assembly', () => {
     const props = {data: {view: 'validated', graph: {nodes: [], edges: []}, paths: [], stale: true}}
-    assert.match(render(PathwayPanel, props), /Assemble validated claims/)
+    assert.match(render(PathwayPanel, props), /Assemble source-grounded chains/)
     const html = render(PathwayPanel, {...props, readOnly: true})
-    assert.doesNotMatch(html, /Assemble validated claims|Assemble again|resume the pipeline/i)
-    for (const text of ['Path length in edges', 'Search pathways and claims', 'Show assembled graph', 'stale-data warning']) assert.ok(html.includes(text), text)
+    assert.doesNotMatch(html, /Assemble source-grounded chains|Assemble again|resume the pipeline/i)
+    for (const text of ['Path length in edges', 'Search pathways and claims', 'Hide assembled graph', 'stale-data warning']) assert.ok(html.includes(text), text)
   })
   test('all published claims render expanded with evidence and without execution actions', () => {
     const root = new URL('../../deploy/render/snapshot/', import.meta.url)

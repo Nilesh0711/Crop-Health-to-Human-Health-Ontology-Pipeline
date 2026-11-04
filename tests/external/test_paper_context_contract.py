@@ -6,7 +6,7 @@ import pytest
 from backend.providers.response_repair import validate_schema
 from backend.providers.structured_output import SchemaValidationError
 from backend.stages.external_validation.paper_proofs import PAPER_DECISION_SCHEMA, guard_paper
-from backend.stages.external_validation.synthesis import judge_paper
+from archive.legacy_pipeline.research_historical.external_validation.synthesis import judge_paper
 from tests.external.test_paper_synthesis import Client, configuration, example
 
 

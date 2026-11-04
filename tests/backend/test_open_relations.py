@@ -5,13 +5,13 @@ from unittest.mock import patch
 
 import pytest
 
-from backend.config.settings import Settings
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
 from backend.domain.ontology import schema_error
 from backend.providers.response_repair import validate_schema
 from backend.providers.structured_output import SchemaValidationError
 from backend.stages.claim_extraction.contract import EXTRACTION_RESPONSE_SCHEMA
 from backend.stages.claim_extraction.extractor import extract_claims
-from backend.stages.external_validation.joint import judge_evidence_pack
+from archive.legacy_pipeline.research_historical.external_validation.joint import judge_evidence_pack
 from backend.stages.graph_construction.graph import graph_from_candidates
 from tests.backend.test_extraction_targets import row, packet
 from tests.external.test_joint_validation import fixture as external_fixture

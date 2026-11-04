@@ -12,7 +12,7 @@ from backend.domain.ontology import schema_error
 from backend.stages.claim_extraction.contract import EXTRACTION_RESPONSE_SCHEMA
 from backend.shared.text import anchored_quote
 from backend.stages.claim_extraction.extractor import extraction_review_hints
-from backend.stages.external_validation.workflow import evidence_ledger
+from archive.legacy_pipeline.research_historical.external_validation.workflow import evidence_ledger
 
 
 class WorkbenchTests(unittest.TestCase):

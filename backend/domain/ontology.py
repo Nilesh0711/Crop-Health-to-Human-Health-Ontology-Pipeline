@@ -40,6 +40,7 @@ RELATION_DEFINITIONS = {
 }
 
 ENTITY_TYPES = set(ENTITY_DEFINITIONS)
+CORE_DOMAIN_TYPES = ENTITY_TYPES - {"Unresolved"}
 # Common predicates are naming guidance, not an extraction/admission whitelist.
 
 SCOPE_POLICY = (

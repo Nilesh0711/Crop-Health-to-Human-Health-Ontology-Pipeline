@@ -31,7 +31,7 @@ def test_standalone_cli_builds_and_reads_candidates_in_report_directory(tmp_path
     monkeypatch.setattr(cli, 'CLI_OUTPUT_DIR', output)
     monkeypatch.setattr(cli, 'build_candidates', lambda path: ([candidate], [], []))
     assert cli.command_build_candidates(Namespace(tuple_file='raw_triplets.txt')) == 0
-    assert cli._selected_candidates(Namespace(candidate_id=None, limit=None)) == [candidate]
+    assert read_jsonl(output / 'candidates.jsonl') == [candidate]
     assert {p.name for p in output.iterdir()} == {'candidates.jsonl', 'documents.jsonl', 'candidate_parse_errors.jsonl'}
     assert not (tmp_path / 'rag').exists()
 

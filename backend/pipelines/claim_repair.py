@@ -1,4 +1,4 @@
-"""Coordinate bounded claim repair and external-only recovery without changing other claims."""
+"""Coordinate deliberate source repair or atomic re-extraction, preserving unrelated claims."""
 
 from __future__ import annotations
 from dataclasses import replace
@@ -8,33 +8,55 @@ import threading
 import uuid
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Callable
+from backend.stages.source_validation.summary import source_assessment_counts
+from backend.stages.source_validation.review import source_fidelity_decision
+from typing import Any
 from backend.config.settings import SCHEMA_VERSION, Settings
 from backend.shared.cancellation import PipelineStopped
 from backend.providers.llm import OpenCodeClient, format_request_metrics, model_reasoning_policy, request_log_level
-from backend.providers.nli import NLIValidator
-from backend.stages.evidence_ranking.passages import SemanticReranker
-from backend.shared.storage import file_hash, read_jsonl, utc_now
-from backend.stages.query_planning.planner import translate_query
-from backend.stages.external_validation.workflow import validate_candidate, reusable_evidence
-from backend.stages.external_validation.joint import verified_contradictions
+from backend.shared.storage import file_hash, read_jsonl, utc_now, stable_hash
+from backend.stages.external_validation.history import verified_contradictions
 from backend.domain.claim_context import apply_source_provenance
 from backend.stages.evaluation.metrics import evaluation_sample
 from backend.stages.graph_construction.graph import graph_from_candidates, reasoning_paths, write_graphml
 from backend.stages.claim_extraction.extractor import extract_claims
 from backend.stages.pdf_parsing.packets import iter_pdf_context_packets
 from backend.stages.source_validation.checker import validate_source_claim
-from backend.pipelines.trust import run_trust_assessment
-from backend.shared.cache import RunCache
-from backend.stages.trust_graph.projection import publish_graphs
 from backend.stages.pathway_assembly.assembly import assemble_pathways
-from backend.domain.vocabulary import normalize_entity
 from backend.shared.artifacts import replace_row, save_json, save_rows
 
 
 def repairable(candidate: dict[str, Any], validation: dict[str, Any] | None = None) -> bool:
-    return (bool(verified_contradictions(candidate, validation)) or candidate.get('source_validation', {}).get('decision') in {'unsupported', 'needs_review'}
-            or bool(candidate.get('repair_revision') and candidate.get('source_validation', {}).get('decision') != 'entailed'))
+    return not candidate.get('superseded_by') and (bool(verified_contradictions(candidate, validation)) or source_fidelity_decision(candidate) in {'unsupported', 'needs_review'}
+            or bool(candidate.get('repair_revision') and source_fidelity_decision(candidate) != 'entailed'))
+
+
+def _atomic_children(original, proposed, candidates, packet, clients, settings, history):
+    """Source-check children before publishing; original fields remain an audit record."""
+    from backend.stages.source_validation.context import section_context
+    from backend.pipelines.checkpoints import claim_stage_signature
+    from backend.shared.batching import iter_parallel_judgments
+    allowed = set(original.get('source_evidence_sentence_numbers') or [])
+    for child in proposed:
+        if (child.get('schema_error') or child.get('source_pdf_sha256')!=original['source_pdf_sha256']
+                or not set(child.get('source_evidence_sentence_numbers') or [])
+                or not set(child['source_evidence_sentence_numbers']) <= allowed):
+            raise ValueError('Atomic child lacks matching parent sentence/PDF provenance')
+        child['assertion_id'] = child['candidate_id']
+        child['candidate_id'] = 'candidate-' + stable_hash(history['operation_id']+'|'+child['candidate_id'],32)
+        child.update(parent_candidate_id=original['candidate_id'],reextraction_operation_id=history['operation_id'],
+                     source_section_context=section_context(child,packet))
+    ids = [c['candidate_id'] for c in proposed]
+    if len(ids)!=len(set(ids)) or set(ids)&{c['candidate_id'] for c in candidates}:
+        raise ValueError('Atomic child identifiers collide with existing claims')
+    for child,result in iter_parallel_judgments(proposed,clients['source'],validate_source_claim,
+            settings.validation_batch_size,keyed=True,workers=settings.source_workers):
+        child['source_validation'] = result
+        apply_source_provenance(child,result)
+        result['input_signature'] = claim_stage_signature(child,settings.source_model,settings.task_thinking['source'])
+    history.update(status='source_checked',proposed_candidates=deepcopy(proposed))
+    parent = {**original,'superseded_by':ids}
+    return [parent if c['candidate_id']==original['candidate_id'] else c for c in candidates]+proposed
 
 
 def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
@@ -42,6 +64,23 @@ def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
     candidates = read_jsonl(output / 'candidates.jsonl')
     if not candidates:
         return None
+    checkpoint_path = output / 'pipeline_checkpoint.json'
+    metadata = json.loads(checkpoint_path.read_text(encoding='utf-8')) if checkpoint_path.exists() else {}
+    if metadata.get('knowledge_building_mode') == 'pathway_only' or (output / 'external_validation_target.json').exists() or (output.parent / '.pathway_validation').exists():
+        from backend.stages.neighbor_validation.records import publish_views, assessment_view
+        from backend.stages.pathway_assembly.assembly import read_assembly
+        data = read_assembly(output.parent,Settings().pathway_assembly_model,provisional=True)
+        provisional = data.get('snapshot') or {'graph':{'nodes':[],'edges':[]}}
+        publish_views(output.parent,provisional)
+        path = output / 'summary.json'
+        summary = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+        records = assessment_view(output.parent,output.name)
+        summary.update(knowledge_building_mode='pathway_only',external_validation_target='neighboring_claims',
+            extracted=len(candidates),schema_valid=sum(not c.get('schema_error') for c in candidates), **source_assessment_counts(candidates),
+            externally_evaluated=0,external_incomplete=0,pathway_validation={'outcomes':records['counts'],'coverage':records['coverage']},
+            graph=json.loads((output / 'graph.json').read_text(encoding='utf-8'))['counts'])
+        save_json(path,summary)
+        return summary
     results = read_jsonl(output / 'validation_runs.jsonl')
     by_id = {row['candidate_id']: row for row in results}
     semantic = [row['semantic_validation'] for row in candidates if row.get('semantic_validation')]
@@ -51,7 +90,7 @@ def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
     filters = {
         'schema_valid_candidates': lambda c: not c.get('schema_error'),
         'semantic_valid_candidates': lambda c: not c.get('schema_error') and c.get('semantic_validation', {}).get('decision') == 'accepted',
-        'source_entailed_candidates': lambda c: c.get('source_validation', {}).get('decision') == 'entailed',
+        'source_entailed_candidates': lambda c: source_fidelity_decision(c) == 'entailed',
     }
     for name, predicate in filters.items():
         save_rows(output / f'{name}.jsonl', [{'candidate_id': c['candidate_id']} for c in candidates if predicate(c)])
@@ -73,7 +112,7 @@ def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
     summary_path = output / 'summary.json'
     summary = json.loads(summary_path.read_text(encoding='utf-8')) if summary_path.exists() else {}
     unfinished = [c['candidate_id'] for c in candidates
-                  if c.get('source_validation', {}).get('decision') == 'entailed' and
+                  if source_fidelity_decision(c) == 'entailed' and
                   by_id.get(c['candidate_id'], {}).get('validation_status', 'external_in_progress') in
                   {'external_in_progress', 'pipeline_error', 'retrieval_pending'}]
     requests = read_jsonl(output / 'llm_requests.jsonl')
@@ -90,9 +129,7 @@ def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
         'semantic_rejected': sum(r['decision'] == 'rejected' for r in semantic),
         'semantic_needs_review': sum(r['decision'] == 'needs_review' for r in semantic),
         'semantic_type_normalized': sum(r.get('normalization_applied') is True for r in semantic),
-        'source_entailed': sum(r['decision'] == 'entailed' for r in source),
-        'source_unsupported': sum(r['decision'] == 'unsupported' for r in source),
-        'source_needs_review': sum(r['decision'] == 'needs_review' for r in source),
+        **source_assessment_counts(candidates),
         'externally_evaluated': sum(r.get('validation_status') not in {'pipeline_error', 'external_in_progress', 'retrieval_pending'} for r in results),
         'external_incomplete': len(unfinished),
         'retrieval_pending': sum(r.get('validation_status') == 'retrieval_pending' for r in results),
@@ -108,159 +145,108 @@ def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
     return summary
 
 
-def run_claim_action(pdf: Path, output: Path, candidate_id: str, action: str,
-                     articles_per_claim: int, emit: Callable[[str, str], None], thinking: dict[str, bool] | None = None,
-                     knowledge_building_mode: str | None = None, trust_batch_size: int | None = None) -> dict[str, Any]:
+def run_claim_action(pdf, output, candidate_id, action, articles_per_pathway, emit, thinking=None,
+                     neighbor_max_pairs=None):
+    """Repair PDF fidelity, then reassess affected whole routes; never judge one edge externally."""
+    if action not in {'repair','reextract'}:
+        raise ValueError('Individual-claim external validation is retired; resume pathway validation')
     candidates = read_jsonl(output / 'candidates.jsonl')
-    original = next((row for row in candidates if row['candidate_id'] == candidate_id), None)
-    if original is None:
-        raise ValueError('Claim not found')
-    if not original.get('source_pdf_sha256') or original['source_pdf_sha256'] != file_hash(pdf):
-        raise ValueError('Source PDF identity changed or is missing; start a fresh PDF run before revising this claim')
-    results = read_jsonl(output / 'validation_runs.jsonl')
-    before = next((r for r in results if r['candidate_id'] == candidate_id), None)
-    if action == 'repair' and not repairable(original, before):
-        raise ValueError('Repair requires a source review/correction or a verified external contradiction')
-    if action == 'retry_external' and (original.get('schema_error') or
-            original.get('source_validation', {}).get('decision') != 'entailed'):
-        raise ValueError('External retry requires a schema-valid, source-entailed claim')
-    if action not in {'repair', 'retry_external'}:
-        raise ValueError('Unknown claim action')
-    settings = replace(Settings(), thinking=thinking) if thinking is not None else Settings()
-    trust_mode = knowledge_building_mode == 'trust_graph'
-    if trust_mode:
-        settings = replace(settings, external_judgement_mode='trust_graph', knowledge_building_mode='trust_graph',
-                           trust_batch_size=trust_batch_size or settings.trust_batch_size)
-    required = {'extraction', 'source', 'query', 'external'} if action == 'repair' else {'query', 'external'}
-    required.add('pathway_assembly')
-    available = OpenCodeClient(settings).health_check().get('models', [])
-    for task in required:
-        if settings.task_models[task].split('#', 1)[0] not in available:
-            raise ValueError(f'Required primary unavailable for {task}: {settings.task_models[task]}')
-    if settings.external_judgement_mode in {'per_paper_synthesis', 'trust_graph'} and settings.external_paper_model not in available:
-        raise ValueError(f'Required per-paper primary unavailable: {settings.external_paper_model}')
-    results = read_jsonl(output / 'validation_runs.jsonl')
-    before = next((r for r in results if r['candidate_id'] == candidate_id), None)
-    history = {'operation_id': uuid.uuid4().hex, 'candidate_id': candidate_id, 'action': action,
-               'started_at': utc_now(), 'status': 'running', 'thinking': settings.task_thinking, 'original_candidate': deepcopy(original),
-               'original_validation': deepcopy(before),
-               'original_evaluation': next((r for r in read_jsonl(output / 'evaluation_sample.jsonl') if r['candidate_id'] == candidate_id), None)}
-    history_rows = read_jsonl(output / 'claim_revisions.jsonl')
-    history_rows.append(history)
-    save_rows(output / 'claim_revisions.jsonl', history_rows)
-    request_lock = threading.Lock()
+    original = next((c for c in candidates if c['candidate_id'] == candidate_id), None)
+    if not original or original.get('source_pdf_sha256') != file_hash(pdf):
+        raise ValueError('Source PDF identity changed or source claim is missing')
+    if not repairable(original):
+        raise ValueError('Repair requires a source-fidelity rejection or review hold')
+    settings = replace(Settings(), thinking=thinking if thinking is not None else Settings().thinking,
+        external_top_k=articles_per_pathway, neighbor_max_pairs=neighbor_max_pairs or Settings().neighbor_max_pairs,
+        )
+    history = {'operation_id':uuid.uuid4().hex, 'candidate_id':candidate_id, 'action':action,
+               'status':'running', 'started_at':utc_now(), 'original_candidate':deepcopy(original),
+               'original_evaluation':next((r for r in read_jsonl(output / 'evaluation_sample.jsonl') if r['candidate_id']==candidate_id),None),
+               'original_validation':next((r for r in read_jsonl(output / 'validation_runs.jsonl') if r['candidate_id']==candidate_id),None)}
+    histories = read_jsonl(output / 'claim_revisions.jsonl') + [history]
     requests = read_jsonl(output / 'llm_requests.jsonl')
-
-    def log_request(metrics: dict[str, Any]) -> None:
+    request_lock = threading.Lock()
+    def log(metrics):
         with request_lock:
-            requests.append({'at': utc_now(), 'operation_id': history['operation_id'], **metrics})
-            save_rows(output / 'llm_requests.jsonl', requests)
-        emit(request_log_level(metrics), format_request_metrics(metrics))
-
-    clients = {task: OpenCodeClient(settings, settings.task_models[task], task=task, on_request=log_request,
-               on_progress=lambda event: emit("progress", json.dumps(event)), response_dir=output / 'model_responses')
-               for task in required}
-    candidate = deepcopy(original)
-
-    def persist_candidate() -> None:
-        nonlocal candidates
-        candidates = replace_row(candidates, candidate)
-        save_rows(output / 'candidates.jsonl', candidates)
-
-    def checkpoint(record: dict[str, Any]) -> None:
-        nonlocal results
-        record.pop('candidate', None)
-        results = replace_row(results, record)
-        save_rows(output / 'validation_runs.jsonl', results)
-
+            requests.append({'at':utc_now(), 'operation_id':history['operation_id'], **metrics})
+            save_rows(output / 'llm_requests.jsonl',requests)
+        emit(request_log_level(metrics),format_request_metrics(metrics))
+    clients = {task:OpenCodeClient(settings,task=task,on_request=log,
+        on_progress=lambda e:emit('progress',json.dumps(e)),response_dir=output / 'model_responses') for task in settings.task_models}
     try:
-        if action == 'repair':
-            emit('stage', f'Repairing only claim {candidate_id}; original judgement is retained in revision history')
-            saved_contexts = read_jsonl(output / 'extraction_contexts.jsonl')
-            context_packets = saved_contexts or iter_pdf_context_packets(pdf, max_pages=original.get('source_page_end', 0))
-            packet = next((p for p in context_packets
-                           if p['packet_number'] == original.get('source_packet_number')), None)
-            if packet is None or original['source_evidence_span'] not in ' '.join(s['text'] for s in packet['sentences']):
-                raise ValueError('Original source packet could not be reproduced; source repair stopped')
-            target = {'claim': {k: original.get(k) for k in ('subject', 'object', 'relation', 'certainty', 'qualifiers', 'claim_text')},
-                      'source_failure': original.get('source_validation'), 'verified_external_contradictions': verified_contradictions(original, before)}
-            proposed, _, discards = extract_claims(pdf, clients['extraction'], 0, emit, packets=[packet],
-                                                   claims_per_packet=1, repair_target=target)
-            if len(proposed) != 1:
-                history.update(status='no_grounded_correction', rejection_details=discards)
-                emit('warning', 'No grounded correction was produced; the original claim remains available')
-                return {'run_status': 'completed_with_warnings', 'candidate_id': candidate_id}
-            candidate = proposed[0]
-            candidate['assertion_id'] = candidate['candidate_id']
-            candidate['candidate_id'] = candidate_id
-            candidate['repair_revision'] = int(original.get('repair_revision', 0)) + 1
-            history['proposed_candidate'] = deepcopy(candidate)
-            if candidate.get('schema_error'):
-                raise ValueError(f"Correction failed controlled vocabulary: {candidate['schema_error']}")
-            candidate['semantic_validation'] = {'candidate_id': candidate_id, 'decision': 'not_run',
-                                                 'rationale': 'Type and scope assessment moved to joint external evidence judgement'}
-            for role in ('subject', 'object'):
-                candidate[f'{role}_normalization'] = normalize_entity(candidate[role], candidate[f'{role}_type'])
-            emit('stage', 'Rechecking corrected claim against original PDF evidence')
-            from backend.stages.source_validation.context import section_context
-            candidate['source_section_context'] = section_context(candidate, packet)
-            source = validate_source_claim(candidate, clients['source'])
-            candidate['source_validation'] = source
-            apply_source_provenance(candidate, source)
-            # Old external decisions describe the old assertion and cannot survive a correction.
-            results = [r for r in results if r['candidate_id'] != candidate_id]
-            save_rows(output / 'validation_runs.jsonl', results)
-            persist_candidate()
-            if candidate.get('source_validation', {}).get('decision') != 'entailed':
-                history.update(status='still_needs_review', revised_candidate=deepcopy(candidate))
-                emit('warning', 'Correction did not pass source fidelity; external validation was not run')
-                return {'run_status': 'completed_with_warnings', 'candidate_id': candidate_id}
-
-        nli = NLIValidator(settings) if settings.enable_nli else None
-        if nli:
-            nli.warmup()
-        ranker = SemanticReranker(settings)
-        ranker.warmup()
-        resume = before if action == 'retry_external' else None
-        reusable = reusable_evidence(candidate, settings, resume, articles_per_claim, settings.external_top_chunks)
-        translated = None if reusable else translate_query(clients['query'], candidate)
-        emit('stage', f'External validation for only {candidate_id}')
-        if trust_mode:
-            provisional = assemble_pathways(output.parent, clients['pathway_assembly'], settings, emit, provisional=True)
-            run_trust_assessment([candidate], candidates, provisional, output, clients['external'], ranker, settings,
-                                 articles_per_claim, {candidate_id: translated} if translated else {}, RunCache(), results, emit,
-                                 resume=action == 'retry_external', nli_validator=nli)
-            validation = next(r for r in results if r['candidate_id'] == candidate_id)
-            publish_graphs(output.parent, provisional, settings)
-        else:
-            validation = validate_candidate(candidate, clients['external'], ranker, settings,
-                                        articles_per_claim, settings.external_top_chunks, progress=lambda m: emit('info', m),
-                                        nli_validator=nli, query_translation=translated,
-                                        on_checkpoint=checkpoint, resume_record=resume)
-        checkpoint(validation)
-        if not trust_mode:
-            assemble_pathways(output.parent, clients['pathway_assembly'], settings, emit)
-        history.update(status='completed', revised_candidate=deepcopy(candidate), validation_status=validation['validation_status'])
-        emit('success', f"Claim action completed: {validation['validation_status']}")
-        return {'run_status': 'completed', 'candidate_id': candidate_id}
+        packets = read_jsonl(output / 'extraction_contexts.jsonl') or list(iter_pdf_context_packets(pdf, max_pages=original.get('source_page_end',0)))
+        packet = next((p for p in packets if p['packet_number']==original.get('source_packet_number')),None)
+        fragments = [f['text'] for f in original.get('source_evidence_fragments',[])] or [original['source_evidence_span']]
+        if packet is None or any(fragment not in ' '.join(r['text'] for r in packet['sentences']) for fragment in fragments):
+            raise ValueError('Original source packet could not be reproduced')
+        proposed,_,discards = extract_claims(pdf,clients['extraction'],0,emit,packets=[packet],claims_per_packet=0 if action=='reextract' else 1,
+            repair_target={'claim':{k:original.get(k) for k in ('subject','object','relation','certainty','qualifiers','claim_text')},
+                           **({'mode':'atomic_reextraction','parent_evidence_sentence_numbers':original.get('source_evidence_sentence_numbers',[])} if action=='reextract' else {}),
+                           'source_failure':original.get('source_validation')})
+        if action=='reextract':
+            if not proposed:
+                history.update(status='no_grounded_correction',rejection_details=discards)
+                return {'run_status':'completed_with_warnings'}
+            candidates = _atomic_children(original,proposed,candidates,packet,clients,settings,history)
+            save_rows(output / 'claim_revisions.jsonl',histories)  # Durable intent before publishing children.
+            save_rows(output / 'source_validation.jsonl',[c['source_validation'] for c in candidates if c.get('source_validation')])
+            save_rows(output / 'candidates.jsonl',candidates)
+            metadata_path = output / 'pipeline_checkpoint.json'
+            if metadata_path.exists():
+                metadata = json.loads(metadata_path.read_text(encoding='utf-8'))
+                metadata.update(candidate_ids=[c['candidate_id'] for c in candidates],expected_candidate_count=len(candidates))
+                save_json(metadata_path,metadata)
+            history.update(status='completed',child_candidate_ids=[c['candidate_id'] for c in proposed])
+            from backend.stages.evaluation.metrics import write_evaluation_sample
+            write_evaluation_sample(output,candidates,[],preserve_existing_labels=True)
+            provisional = assemble_pathways(output.parent,clients['pathway_assembly'],settings,emit,provisional=True)
+            from backend.pipelines.neighbor_validation import run_pathway_assessment
+            stats = run_pathway_assessment(output.parent,output,provisional,clients,settings,emit)
+            summary = refresh_saved_views(pdf,output) or {}
+            summary.update(pathway_validation=stats,source_reextraction_children=sum(bool(c.get('parent_candidate_id')) for c in candidates),
+                           superseded_claims=sum(bool(c.get('superseded_by')) for c in candidates))
+            save_json(output / 'summary.json',summary)
+            return {'run_status':'completed','child_candidate_ids':history['child_candidate_ids'],'pathway_validation':stats}
+        if len(proposed)!=1:
+            history.update(status='no_grounded_correction',rejection_details=discards)
+            return {'run_status':'completed_with_warnings'}
+        candidate = proposed[0]
+        candidate.update(assertion_id=candidate['candidate_id'],candidate_id=candidate_id,
+                         repair_revision=original.get('repair_revision',0)+1)
+        if candidate.get('schema_error'):
+            raise ValueError('Source correction failed structural checks')
+        from backend.stages.source_validation.context import section_context
+        candidate['source_section_context'] = section_context(candidate,packet)
+        candidate['source_validation'] = validate_source_claim(candidate,clients['source'])
+        apply_source_provenance(candidate,candidate['source_validation'])
+        from backend.pipelines.checkpoints import claim_stage_signature
+        candidate['source_validation']['input_signature'] = claim_stage_signature(candidate,settings.source_model,settings.task_thinking['source'])
+        candidates = replace_row(candidates,candidate)
+        save_rows(output / 'candidates.jsonl',candidates)
+        save_rows(output / 'source_validation.jsonl',[c['source_validation'] for c in candidates if c.get('source_validation')])
+        history.update(status='completed' if candidate['source_validation']['decision']=='entailed' else 'still_needs_review',
+                       revised_candidate=deepcopy(candidate))
+        from backend.stages.evaluation.metrics import write_evaluation_sample
+        write_evaluation_sample(output,candidates,[],preserve_existing_labels=True)
+        if candidate['source_validation']['decision'] != 'entailed':
+            from backend.stages.pathway_assembly.assembly import read_assembly
+            from backend.stages.neighbor_validation.records import publish_views
+            data = read_assembly(output.parent,settings.pathway_assembly_model,provisional=True)
+            publish_views(output.parent,data.get('snapshot') or {'graph':{'nodes':[],'edges':[]}})
+            return {'run_status':'completed_with_warnings','candidate_id':candidate_id}
+        provisional = assemble_pathways(output.parent,clients['pathway_assembly'],settings,emit,provisional=True)
+        from backend.pipelines.neighbor_validation import run_pathway_assessment
+        stats = run_pathway_assessment(output.parent,output,provisional,clients,settings,emit)
+        summary = refresh_saved_views(pdf,output) or {}
+        summary.update(knowledge_building_mode='pathway_only',external_validation_target='neighboring_claims',pathway_validation=stats)
+        save_json(output / 'summary.json',summary)
+        return {'run_status':'completed' if history['status']=='completed' else 'completed_with_warnings','pathway_validation':stats}
     except PipelineStopped:
-        history.update(status='stopped', error=None, proposed_candidate=deepcopy(candidate))
+        history.update(status='stopped')
         raise
     except Exception as exc:
-        history.update(status='failed', error=str(exc), proposed_candidate=deepcopy(candidate))
-        # A corrected, source-entailed claim remains retryable if retrieval/model setup failed before a checkpoint.
-        if (action == 'repair' and candidate.get('repair_revision') and
-                candidate.get('source_validation', {}).get('decision') == 'entailed' and
-                not any(r['candidate_id'] == candidate_id for r in results)):
-            checkpoint({'candidate_id': candidate_id, 'schema_version': SCHEMA_VERSION,
-                        'validation_status': 'pipeline_error', 'error': str(exc), 'attempts': []})
+        history.update(status='failed',error=str(exc))
         raise
     finally:
         history['finished_at'] = utc_now()
-        save_rows(output / 'claim_revisions.jsonl', history_rows)
-        try:
-            refresh_saved_views(pdf, output)
-        except Exception as exc:
-            emit('error', f'Could not refresh claim views: {exc}')
-            if history['status'] not in {'failed', 'stopped'}:
-                raise
+        save_rows(output / 'claim_revisions.jsonl',histories)

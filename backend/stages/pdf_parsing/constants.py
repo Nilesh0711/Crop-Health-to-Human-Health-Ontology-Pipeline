@@ -32,7 +32,16 @@ SECTION_HEADING_RE = re.compile(
 )
 
 
-JOURNAL_HEADER_RE = re.compile(r"^\s*Agronomy\s+\d{4},\s+\d+.*?(?:of\s+\d+)?\s*$", re.IGNORECASE)
+RUNNING_HEADER_RE = re.compile(
+    r"^\s*(?:"
+    r"Agronomy\s+\d{4},\s+\d+.*?(?:of\s+\d+)?|"
+    r"\d{1,5}\s+[A-Z][a-zA-Z'\u2019 -]{1,40}(?:\s+[A-Z]\.?)?\s+et\s+al\.?|"
+    r"[A-Z][a-zA-Z'\u2019 -]{1,40}(?:\s+[A-Z]\.?)?\s+et\s+al\.?\s+\d{1,5}|"
+    r"(?:Food\s+Sec(?:ur(?:ity)?)?|Plant\s+Pathol(?:ogy)?|Phytopathology|Crop\s+Prot(?:ection)?|Nature|Science|Springer|Elsevier)\b.*?(?:\d{1,5})?"
+    r")\s*$",
+    re.IGNORECASE,
+)
+JOURNAL_HEADER_RE = RUNNING_HEADER_RE
 
 
 REFERENCE_HEADING_RE = re.compile(

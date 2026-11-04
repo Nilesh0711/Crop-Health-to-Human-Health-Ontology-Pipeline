@@ -16,13 +16,13 @@ from backend.pipelines.document import run_pipeline
 from backend.domain.alignment import grounded_alignment
 from backend.shared.batching import iter_batched_judgments
 from backend.shared.cache import RunCache
-from backend.config.settings import Settings
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
 from backend.providers.llm import LLMServiceError, OpenCodeClient
 from tests.external.helpers import judge_document
 from backend.stages.evidence_ranking.passages import SemanticReranker
 from backend.stages.literature_retrieval.clients import make_chunks, scholarly_sentences
 from backend.stages.literature_retrieval.workflow import _citation_results, retrieve_round
-from backend.stages.query_planning.planner import evidence_query_plan, translate_queries
+from backend.stages.query_planning.planner import evidence_query_plan, translate_query
 
 
 def alignment(canonical, mention, evidence, kind="same_concept"):
@@ -52,6 +52,7 @@ def source_claim(identifier="one"):
 def source_reply():
     span = source_claim()["source_evidence_span"]
     return {"decision": "entailed", "relation_match": True, "direction_match": True,
+            'project_scope': {'decision': 'in_scope', 'rationale': 'An agricultural practice changes a soil condition.'},
             "abbreviation_review": {"status": "clear", "corrections": [], "unresolved": []},
             "certainty_match": True, "rationale": "The coordinated object includes soil pollution.",
             "proof": {"subject": "Organic farming", "relation": "reduces", "object": "soil and water pollution"},
@@ -111,7 +112,8 @@ class BatchValidationTests(unittest.TestCase):
 
     def test_failed_query_row_is_explicit_and_does_not_trigger_a_model_retry(self):
         client = ReplyClient({"results": []})
-        planned = translate_queries([source_claim()], client)
+        planned = {claim['candidate_id']: result for claim, result in iter_batched_judgments(
+            [source_claim()], client, lambda claim, judge: translate_query(judge, claim), 6)}
         self.assertTrue(planned['one']['batch_error'])
         self.assertEqual(len(client.calls), 1)
     def test_provider_access_failure_stops_batch_instead_of_marking_claims_for_review(self):
@@ -323,7 +325,7 @@ class RetrievalEfficiencyTests(unittest.TestCase):
 
 class PipelineIntegrationTests(unittest.TestCase):
     def test_run_wires_batches_deduplication_query_plan_and_graph_without_live_services(self):
-        settings = replace(Settings(), enable_nli=False, validation_batch_size=3, query_batch_size=6)
+        settings = replace(Settings(), validation_batch_size=3, query_batch_size=6)
         task_routes = {}
 
         class PipelineClient:
@@ -346,6 +348,8 @@ class PipelineIntegrationTests(unittest.TestCase):
                 else:
                     task_routes['query'] = self.model
                     result = {"query": "organic farming AND soil pollution", "openalex_query": "organic farming soil pollution"}
+                if items and 'item_id' in items[0]:
+                    return {'results': {item['item_id']: copy.deepcopy(result) for item in items}}
                 return {"results": [{"candidate_id": item["candidate_id"], **result} for item in items]}
 
         candidate = {**source_claim(), "schema_error": None, "source_page": 1, "source_paper_title": "Paper",
@@ -367,25 +371,20 @@ class PipelineIntegrationTests(unittest.TestCase):
                     patch('backend.pipelines.document.source_article_identifiers', return_value={}), \
                     patch('backend.stages.claim_extraction.extractor.source_paper_title', return_value='Paper'), \
                     patch('backend.pipelines.document.extract_claims', return_value=([candidate, duplicate], {}, [])) as extract, \
-                    patch('backend.pipelines.document.assemble_pathways', return_value={'counts':{}}), \
-                    patch('backend.pipelines.document.SemanticReranker') as ranker, \
-                    patch('backend.pipelines.document.prepare_evidence', return_value={'evidence_documents': []}), \
-                    patch('backend.pipelines.document.validate_candidate', return_value=graph_result) as external:
-                ranker.return_value.embedding_cache_hits = 0
-                summary = run_pipeline(pdf, 0, 0, 3, lambda *_args: None)
+                    patch('backend.pipelines.document.assemble_pathways', return_value={'counts':{},'graph':{'nodes':[],'edges':[]}}), \
+                    patch('archive.legacy_pipeline.research_historical.external_validation.workflow.validate_candidate') as external:
+                summary = run_pipeline(pdf, 0, 3, lambda *_args: None)
             self.assertEqual(summary["canonical_duplicates_removed"], 1)
             self.assertEqual(summary["extracted"], 1)
             self.assertEqual(summary["source_entailed"], 1)
-            self.assertEqual(summary["graph"]["edges"], 1)
-            self.assertEqual(summary["llm_calls"]["total_requests"], 2)
+            self.assertEqual(summary["graph"]["edges"], 0)
+            self.assertEqual(summary["llm_calls"]["total_requests"], 1)
             self.assertEqual(extract.call_args.args[1].model, settings.extraction_model)
-            self.assertEqual(task_routes, {'source': settings.source_model, 'query': settings.query_model})
-            self.assertEqual(external.call_args.args[1].model, settings.external_model)
-            self.assertNotIn('priority_client', external.call_args.kwargs)
+            self.assertEqual(task_routes, {'source': settings.source_model})
+            external.assert_not_called()
             self.assertEqual(summary['semantic_stage'], 'removed')
             self.assertEqual(summary['task_models'], settings.task_models)
             self.assertEqual(set(summary['llm_reasoning_policy']), set(settings.task_models))
-            self.assertEqual(external.call_args.kwargs["query_translation"]["openalex_query"], "organic farming soil pollution")
-            self.assertIsInstance(external.call_args.kwargs["cache"], RunCache)
+            self.assertEqual(summary['pathway_validation']['individual_external_calls'],0)
             self.assertTrue((root / 'outputs' / 'sample' / 'source_validation.jsonl').exists())
-            self.assertIn('external_validation', summary['stage_timings_seconds'])
+            self.assertIn('neighbor_external_validation', summary['stage_timings_seconds'])

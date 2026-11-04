@@ -11,12 +11,12 @@ import pytest
 
 from backend.stages.pdf_parsing.structure import inspect_pdf
 from backend.stages.pdf_parsing.packets import iter_pdf_context_packets, pdf_bibliography, link_source_citations
-from backend.config.settings import Settings
-from backend.stages.external_validation.proofs import _numbered_chunks
-from backend.stages.external_validation.joint import packed_document, judge_evidence_pack
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
+from archive.legacy_pipeline.research_historical.external_validation.packing import _numbered_chunks
+from archive.legacy_pipeline.research_historical.external_validation.joint import packed_document, judge_evidence_pack
 from backend.providers.llm import OpenCodeClient, LLMServiceError
 from backend.stages.literature_retrieval.workflow import _citation_results, citation_tracking
-from backend.stages.external_validation.workflow import validate_candidate
+from archive.legacy_pipeline.research_historical.external_validation.workflow import validate_candidate
 from backend.stages.query_planning.planner import evidence_query_plan
 from tests.external.test_joint_validation import fixture
 
@@ -92,9 +92,10 @@ def test_page_audit_reports_missing_text_errors_and_unverified_order():
 
 def test_blank_pdf_persists_page_diagnostics_before_stopping(tmp_path):
     from backend.pipelines.document import run_pipeline
+    from backend.config.settings import Settings as RuntimeSettings
     pdf = tmp_path / 'blank.pdf'
     pdf.write_bytes(b'PDF content supplied by mocked parser')
-    settings = Settings()
+    settings = RuntimeSettings()
     client = SimpleNamespace(health_check=lambda: {'models': list(settings.task_models.values())},
                              request_metrics={'requests': 0, 'elapsed_seconds': 0})
     with patch('backend.stages.pdf_parsing.packets.PdfReader', return_value=reader_for(['', ''])), \
@@ -104,7 +105,7 @@ def test_blank_pdf_persists_page_diagnostics_before_stopping(tmp_path):
             patch('backend.pipelines.document.source_article_identifiers', return_value={}), \
             patch('backend.pipelines.document.extract_claims') as extraction:
         with pytest.raises(ValueError, match='OCR'):
-            run_pipeline(pdf, 0, 0, 8, lambda *args: None)
+            run_pipeline(pdf, 0, 8, lambda *args: None)
     extraction.assert_not_called()
     output = tmp_path / 'outputs' / 'blank'
     quality = json.loads((output / 'pdf_quality.json').read_text())
@@ -183,9 +184,9 @@ def test_duplicate_publication_keeps_every_citation_and_missing_link_in_ledger()
             patch('backend.stages.literature_retrieval.workflow.search', side_effect=search), \
             patch('backend.stages.literature_retrieval.workflow.search_openalex', return_value=[]), \
             patch('backend.stages.literature_retrieval.workflow.openalex_open_access_copy', return_value=None), \
-            patch('backend.stages.external_validation.workflow.judge_evidence_pack', side_effect=judgement):
+            patch('archive.legacy_pipeline.research_historical.external_validation.workflow.judge_evidence_pack', side_effect=judgement):
         result = validate_candidate(candidate, SimpleNamespace(model=Settings().external_model), ranker,
-                                    replace(Settings(), enable_nli=False, external_judgement_mode='joint'), query_translation={'query': 'lead microbial'})
+                                    replace(Settings(), external_judgement_mode='joint'), query_translation={'query': 'lead microbial'})
     ledger = result['attempts'][0]['citation_ledger']
     assert len(ledger) == 3
     assert all(row['included_in_judgement'] and row['fetched'] for row in ledger[:2])

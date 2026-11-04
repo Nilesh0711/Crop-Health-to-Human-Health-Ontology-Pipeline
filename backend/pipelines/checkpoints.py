@@ -24,6 +24,36 @@ def save_checkpoint(output, metadata):
     save_json(output / 'pipeline_checkpoint.json', metadata)
 
 
+def _recover_atomic_expansion(metadata, candidates, output):
+    """Admit only children declared in a durable source-checked operation journal."""
+    originals = metadata.get('candidate_ids')
+    ids = [c['candidate_id'] for c in candidates]
+    journals = {r['operation_id']:r for r in read_jsonl(output / 'claim_revisions.jsonl')
+                if r.get('action')=='reextract' and r.get('proposed_candidates')}
+    derived = []
+    by_id = {c['candidate_id']:c for c in candidates}
+    for child in candidates:
+        if originals is not None and child['candidate_id'] in originals:
+            continue
+        operation = journals.get(child.get('reextraction_operation_id'))
+        if operation is None:
+            if originals is None:
+                continue
+            return metadata
+        parent = by_id.get(child.get('parent_candidate_id'),{})
+        declared = next((c for c in operation['proposed_candidates'] if c['candidate_id']==child['candidate_id']),None)
+        scientific = lambda c: {k:v for k,v in c.items() if k not in {'source_validation','semantic_validation','superseded_by'}}
+        if (not declared or scientific(declared)!=scientific(child)
+                or operation['candidate_id']!=child.get('parent_candidate_id')
+                or child['candidate_id'] not in parent.get('superseded_by',[])):
+            return metadata
+        derived.append(child['candidate_id'])
+    base = [i for i in ids if i not in derived]
+    if derived and (base==originals if originals is not None else len(base)==metadata.get('expected_candidate_count')):
+        return {**metadata,'candidate_ids':ids,'expected_candidate_count':len(ids)}
+    return metadata
+
+
 def resume_metadata(output, pdf, settings, max_pages, claims_per_packet, *, extraction_mode=None, target_words=None):
     """Also admit a complete saved extraction with explicit provenance checks."""
     metadata = read_metadata(output)
@@ -49,13 +79,19 @@ def resume_metadata(output, pdf, settings, max_pages, claims_per_packet, *, extr
                         extraction_target_words=summary.get('extraction_target_words'),
                         extraction_generation_budget=summary.get('extraction_generation_budget'),
                         targeting_version=summary.get('targeting_version', TARGETING_VERSION))
-    core_models = {k:v for k,v in settings.task_models.items() if k != 'pathway_assembly'}
-    saved_models = {k:v for k,v in (metadata.get('task_models') or {}).items() if k != 'pathway_assembly'}
+    # Downstream synthesis/audit and assembly assignments do not change the
+    # completed extraction. Their own scientific fingerprints invalidate reuse.
+    downstream = {'pathway_assembly','external'}
+    core_models = {k:v for k,v in settings.task_models.items() if k not in downstream}
+    saved_models = {k:v for k,v in (metadata.get('task_models') or {}).items() if k not in downstream}
     if (metadata.get('schema_version') != SCHEMA_VERSION or metadata.get('pdf_sha256') != file_hash(pdf)
             or saved_models != core_models):
         raise ValueError('Checkpoint PDF, pipeline version or selected models changed; start a new run')
     if metadata.get('max_pages') != max_pages:
         raise ValueError('Resume requires the original page selection')
+    from backend.stages.pdf_parsing.layout import PARSING_POLICY, LEGACY_PARSING_POLICY
+    if metadata.get('parsing_policy',LEGACY_PARSING_POLICY) not in {PARSING_POLICY,LEGACY_PARSING_POLICY}:
+        raise ValueError('Saved PDF parsing policy is unavailable; use a fresh extraction')
     if metadata.get('claims_per_packet') not in (None, claims_per_packet):
         raise ValueError('Resume requires the original extraction claim limit per packet')
     if (metadata.get('thinking') or {}).get('extraction', True) != settings.task_thinking['extraction']:
@@ -68,11 +104,22 @@ def resume_metadata(output, pdf, settings, max_pages, claims_per_packet, *, extr
             raise ValueError('Extraction targeting version changed; start a new run')
         if target_words is not None and metadata.get('extraction_target_words') != target_words:
             raise ValueError('Resume requires the original extraction target size')
-    if not metadata.get('extraction_complete'):
+    if not metadata.get('extraction_complete') or not (output / 'candidates.jsonl').is_file():
+        packets = read_jsonl(output / 'extraction_packets.jsonl')
+        completed = [p for p in packets if p.get('status') == 'completed']
+        if completed:
+            return {**metadata, 'partial_extraction': True, 'completed_targets': len(completed), 'total_targets': len(packets)}
         raise ValueError('Extraction has not completed; start a new run')
-    if not (output / 'candidates.jsonl').is_file():
-        raise ValueError('Saved candidates are missing; start a new run')
+    metadata = dict(metadata)
+    metadata.pop('partial_extraction', None)
+    metadata.pop('completed_targets', None)
+    metadata.pop('total_targets', None)
+    metadata = dict(metadata)
+    metadata.pop('partial_extraction', None)
+    metadata.pop('completed_targets', None)
+    metadata.pop('total_targets', None)
     candidates = read_jsonl(output / 'candidates.jsonl')
+    metadata = _recover_atomic_expansion(metadata,candidates,output)
     if metadata.get('imported_extraction') and metadata.get('expected_candidate_count') != len(candidates):
         raise ValueError('Saved candidate count does not match its saved summary')
     ids = [row.get('candidate_id') for row in candidates]
@@ -90,10 +137,11 @@ def resume_available(output):
     """Cheap UI hint; the resume endpoint performs the full checks again."""
     try:
         metadata = read_metadata(output)
-        if metadata:
-            return bool(metadata.get('extraction_complete'))
+        if metadata and metadata.get('extraction_complete'):
+            return True
         packets = read_jsonl(output / 'extraction_packets.jsonl')
-        return bool(packets and all(row.get('status') == 'completed' for row in packets)
-                    and (output / 'candidates.jsonl').is_file())
+        if packets and any(row.get('status') == 'completed' for row in packets):
+            return True
+        return bool(packets and (output / 'candidates.jsonl').is_file())
     except (ValueError, OSError):
         return False

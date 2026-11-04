@@ -3,13 +3,25 @@
 from __future__ import annotations
 
 import json
+import os
 import time
+from threading import RLock
 from pathlib import Path
 from typing import Any
 
 
 ARTIFACT_WRITE_POLICY = 'bounded-replace-retry-existing-temp-v1'
 _REPLACE_DELAYS = (.025, .05, .1, .2, .4, .8, 1., 1.)
+_locks_guard = RLock()
+_path_locks = {}
+
+
+def _path_lock(path):
+    # Windows resolve() may add the extended-path prefix only after a file exists.
+    # A lock key must remain identical before/after an atomic replacement.
+    key = os.path.normcase(os.path.abspath(path)).removeprefix('\\\\?\\')
+    with _locks_guard:
+        return _path_locks.setdefault(key, RLock())
 
 
 def _publish(temporary: Path, path: Path) -> None:
@@ -31,16 +43,19 @@ def _publish(temporary: Path, path: Path) -> None:
 
 def save_rows(path: Path, rows: list[dict[str, Any]]) -> None:
     """Readers see either the old or the complete new JSONL file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + '.tmp')
-    temporary.write_text(''.join(json.dumps(row, ensure_ascii=False) + '\n' for row in rows), encoding='utf-8')
-    _publish(temporary, path)
+    with _path_lock(path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(path.name + '.tmp')
+        temporary.write_text(''.join(json.dumps(row, ensure_ascii=False) + '\n' for row in rows), encoding='utf-8')
+        _publish(temporary, path)
 
 
 def save_json(path: Path, value: Any) -> None:
-    temporary = path.with_name(path.name + '.tmp')
-    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
-    _publish(temporary, path)
+    with _path_lock(path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(path.name + '.tmp')
+        temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
+        _publish(temporary, path)
 
 
 def replace_row(rows: list[dict[str, Any]], row: dict[str, Any]) -> list[dict[str, Any]]:

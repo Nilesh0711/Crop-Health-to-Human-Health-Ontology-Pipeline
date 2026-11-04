@@ -157,3 +157,19 @@ def test_viewer_import_has_no_inference_dependencies():
 
 def test_export_strips_credentials_and_local_path():
     assert clean({'api_key': 'secret', 'pdf_path': 'private', 'logs': ['oc_sk_example_secret']}) == {'logs': ['[redacted credential]']}
+
+
+def test_git_checkout_preserves_snapshot_bytes_with_windows_line_endings_enabled(tmp_path):
+    """A checkout must not invalidate the hashes produced by the exporter."""
+    repo=tmp_path/'repo';repo.mkdir()
+    source=Path(__file__).resolve().parents[2]
+    (repo/'.gitattributes').write_bytes((source/'.gitattributes').read_bytes())
+    relative=Path('deploy/render/snapshot/documents/test/knowledge_graph.graphml')
+    (repo/relative).parent.mkdir(parents=True)
+    original=b'<?xml version="1.0"?>\n<graphml>\n<graph/>\n</graphml>\n'
+    (repo/relative).write_bytes(original)
+    subprocess.run(['git','init','-q'],cwd=repo,check=True,capture_output=True)
+    subprocess.run(['git','-c','core.autocrlf=true','add','.'],cwd=repo,check=True,capture_output=True)
+    checkout=tmp_path/'checkout'
+    subprocess.run(['git','-c','core.autocrlf=true','checkout-index','-a','--prefix='+checkout.as_posix()+'/'],cwd=repo,check=True,capture_output=True)
+    assert (checkout/relative).read_bytes()==original

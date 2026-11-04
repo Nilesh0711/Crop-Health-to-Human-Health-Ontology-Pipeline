@@ -6,8 +6,8 @@ import json
 
 import pytest
 
-from scripts.research.packet_comparison.compare import make_plan, job_key, run
-from scripts.research.packet_comparison.audit import candidate_key, transport_failed
+from archive.legacy_pipeline.research_tools.packet_comparison.compare import make_plan, job_key, run
+from archive.legacy_pipeline.research_tools.packet_comparison.audit import candidate_key, transport_failed
 
 
 def test_plan_is_fixed_balanced_and_contains_every_packet_once_per_repeat():

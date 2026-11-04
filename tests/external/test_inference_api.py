@@ -306,7 +306,8 @@ def test_repair_cannot_reorganize_nesting_but_can_propose_a_missing_final_brace(
 
 
 @pytest.mark.parametrize('model,mode', [('deepseek-v4.1-flash', 'json_object'),
-                                      ('mimo-v2.6-flash', 'json_schema'), ('mimo-v2.6-pro', 'json_schema')])
+                                      ('mimo-v2.6-flash', 'json_schema'), ('mimo-v2.6-pro', 'json_schema'),
+                                      ('muse-spark-1.3-contributor', 'json_schema')])
 def test_direct_request_uses_documented_go_route_and_backend_only_auth(monkeypatch, model, mode):
     captured = []
     def handler(request):
@@ -360,6 +361,45 @@ def test_provider_error_message_is_visible_with_credentials_redacted(monkeypatch
     with pytest.raises(InferenceError, match='Unsupported response_format') as error:
         InferenceHTTP(Settings()).chat('opencode-go/deepseek-v4.1-flash', 'JSON', 'input', SCHEMA, 8192)
     assert 'test-only-key' not in str(error.value)
+
+
+def test_muse_privacy_rejection_remains_visible_without_retry_or_fallback(monkeypatch):
+    calls=[]
+    def reject(request):
+        calls.append(json.loads(request.content))
+        return httpx.Response(400,json={'error':{'message':
+            "Allow paid endpoints that train on request data in your workspace's Privacy settings to use it."}})
+    transport=httpx.Client(transport=httpx.MockTransport(reject))
+    monkeypatch.setattr('backend.providers.inference.httpx.Client',lambda **kwargs:transport)
+    metrics=[]
+    client=OpenCodeClient(Settings(),task='external',on_request=metrics.append)
+    with pytest.raises(LLMServiceError,match='Privacy settings'):
+        client.chat_json('JSON only','Synthetic test',json_schema=SCHEMA)
+    assert len(calls)==1 and calls[0]['model']=='muse-spark-1.3-contributor'
+    assert len(metrics)==1 and metrics[0]['status']=='failed'
+
+
+@pytest.mark.parametrize('enabled,effort,thinking',[(False,'minimal','minimal'),(True,'high','enabled')])
+def test_muse_maps_stage_switch_to_supported_effort_and_logs_required_reasoning(monkeypatch,enabled,effort,thinking):
+    from dataclasses import replace
+    calls=[]
+    def answer(request):
+        calls.append(json.loads(request.content))
+        return httpx.Response(200,json={'model':'muse-spark-1.3-contributor',
+            'choices':[{'finish_reason':'stop','message':{'content':VALID}}],
+            'usage':{'prompt_tokens':20,'completion_tokens':30,'completion_tokens_details':{'reasoning_tokens':10}}})
+    transport=httpx.Client(transport=httpx.MockTransport(answer))
+    monkeypatch.setattr('backend.providers.inference.httpx.Client',lambda **kwargs:transport)
+    metrics=[]
+    client=OpenCodeClient(replace(Settings(),thinking={'external':enabled}),task='external',on_request=metrics.append)
+    assert client.chat_json('JSON only','Synthetic proof',json_schema=SCHEMA)==ANSWER
+    assert calls[0]['reasoning_effort']==effort and 'thinking' not in calls[0]
+    assert calls[0]['response_format']['type']=='json_schema'
+    assert metrics[0]['requested_reasoning_effort']==effort
+    assert metrics[0]['requested_thinking']==thinking
+    assert metrics[0]['thinking_off_supported'] is False
+    assert metrics[0]['output_tokens']==20 and metrics[0]['reasoning_tokens']==10
+    assert 'minimum effort requested' in format_request_metrics(metrics[0]) if not enabled else True
 
 
 def test_bounded_repair_configuration_rejects_unlimited_loops():

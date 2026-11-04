@@ -83,7 +83,19 @@ def test_token_follows_worker_context_but_does_not_leak_to_other_jobs():
         assert executor.submit(lambda:check_cancelled() or 'unaffected').result()=='unaffected'
 
 
-def test_stop_interrupts_local_provider_wait_without_retry_or_scientific_result(monkeypatch):
+def test_automatic_cancellation_preserves_its_reason_and_parent_manual_stop():
+    parent=CancellationToken()
+    child=CancellationToken(parent)
+    child.request('Cancelled because another neighboring-pair task failed.')
+    with pytest.raises(PipelineStopped,match='another neighboring-pair task failed'):
+        child.check()
+    parent.request()
+    with pytest.raises(PipelineStopped,match='Stopped by user'):
+        child.check()
+
+
+@pytest.mark.parametrize('reason',[None,'Cancelled because another neighboring-pair task failed.'])
+def test_stop_interrupts_local_provider_wait_without_retry_or_scientific_result(monkeypatch,reason):
     started,closed=Event(),Event();calls=[]
     async def receive(request):
         calls.append(request);started.set()
@@ -101,8 +113,9 @@ def test_stop_interrupts_local_provider_wait_without_retry_or_scientific_result(
             except PipelineStopped:outcome.append('stopped')
     thread=Thread(target=run,daemon=True);thread.start()
     assert started.wait(3)
-    token.request();thread.join(3)
+    token.request(reason);thread.join(3)
     assert not thread.is_alive() and closed.is_set()
     assert outcome==['stopped'] and len(calls)==1
     assert metrics[0]['status']=='cancelled' and not metrics[0]['recovery_pending']
+    assert (reason or 'Stopped by user') in metrics[0]['error']
     assert model._service_error is None

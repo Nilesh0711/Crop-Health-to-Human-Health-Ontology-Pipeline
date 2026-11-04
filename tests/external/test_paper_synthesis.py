@@ -8,14 +8,15 @@ from unittest.mock import patch
 
 import pytest
 
-from backend.config.settings import Settings
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
+from archive.legacy_pipeline.research_historical.external_validation.guards import grounded_roles
 from backend.providers.llm import OpenCodeClient, LLMServiceError, request_log_level
 from backend.providers.inference import InferenceHTTP, InferenceError
 from backend.providers.response_repair import validate_schema
 from backend.providers.structured_output import IncompleteResponseError
-from backend.stages.external_validation.paper_proofs import guard_paper, grounded_roles, selected_context, PAPER_DECISION_SCHEMA
-from backend.stages.external_validation.synthesis import judge_with_synthesis, _synthesis_documents, _signature, _claim, PREVIOUS_POLICY
-from backend.stages.external_validation.workflow import validate_candidate, validation_signature
+from backend.stages.external_validation.paper_proofs import guard_paper, selected_context, PAPER_DECISION_SCHEMA
+from archive.legacy_pipeline.research_historical.external_validation.synthesis import judge_with_synthesis, _synthesis_documents, _signature, _claim, PREVIOUS_POLICY
+from archive.legacy_pipeline.research_historical.external_validation.workflow import validate_candidate, validation_signature
 from backend.stages.graph_construction.graph import graph_from_candidates
 
 
@@ -153,15 +154,15 @@ def test_deepseek_provider_failure_is_reported_as_deepseek_without_pro_substitut
 
 
 def test_changing_paper_model_reuses_retrieval_but_rejudges_old_paper_findings():
-    from backend.stages.external_validation.workflow import prepare_evidence
+    from archive.legacy_pipeline.research_historical.external_validation.workflow import prepare_evidence
     claim, doc, answer = example(); current = configuration()
     old = replace(current, external_paper_model=current.external_model)
     checkpoints = []
-    with patch('backend.stages.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [doc]}):
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [doc]}):
         previous = validate_candidate(claim, Client({'paper-a': answer}, synthesis([doc])), None, old, on_checkpoint=checkpoints.append)
     assert validation_signature(claim, old) != validation_signature(claim, current)
     client = Client({'paper-a': answer}, synthesis([doc]))
-    with patch('backend.stages.external_validation.workflow.retrieve_round') as retrieve:
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round') as retrieve:
         result = validate_candidate(claim, client, None, current, resume_record=previous)
     retrieve.assert_not_called()
     assert len(client.calls) == 2
@@ -284,7 +285,7 @@ def test_previous_policy_paper_response_is_rechecked_and_reused_with_exact_selec
 
 
 def test_nonadjacent_contradiction_is_reverified_without_expanding_selected_proof():
-    from backend.stages.external_validation.joint import verified_contradictions
+    from backend.stages.external_validation.history import verified_contradictions
     claim, doc, answer = separated_example([4, 6])
     claim['relation'] = 'increases'
     row = answer['decision']; row['decision'] = 'contradicted'; row['matches']['relation'] = False
@@ -341,14 +342,14 @@ def test_completed_papers_checkpoint_and_resume_without_repeating_calls():
     claim, first, one = example(); _, second, two = example('paper-b')
     docs, checkpoints = [first, second], []
     client = Client({'paper-a': one, 'paper-b': two}, synthesis([first, second]), fail_paper='paper-b')
-    with patch('backend.stages.external_validation.workflow.retrieve_round', return_value={'evidence_documents': docs}):
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round', return_value={'evidence_documents': docs}):
         with pytest.raises(LLMServiceError):
             validate_candidate(claim, client, None, configuration(), on_checkpoint=checkpoints.append)
     saved = checkpoints[-1]
     assert saved['validation_status'] == 'pipeline_error'
     assert len(saved['attempts'][0]['paper_judgements']) == 1
     resumed = Client({'paper-a': one, 'paper-b': two}, synthesis(docs))
-    with patch('backend.stages.external_validation.workflow.retrieve_round') as retrieve:
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round') as retrieve:
         result = validate_candidate(claim, resumed, None, configuration(), resume_record=saved)
     retrieve.assert_not_called()
     assert len(resumed.calls) == 2 and '/ paper-b' in resumed.calls[0][0]
@@ -359,7 +360,7 @@ def test_completed_papers_checkpoint_and_resume_without_repeating_calls():
 def test_classification_review_keeps_support_visible_but_excludes_validated_graph():
     claim, doc, answer = example()
     client = Client({'paper-a': answer}, synthesis([doc], ambiguous=True))
-    with patch('backend.stages.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [doc]}):
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [doc]}):
         result = validate_candidate(claim, client, None, configuration())
     assert result['validation_status'] == 'external_support_needs_review'
     assert result['attempts'][0]['decisions'][0]['decision'] == 'supported'
@@ -371,7 +372,7 @@ def test_background_agreement_is_not_counted_as_new_experimental_replication():
     claim, one, a = example(); _, two, b = example('paper-b')
     a['finding']['evidence_origin'] = b['finding']['evidence_origin'] = 'background'
     client = Client({'paper-a': a, 'paper-b': b}, synthesis([one, two]))
-    with patch('backend.stages.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [one,two]}):
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [one,two]}):
         result = validate_candidate(claim, client, None, configuration())
     assert result['validation_status'] == 'world_independent_supported_pending_corroboration'
     assert result['support_summary']['independent_groups'] == 0
@@ -495,11 +496,11 @@ def test_failed_synthesis_resumes_all_completed_papers_without_repeating_them():
             if options['request_label'].startswith('cross-paper'):
                 raise LLMServiceError('Synthesis transport failure')
             return super().chat_json(system, user, **options)
-    with patch('backend.stages.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [doc]}):
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [doc]}):
         with pytest.raises(LLMServiceError):
             validate_candidate(claim, Interrupted({'paper-a': answer}, synthesis([doc])), None, configuration(), on_checkpoint=checkpoints.append)
     resumed = Client({'paper-a': answer}, synthesis([doc]))
-    with patch('backend.stages.external_validation.workflow.retrieve_round') as retrieve:
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round') as retrieve:
         result = validate_candidate(claim, resumed, None, configuration(), resume_record=checkpoints[-1])
     retrieve.assert_not_called()
     assert len(resumed.calls) == 1 and resumed.calls[0][0].startswith('cross-paper')
@@ -507,12 +508,12 @@ def test_failed_synthesis_resumes_all_completed_papers_without_repeating_them():
 
 
 def test_previous_joint_packet_is_reused_when_switching_architecture():
-    from backend.stages.external_validation.workflow import prepare_evidence
+    from archive.legacy_pipeline.research_historical.external_validation.workflow import prepare_evidence
     claim, doc, _ = example(); off = configuration()
-    with patch('backend.stages.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [doc]}):
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round', return_value={'evidence_documents': [doc]}):
         old = prepare_evidence(claim, None, None, replace(off, external_judgement_mode='joint'))
     old['attempts'] = [deepcopy(old)]
-    with patch('backend.stages.external_validation.workflow.retrieve_round') as retrieve:
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round') as retrieve:
         current = prepare_evidence(claim, None, None, off, resume_record=old)
     retrieve.assert_not_called()
     assert current['evidence_documents'] == [doc]
@@ -569,7 +570,7 @@ def test_nli_is_diagnostic_and_cannot_overturn_the_evidence_model():
 
 
 def test_new_paper_contradiction_enables_repair_only_with_unaltered_exact_proof():
-    from backend.stages.external_validation.joint import verified_contradictions
+    from backend.stages.external_validation.history import verified_contradictions
     claim, doc, answer = example()
     claim['relation'] = 'increases'
     answer['decision'].update(decision='contradicted', rationale='The finding decreases the same qualified outcome, opposite to the claim.')

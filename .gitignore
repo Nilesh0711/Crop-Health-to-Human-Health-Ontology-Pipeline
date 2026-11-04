@@ -5,12 +5,18 @@
 
 deliverables/*
 ppt/*
-# Documentation is source; large presentation binaries remain local.
-docs/presentations/*.pptx
-# Python caches
+# Documentation and presentations remain local
+docs/
+
+# Python caches and temporary test directories
 .pytest_cache/
+.pytest_tmp/
+tmp_pytest/
 __pycache__/
 *.py[cod]
+pdf/*
+!pdf/.gitkeep
+!pdf/README.md
 
 # Local virtual environments
 .venv/
@@ -28,6 +34,12 @@ ontology/*
 # Generated developer reports (keep the directory guide)
 reports/*
 !reports/README.md
+
+# Local comparison snapshots include PDFs, results and model-response archives.
+archive/backup/
+
+# Thesis sources and build artifacts kept local
+MTP_Thesis/
 
 # Export staging and previous publications stay local. The checked snapshot is deployable source.
 deploy/render/.snapshot-*/

@@ -8,7 +8,7 @@ import pytest
 
 from backend.providers.inference import InferenceHTTP
 from backend.providers.llm import OpenCodeClient, LLMServiceError
-from backend.stages.trust_graph.workflow import assess_group
+from archive.legacy_pipeline.research_historical.trust_graph.workflow import assess_group
 from tests.external.test_trust_graph import config, fixtures
 from tests.external.test_paper_synthesis import synthesis
 
@@ -59,7 +59,7 @@ def test_pro_repairs_only_one_claims_proof_with_one_smaller_request(tmp_path, mo
 
 
 def test_paper_is_judged_before_later_claim_packet_is_finished(tmp_path, monkeypatch):
-    from backend.pipelines import trust
+    from archive.legacy_pipeline.research_historical.pipelines import trust
     from backend.shared.cache import RunCache
     from tests.external.test_trust_graph import GroupClient
     claims, packets, answers = fixtures(2, 1)

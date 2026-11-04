@@ -14,8 +14,9 @@ Heuristic concerns about generic entity labels, comparisons, modality, captions
 or association are stored as `extraction_review_hints`, not rejections. The
 extractor no longer rewrites disease/container identities, removes restrictions
 or changes certainty locally. Source fidelity remains a model decision; the
-joint external model assesses type correctness and project scope with research
-evidence. Original source anchors, sentence IDs and target ownership still gate
+source model also judges project scope, while neighboring-pair external assessment
+judges contextual entity roles and research support. Original source anchors,
+sentence IDs and target ownership still gate
 admission. Scientific assessment can retain a claim for review or exclude it.
 
 Runtime examples use abstract Crop C / Disease D / Compound T entities. Real
@@ -40,7 +41,7 @@ One model call receives a marked `extraction_target` and a separate
 Original sentence numbers, page numbers and headings are retained. The model
 may use the context to interpret referents, crop identity and restrictions;
 all direct evidence sentence IDs must be unique, ascending and inside the target
-(1?3 IDs). Non-adjacent fragments retain their original pages and IDs, explicit
+(1-3 IDs). Non-adjacent fragments retain their original pages and IDs, explicit
 gap markers and every intervening sentence for source validation. They are not
 represented as one continuous source quotation.
 There is no preliminary LLM relevance/discovery pass. Context-only findings
@@ -69,7 +70,7 @@ and `EXTRACTION_MIN_OUTPUT_BUDGET`. The generation allowance is shared by
 reasoning and final answer tokens; it is not an answer reservation or a promise
 of provider context capacity. Thinking defaults to Off and can be enabled in
 the assigned model's runtime settings.
-The default initial ceiling rises from 12,288 to 24,576. Existing single-action
+The default initial allowance is 24,576 tokens. Existing single-action
 structured-response recovery can raise it to the configured regeneration cap
 (32,768 by default). There are no model substitutions or unbounded retries.
 Uncapped extraction requests a larger final-answer allowance based on target
@@ -82,12 +83,14 @@ mentions, source page and heading, surrounding context, qualifiers and a short
 claim restatement. The restatement is not substituted for source evidence.
 Connected direct edges and explicit local references are extracted separately;
 the [Pathway Assembly stage](../pathway_assembly/README.md) aligns shared entities
-globally after external validation.
+globally before neighboring-pair external validation. Only source-entailed, explicitly
+in-scope claims enter that provisional graph.
 
 ## Persistence and compatibility
 
-- The activity log identifies target progress, original packet, input-token
-  estimate, extraction words and generation usage. Provider errors remain visible.
+- Coverage records retain target progress and original packet identity. Activity
+  keeps researcher milestones and warnings/errors; model diagnostics retain
+  provider-reported input tokens and generation usage, not character estimates.
 - `extraction_packets.jsonl` stores target IDs, assigned original sentence IDs,
   completion/failed/not-started status and claim-limit flags. It is also saved
   when extraction stops on a primary-provider error.
@@ -107,3 +110,26 @@ conditions, out-of-target rejection, bounded same-model regeneration, whole-
 packet compatibility, persisted failure coverage, runtime API options and
 historical resume behavior. These are contract checks, not evidence of improved
 scientific accuracy; compare real-document results before drawing that conclusion.
+
+## Code ownership
+
+`extract_claims` coordinates focused helpers for packet requests/coverage,
+proposed fields, exact evidence binding, citation linking, overlap merging and
+candidate materialization. `targeting.py` owns sentence assignment,
+`contract.py` owns the response schema, and `deduplication.py` removes genuine
+same-source duplicates. This refactor preserves prompts, schemas, budgets,
+identifiers, provenance and scientific decisions. New runs no longer create a
+standalone semantic vote or empty semantic ledgers.
+
+## Compact model output
+
+Claim_text remains required and source-verified. All evidence anchors, sentence
+IDs, modality, provisional types and actual restrictions remain. The response can
+omit absent source_context and empty qualifier entries; qualifiers={} is valid.
+Code fills empty internal defaults without guessing scientific content. Missing
+claim_text/proof or unknown qualifier keys are still invalid. Existing compatible
+saved extraction can resume; these changes apply to newly required model calls.
+
+## Atomic re-extraction and explicit referents (v49)
+
+Extraction instructions distinguish explicit same-section coreference from invented bridges. For a repairable claim, the deliberate Re-extract atomic claims action extracts independent propositions from only its selected evidence sentences, source-checks the children and retains the parent/history. Superseded parents stay auditable and leave provisional assembly. New IDs and a durable journal protect interrupted checkpoint publication. Saved extraction is not silently rewritten. See [v49](../../../docs/protocols/proof_audit_atomic_reextraction_and_layout.md).

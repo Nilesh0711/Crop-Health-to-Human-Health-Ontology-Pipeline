@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from backend.config.settings import Settings
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
 from backend.providers.llm import OpenCodeClient, LLMServiceError, request_log_level
 from backend.providers.response_repair import apply_model_patch
 from backend.providers.structured_output import ResponseStructureError, StructuredOutputError, parse_json_object
@@ -108,7 +108,7 @@ def test_simple_separator_errors_still_use_only_a_model_proposed_formatting_patc
 
 def test_regenerated_paper_response_still_withholds_invented_sentence_ids():
     from copy import deepcopy
-    from backend.stages.external_validation.synthesis import judge_paper
+    from archive.legacy_pipeline.research_historical.external_validation.synthesis import judge_paper
     from tests.external.test_paper_synthesis import example
 
     claim, document, good = example()

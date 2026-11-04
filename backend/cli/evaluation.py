@@ -18,7 +18,43 @@ def main(argv=None):
     sample.add_argument('--output', type=Path)
     sample.add_argument('--limit', type=int, default=80)
     sample.add_argument('--overwrite', action='store_true', help='Explicitly replace an existing sample')
+    snapshot = commands.add_parser('snapshot-neighbors', help='Freeze saved pair results for offline comparison')
+    snapshot.add_argument('run_directory', type=Path)
+    snapshot.add_argument('--output', type=Path, required=True)
+    compare = commands.add_parser('compare-neighbors', help='Compare two saved snapshots without inference or gold transfer')
+    compare.add_argument('before', type=Path)
+    compare.add_argument('after', type=Path)
+    corpus = commands.add_parser('compare-corpus',help='Compare thematic document snapshots from a manifest')
+    corpus.add_argument('manifest',type=Path)
+    layout = commands.add_parser('audit-layout',help='Compare original and column-aware parsing without inference')
+    layout.add_argument('pdfs',type=Path,nargs='+')
+    layout.add_argument('--output',type=Path,required=True)
     args = parser.parse_args(argv)
+    if args.command in {'audit-layout','compare-corpus'}:
+        from backend.stages.evaluation.parsing import compare_layouts
+        from backend.stages.evaluation.neighbors import compare_corpus
+        from backend.shared.artifacts import save_json
+        try:
+            result = compare_layouts(args.pdfs) if args.command=='audit-layout' else compare_corpus(args.manifest)
+            if args.command=='audit-layout':
+                if args.output.exists() or args.output.resolve() in {p.resolve() for p in args.pdfs}:
+                    raise ValueError('Choose a new report path, separate from the source PDFs')
+                save_json(args.output,result)
+                print(json.dumps({'output':str(args.output),'documents':len(result['documents'])}))
+            else:
+                print(json.dumps(result,indent=2))
+        except (ValueError,OSError,KeyError) as exc:
+            parser.error(str(exc))
+        return 0
+    if args.command in {'snapshot-neighbors', 'compare-neighbors'}:
+        from backend.stages.evaluation.neighbors import snapshot_neighbors, compare_neighbors
+        try:
+            result = (snapshot_neighbors(args.run_directory, args.output) if args.command == 'snapshot-neighbors'
+                      else compare_neighbors(args.before, args.after))
+        except (ValueError, OSError) as exc:
+            parser.error(str(exc))
+        print(json.dumps(result, indent=2))
+        return 0
     if args.command == 'score':
         if not args.path.is_file():
             parser.error(f'Evaluation file not found: {args.path}')

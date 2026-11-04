@@ -9,7 +9,7 @@ import pytest
 
 from backend.stages.claim_extraction.extractor import extraction_review_hints
 from backend.stages.claim_extraction.prompt import build_extraction_prompt
-from backend.stages.external_validation.synthesis import judge_with_synthesis
+from archive.legacy_pipeline.research_historical.external_validation.synthesis import judge_with_synthesis
 from backend.stages.pathway_assembly.contract import SYSTEM as ASSEMBLY_SYSTEM
 from backend.stages.pdf_parsing.packets import iter_pdf_context_packets, layout_heading_candidates
 from backend.stages.source_validation.checker import validate_source_claim

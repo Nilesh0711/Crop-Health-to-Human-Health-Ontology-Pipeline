@@ -2,25 +2,25 @@
 
 The transport is direct OpenCode inference. Stage selectors
 use DeepSeek Flash for extraction/source/per-paper external judgement, MiMo Flash
-for queries and pathway assembly, and MiMo Pro for cross-paper synthesis. `opencode-go/<model>` selects
+for queries and pathway assembly, and Muse Spark 1.3 Contributor for cross-paper synthesis. `opencode-go/<model>` selects
 `https://opencode.ai/inference/go/openai/v1/chat/completions`. The request body uses the bare model
 ID. Authorization stays in the backend, using an environment key or the current
 Windows user's Credential Manager. There is no automatic transport fallback.
 
 The implementation follows [OpenCode inference](https://opencode.ai/v2/docs/console/api/inference/)
 and [Go endpoints](https://opencode.ai/v2/docs/console/go/#endpoints).
-Small authenticated configuration probes found that MiMo Flash/Pro accept
+Small authenticated configuration probes found that MiMo Flash/Pro and Muse accept
 `json_schema`, while DeepSeek rejects it and accepts `json_object`. Native
 format requests supplement local validation; gateway acceptance alone does not
 prove every schema keyword is enforced upstream.
 
 ## Bounded recovery
 
-Joint external requests reserve at least **28,192 generation tokens** on the
+External neighboring-pair requests reserve at least **28,192 generation tokens** on the
 first attempt (`EXTERNAL_MIN_OUTPUT_BUDGET`). This is shared headroom for the
-answer and reasoning, chosen from the allowance already accepted by a successful
-eight-paper recovery. The concise final-answer target is unchanged. Larger
-calculated request budgets are preserved. This application setting is not a
+answer and reasoning, while per-request headroom can raise the requested limit. The concise final-answer
+target is separate from this generation budget. Larger original request allowances
+are preserved by recovery. This application setting is not a
 claim about the provider's maximum limit and does not guarantee completion.
 
 1. Make the scientific request with its selected model and original evidence.
@@ -67,8 +67,12 @@ HTTP/access/rate-limit failures and refusals are not content-recovery events.
 An incomplete/malformed initial attempt scheduled for bounded recovery logs a
 **warning** stating that regeneration or formatting repair is pending. Raw attempt
 status, error and token usage remain recorded. Successful recovery is identified
-explicitly. Exhausted/disabled recovery and provider failures log errors and stop
-the run. Document runs and claim actions use the same severity policy. Progress
+explicitly. Exhausted/disabled JSON/schema recovery and provider failures log
+errors and stop the run. A schema-valid but ungrounded external proof proposal
+instead holds the affected pair as `assessment_incomplete`, preserving the
+proposal separately and allowing other pairs to continue. It cannot enter the
+supported graph. Source/assembly failures remain visible through their owning
+stage. Document runs and claim actions use the same request severity policy. Progress
 also shows the generation token limit separately from provider input usage.
 Neither model substitution nor repeated recovery is allowed. The retired agent
 CLI adapter, local generative client and model-profile configuration are removed.
@@ -94,14 +98,39 @@ Saved parser errors from older runs may name an unrelated model. The API labels
 this historical wording for display and shows the recorded request model when
 available. Original log records and saved findings remain unchanged.
 
-## Why the response contains more than a triplet
+## What current responses describe
 
-These examples describe the data contract, not findings from a real paper.
+Each source result assesses one fixed atomic claim, with three claims batched
+per request by default. A paper request assesses two neighboring claims and their
+local connection against one retrieved paper. Pro synthesis reconciles the
+paper-bound findings for that same pair. It does not assess an entire long chain.
+Request-bound identities are attached from input instead of asking models to
+repeat them. See the [source contract](../stages/source_validation/README.md)
+and [neighboring-pair contract](../stages/neighbor_validation/README.md).
 
-| Field | Meaning and example |
+| Information | Purpose |
 | --- | --- |
-| Claim identifier and decision | `candidate-17` identifies one extracted assertion. Source `entailed` means the PDF supports it; external `supported` refers to admitted external evidence. IDs prevent batch answers being assigned to another claim. |
-| Entity alignments and qualifiers | An alignment links the canonical entity `cadmium` to a paper's mention `Cd`, with supplied text grounding that identity. Qualifiers retain restrictions such as the tested dose, crop or duration; a high-dose result cannot silently support an unrestricted claim. |
-| Paper and chunk identifiers | `paper-2` and `paper-2:chunk-4` identify the exact external document and retained passage. A quotation from that paper cannot migrate to another paper's judgement. |
-| Exact evidence quotations | The selected source wording is checked against the supplied passage. A model-written summary cannot replace a missing quotation. |
-| Explanations and review reasons | An explanation records why evidence applies. Review reasons expose missing endpoints, unmatched conditions or ungrounded identity. Explanations alone cannot override failed evidence checks. |
+| Source fidelity and project scope | Separate whether the PDF states the claim from whether it fits the project |
+| Alignment and qualifiers | Bind a source mention to its endpoint while preserving dose, species, material and other restrictions |
+| Edge and connection references | Identify the two original edges and their shared-entity junction |
+| Paper-local proof references | Select exact chunk/sentence IDs, from which code reconstructs literal quotations |
+| `claim_match` and `conditions_match` | Distinguish the full original proposition from partial/contextual evidence and assess applicability |
+| Local-pair synthesis | Reconcile grounded papers without transferring quotations or assuming causal transitivity |
+| Correction proposals | Preserve original wording alongside a proof-bound proposed revision for researcher review |
+| Scientific and execution status | Separate support/uncertainty from pending retrieval, invalid proof or technical failure |
+
+Abstract example: Paper A's sentence 4 concerns `Factor A -> Process B`.
+A model can paraphrase that finding, but its proof must still identify Paper A,
+the actual chunk and sentence 4. It cannot assign the quotation to Paper B.
+These deterministic checks protect source traceability. Scientific support and
+connection compatibility remain model judgements from supplied text.
+
+## Historical NLI diagnostics
+
+No NLI model is loaded or called by the current pipeline. The retired DeBERTa
+implementation lives under `archive/legacy_pipeline/`; older diagnostic fields
+remain readable in saved results. They do not grant current support. BGE and
+MedCPT are still active local retrieval/ranking models, while DeepSeek and MiMo
+make the scientific assessments.
+
+Muse uses schema-format requests plus application schema/proof validation. After the user enabled workspace access, a small authenticated application-client probe succeeded. Muse sends reasoning_effort=minimal for the unchecked external switch and high when checked; the generic thinking parameter is unsupported on its translated Responses route. Logs show required minimal reasoning rather than claiming it is disabled. See [v50 access and compatibility](../../docs/protocols/muse_external_model.md).

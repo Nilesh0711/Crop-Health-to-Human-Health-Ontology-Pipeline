@@ -25,13 +25,17 @@ def request_json(method, url, *, headers, timeout, max_bytes, **kwargs):
                     import json
                     return json.loads(body)
             async def bounded_read():
-                for attempt in range(2):
+                for attempt in range(3):
                     try:
                         return await read()
-                    except httpx.HTTPStatusError as exc:
-                        if attempt or exc.response.status_code not in {429, 500, 502, 503, 504}:
+                    except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError):
+                        if attempt == 2:
                             raise
-                        await asyncio.sleep(0.6)
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                    except httpx.HTTPStatusError as exc:
+                        if attempt == 2 or exc.response.status_code not in {429, 500, 502, 503, 504}:
+                            raise
+                        await asyncio.sleep(0.6 * (attempt + 1))
             task = asyncio.create_task(bounded_read())
             try:
                 while not task.done():

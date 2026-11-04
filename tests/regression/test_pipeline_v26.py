@@ -14,7 +14,7 @@ from backend.stages.claim_extraction.extractor import (
     extraction_review_hints,
 )
 from backend.config.settings import Settings
-from backend.stages.external_validation.proofs import _derive_evidence_quotes
+from archive.legacy_pipeline.research_historical.external_validation.guards import _derive_evidence_quotes
 from tests.external.helpers import judge_document
 from backend.providers.llm import LLMError, OpenCodeClient
 from backend.stages.literature_retrieval.workflow import _bibliographic_key, _independence_group

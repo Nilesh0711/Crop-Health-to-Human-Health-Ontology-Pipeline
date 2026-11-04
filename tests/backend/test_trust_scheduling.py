@@ -4,10 +4,10 @@ from threading import Event
 
 import pytest
 
-from backend.pipelines import trust
+from archive.legacy_pipeline.research_historical.pipelines import trust
 from backend.shared.cache import RunCache
 from backend.shared.cancellation import CancellationToken, PipelineStopped, cancellation_scope, check_cancelled
-from backend.stages.external_validation.workflow import _signature, prepare_evidence
+from archive.legacy_pipeline.research_historical.external_validation.workflow import _signature, prepare_evidence
 from tests.external.test_trust_graph import config, fixtures, GroupClient
 
 
@@ -80,7 +80,7 @@ def test_prefetched_selected_passages_survive_failure_and_resume_without_refetch
 
 
 def test_cancelled_lookahead_does_not_cancel_its_parent_or_continue_new_work():
-    from backend.pipelines.external import prefetch_evidence
+    from archive.legacy_pipeline.research_historical.pipelines.external import prefetch_evidence
     from backend.shared.cancellation import current_token
     parent = CancellationToken()
     second_started = Event()

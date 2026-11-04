@@ -6,22 +6,22 @@ from types import SimpleNamespace
 
 import pytest
 
-from backend.config.settings import Settings
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
 from backend.providers.response_repair import validate_schema
 from backend.providers.llm import LLMServiceError
 from backend.providers.structured_output import EvidenceSelectionError, IncompleteResponseError
 from backend.shared.artifacts import save_rows
-from backend.stages.trust_graph.ledger import evidence_balance, graph_contributions
-from backend.stages.trust_graph.grouping import claim_batches
-from backend.stages.trust_graph.judgement import shared_documents
-from backend.stages.trust_graph.workflow import assess_group
+from archive.legacy_pipeline.trust_graph.ledger import evidence_balance, graph_contributions
+from archive.legacy_pipeline.research_historical.trust_graph.grouping import claim_batches
+from archive.legacy_pipeline.research_historical.trust_graph.judgement import shared_documents
+from archive.legacy_pipeline.research_historical.trust_graph.workflow import assess_group
 from backend.stages.pathway_assembly.corpus import collect_corpus
 from backend.stages.literature_retrieval.clients import extract_paragraphs, make_chunks
 from tests.external.test_paper_synthesis import example, synthesis
 
 
 def config():
-    return replace(Settings(), external_judgement_mode='trust_graph', trust_batch_size=6, enable_nli=False)
+    return replace(Settings(), external_judgement_mode='trust_graph', trust_batch_size=6)
 
 
 def fixtures(count=3, papers=2):
@@ -123,7 +123,7 @@ def test_real_provider_adapter_preserves_primary_routes_thinking_and_response_mo
 
 
 def test_shared_paper_wire_contract_has_one_claim_identity_and_rejects_wrong_envelopes(tmp_path):
-    from backend.stages.trust_graph.judgement import judge_shared_paper
+    from archive.legacy_pipeline.research_historical.trust_graph.judgement import judge_shared_paper
     from backend.providers.structured_output import parse_json_object, DuplicateJSONPropertyError
     claims, packets, answers = fixtures(2, 1)
     captured = {}
@@ -158,7 +158,7 @@ def test_shared_paper_wire_contract_has_one_claim_identity_and_rejects_wrong_env
 def test_single_claim_has_no_identity_envelope_and_keeps_large_generation_allowance(monkeypatch):
     from backend.providers.inference import InferenceHTTP
     from backend.providers.llm import OpenCodeClient
-    from backend.stages.trust_graph.judgement import judge_shared_paper
+    from archive.legacy_pipeline.research_historical.trust_graph.judgement import judge_shared_paper
     claims, packets, answers = fixtures(1, 1)
     expected = answers[('claim-0', 'paper-0')]
     payloads = []
@@ -186,7 +186,7 @@ def test_single_claim_has_no_identity_envelope_and_keeps_large_generation_allowa
 def test_duplicate_single_claim_envelope_regenerates_to_bare_result_without_local_repair(monkeypatch):
     from backend.providers.inference import InferenceHTTP
     from backend.providers.llm import OpenCodeClient
-    from backend.stages.trust_graph.judgement import judge_shared_paper
+    from archive.legacy_pipeline.research_historical.trust_graph.judgement import judge_shared_paper
     claims, packets, answers = fixtures(1, 1)
     expected = answers[('claim-0', 'paper-0')]
     encoded = json.dumps(expected)
@@ -207,7 +207,7 @@ def test_duplicate_single_claim_envelope_regenerates_to_bare_result_without_loca
 
 
 def test_shared_paper_rejects_duplicate_input_claims_before_provider():
-    from backend.stages.trust_graph.judgement import judge_shared_paper
+    from archive.legacy_pipeline.research_historical.trust_graph.judgement import judge_shared_paper
     claims, packets, answers = fixtures(1, 1)
     client = GroupClient(answers)
     doc = packets['claim-0']['evidence_documents'][0]
@@ -258,7 +258,7 @@ def test_grouped_synthesis_shares_identical_source_context_without_dropping_text
 
 
 def test_parallel_scheduler_preserves_job_cancellation_and_stops_submitting_after_failure():
-    from backend.stages.trust_graph.scheduling import parallel_papers
+    from archive.legacy_pipeline.research_historical.trust_graph.scheduling import parallel_papers
     from backend.shared.cancellation import CancellationToken, cancellation_scope, PipelineStopped, current_token
     token = CancellationToken()
     with cancellation_scope(token):
@@ -313,7 +313,7 @@ def test_oversized_input_fails_before_provider_call_without_dropping_evidence(tm
 
 
 def test_pathway_compatibility_is_preserved_and_invalidated_when_an_edge_is_revised(tmp_path):
-    from backend.stages.trust_graph.ledger import connection_assessments
+    from archive.legacy_pipeline.trust_graph.ledger import connection_assessments
     claims, packets, answers = fixtures(2)
     client = GroupClient(answers)
     link = {'upstream_claim_id': 'claim-0', 'downstream_claim_id': 'claim-1', 'shared_entity': 'Shared context'}
@@ -409,6 +409,8 @@ def test_changed_assertion_cannot_keep_visible_votes_or_validated_graph_membersh
 
 def test_provisional_corpus_includes_pending_edges_but_validated_corpus_does_not(tmp_path):
     claims, _, _ = fixtures(2, 0)
+    for claim in claims:
+        claim['source_validation']['project_scope'] = {'decision': 'in_scope', 'rationale': 'A source-grounded crop mechanism.'}
     save_rows(tmp_path / 'doc' / 'candidates.jsonl', claims)
     assert len(collect_corpus(tmp_path, provisional=True)[0]) == 2
     assert collect_corpus(tmp_path)[0] == []

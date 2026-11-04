@@ -8,20 +8,24 @@ import unicodedata
 from collections import Counter
 
 from backend.shared.text_structure import REFERENCE_HEADING_TEXT
+from backend.stages.pdf_parsing.layout import page_text, PARSING_POLICY
 
 REFERENCES = re.compile(rf'^\s*(?:\d+(?:\.\d+)*\.?\s+)?{REFERENCE_HEADING_TEXT}\s*$', re.I)
 CHAPTER = re.compile(r'^\s*chapter\s+(?:\d+|[IVX]+)\b', re.I)
 
 
-def inspect_pdf(reader, max_pages=0):
+def inspect_pdf(reader, max_pages=0, parsing_policy=PARSING_POLICY):
     total = len(reader.pages)
     limit = min(total, max_pages) if max_pages else total
-    texts, errors = [], {}
+    texts, errors, layouts = [], {}, []
     for index in range(total):
         try:
-            texts.append(unicodedata.normalize('NFKC', reader.pages[index].extract_text() or ''))
+            text, layout = page_text(reader.pages[index],parsing_policy)
+            texts.append(unicodedata.normalize('NFKC',text))
+            layouts.append(layout)
         except Exception as exc:
             texts.append('')
+            layouts.append({'method':'unavailable','text_preserved':False})
             errors[index + 1] = type(exc).__name__
     counts = Counter(line.strip() for text in texts for line in set(text.splitlines()) if line.strip())
     repeated = {line for line, count in counts.items() if count >= max(3, total // 5)
@@ -84,11 +88,12 @@ def inspect_pdf(reader, max_pages=0):
                        'reference_characters': len(regions[-1]['references']),
                        'within_page_limit': page <= limit, 'flags': flags,
                        'reading_order': 'suspect' if any('order' in f for f in flags) else 'not_verified',
-                       'chapter_id': chapter_id})
+                       'chapter_id': chapter_id,'layout':layouts[page-1]})
     for region in regions:
         following = [p for p in boundaries if p > region['chapter_start']]
         region['chapter_end'] = min(following) - 1 if following else total
     return {'regions': regions, 'pages': audits, 'total_pages': total, 'selected_pages': limit,
+            'parsing_policy':parsing_policy,
             'pages_with_text': sum(bool(t.strip()) for t in texts),
             'pages_with_warnings': sum(bool(a['flags']) for a in audits),
             'text_extraction_coverage': sum(bool(t.strip()) for t in texts) / max(1, total),

@@ -1,4 +1,4 @@
-"""Check whether the originating PDF's cited text entails an extracted claim."""
+"""Assess originating-PDF fidelity and project scope as separate model decisions."""
 
 from __future__ import annotations
 
@@ -9,11 +9,13 @@ from typing import Any
 
 from backend.domain.modality import uses_conditional_modality
 from backend.domain.claim_matching import entity_anchored
-from backend.domain.alignment import ALIGNMENT_INSTRUCTIONS, ENTITY_ALIGNMENTS_SCHEMA, exact_in, normalized_phrase
+from backend.domain.alignment import ENTITY_ALIGNMENTS_SCHEMA, exact_in, normalized_phrase
+from backend.stages.source_validation.prompt import SOURCE_SYSTEM
 from backend.providers.llm import OpenCodeClient
-from backend.providers.nli import NLIValidator, claim_hypothesis
+from backend.stages.source_validation.scope import PROJECT_SCOPE_SCHEMA
+from backend.stages.source_validation.output import compact_source_schema, bind_source_output
 from backend.stages.source_validation.abbreviations import (
-    ABBREVIATION_SCHEMA, ABBREVIATION_INSTRUCTIONS, SOURCE_VALIDATION_POLICY,
+    ABBREVIATION_SCHEMA, SOURCE_VALIDATION_POLICY,
     prepare_name_expansions, commit_name_expansions,
 )
 
@@ -100,10 +102,11 @@ _ASSOCIATION_ONLY = re.compile(
 )
 _DEFICIENCY_CUE = re.compile(r"\b(?:deficien\w*|insufficien\w*|deplet\w*)\b")
 
-_SOURCE_DECISION_SCHEMA = {
+_SOURCE_DECISION_SCHEMA = compact_source_schema({
     "type": "object",
     "properties": {
         "decision": {"type": "string", "enum": ["entailed", "unsupported", "needs_review"]},
+        "project_scope": PROJECT_SCOPE_SCHEMA,
         "relation_match": {"type": "boolean"},
         "direction_match": {"type": "boolean"},
         "certainty_match": {"type": "boolean"},
@@ -127,9 +130,9 @@ _SOURCE_DECISION_SCHEMA = {
         },
         "rationale": {"type": "string"},
     },
-    "required": ["decision", "relation_match", "direction_match", "certainty_match", "claim_text_match", "occurrence_provenance_fields", "entity_alignment", "abbreviation_review", "proof", "rationale"],
+    "required": ["decision", "project_scope", "relation_match", "direction_match", "certainty_match", "claim_text_match", "occurrence_provenance_fields", "entity_alignment", "abbreviation_review", "proof", "rationale"],
     "additionalProperties": False,
-}
+})
 
 
 def _check_source_response_complete(response):
@@ -334,19 +337,20 @@ def _source_alignment_grounded(mapping, canonical, proof_texts, context):
             or not str(mapping.get('explanation') or '').strip()
             or not any(exact_in(mapping.get('mention'), text) for text in proof_texts)):
         return False
-    evidence = mapping.get('evidence')
+    evidence = mapping.get('evidence') or mapping.get('mention')
     if mapping['kind'] in {'same_concept', 'coordination'}:
         return any(exact_in(evidence, text) for text in proof_texts) and exact_in(mapping['mention'], evidence)
     return exact_in(evidence, context) or any(exact_in(evidence, text) for text in proof_texts)
 
 
-def validate_source_claim(candidate: dict[str, Any], client: OpenCodeClient,
-                          nli_validator: NLIValidator | None = None) -> dict[str, Any]:
+def validate_source_claim(candidate: dict[str, Any], client: OpenCodeClient) -> dict[str, Any]:
     span = str(candidate.get("source_evidence_span", "")).strip()
     numbers = candidate.get("source_evidence_sentence_numbers", [])
     base = {"candidate_id": candidate["candidate_id"]}
     if not span or not isinstance(numbers, list) or not 1 <= len(numbers) <= 3:
-        return {**base, "decision": "unsupported", "rationale": "Missing source evidence."}
+        return {**base, "decision": "unsupported", "rationale": "Missing source evidence.",
+                'project_scope': {'decision': 'needs_review', 'rationale': 'Missing source evidence; scope was not assessed.'},
+                'validation_policy': SOURCE_VALIDATION_POLICY}
 
     subject_surface, has_subject_surface = _source_mention(candidate, "subject")
     object_surface, has_object_surface = _source_mention(candidate, "object")
@@ -357,89 +361,6 @@ def validate_source_claim(candidate: dict[str, Any], client: OpenCodeClient,
         proof_texts = [f['text'] for f in candidate.get('source_evidence_fragments', [])
                        if isinstance(f, dict) and isinstance(f.get('text'), str)]
 
-    system = (
-        "Act as a skeptical source-evidence verifier. The extracted claim is an untrusted hypothesis that may be wrong. "
-        "Judge whether the selected SOURCE PDF evidence span directly entails every part of that exact claim. "
-        "Use the supplied same-section context only to resolve an explicit abbreviation, pronoun, contextual term "
-        "such as 'then', or generic topic mention that is bound by the supplied "
-        "local section heading (abstract example: 'disease intensity' inside a 'Disease D of Crop C' section). The context includes "
-        "original sentence IDs/pages. Use actual earlier definitions/antecedents when the nearest sentences are insufficient. "
-        "Never use the paper title, "
-        "a distant paragraph, or world knowledge as proof. The selected span must still state the object and relation. "
-        "Check the exact subject, object, relation, direction, and source modality. Relation names are open; "
-        "assess their meaning against the source, not a predicate whitelist or a type-pair rule. "
-        "Extraction review hints are unverified attention notes, not evidence. This is an extraction-fidelity "
-        "decision, not a global causal-truth decision: an observational directional result may be faithfully encoded as "
-        "descriptive, while may/can/thought/suggested must be conditional, association/correlation must be associative, "
-        "and causal is reserved for explicit causal wording. Preserve source modality through certainty_match; a mismatch "
-        "means the extracted claim is not faithful enough for automatic acceptance. A bare association without "
-        "direction must not become causes, increases, reduces, or leads_to. "
-        "Judge one atomic edge only. If X affects an intermediate M and M affects Y (including a relative clause such as "
-        "'M, which increases Y'), the passage does not entail a collapsed X-to-Y edge. "
-        "An explicitly stated paired directional trend (X decreases as Y increases) may be encoded as Y reduces X "
-        "with descriptive certainty and a non-causal claim_text. It does not prove causation. A bare correlation without "
-        "a stated direction cannot support increases/reduces. A claim about a different crop, population or material is unsupported. "
-        "Abstract fidelity examples (placeholder entities, never evidence): 'Factor A changes Process B, "
-        "which changes Outcome C' does NOT entail a direct Factor A->Outcome C edge. Its two edges are "
-        "Factor A->Process B and Process B->Outcome C, even when claim_text mentions both. "
-        "'X may affect Y' cannot validate certainty=causal. 'X directly affects Y' alone cannot validate "
-        "relation=reduces. 'X threatens Y' is a threat/risk, not a measured reduction of Y. "
-        "Use respectively/list-item assignments exactly; do not assign one listed property to all items. "
-        "If the evidence explicitly restricts the finding to a named crop, population, dose, condition, comparator, or exposure route "
-        "and the claim omits that restriction from both its entities and qualifiers, choose needs_review. Empty qualifier fields are "
-        "otherwise normal; do not demand information that the selected evidence does not state. "
-        "For a crop has_contaminant occurrence claim, a location or farming setting stored as source_occurrence_context "
-        "describes where the source observed it; the atomic crop-contaminant edge does not assert universal prevalence. "
-        "Do not demand that setting again as a population qualifier. Keep actual species, dose, treatment, disease "
-        "condition, or exposed-human-population restrictions in qualifiers. "
-        "Classify misplaced occurrence provenance in occurrence_provenance_fields: ONLY for descriptive has_contaminant, "
-        "identify any condition/population field that describes merely the geographic site or commercial/subsistence farming "
-        "setting of a reported occurrence, not an actual biological restriction. Echo its exact field/value and quote a real "
-        "substring from the selected evidence explaining that setting. Otherwise return an empty list. Never classify infection, "
-        "genotype, dose, processing/treatment, comparator or exposed-human subgroup as mere provenance; keep uncertain cases "
-        "as restrictions. This is a role classification, not permission to invent a broader causal or prevalence claim. "
-        "For example, condition='Disease D infection' in an affected Crop C material claim is a biological "
-        "restriction and must remain, even when the disease is also named in a section heading. "
-        "When source surface mentions or a relation trigger are supplied, treat them as the required textual anchors and verify them "
-        "against the selected evidence span; they do not by themselves prove the claim. "
-        + ALIGNMENT_INSTRUCTIONS +
-        "Use the shortest sufficient literal proof anchors; do not recopy whole OCR-damaged sentences. "
-        "proof.subject and proof.object must contain or equal their corresponding entity_alignment.mention; "
-        "do not put one endpoint's mention in the proof slot for a different endpoint. The full selected evidence must "
-        "still support the property. Canonical entities can combine a local referent with a heading/definition: "
-        "in a 'Disease D affecting Crop C material' section, 'this material' can refer to Disease D-affected Crop C "
-        "material when the supplied context establishes that identity. Quote 'this material' as the mention and the actual supplied heading/antecedent as binding evidence. "
-        "The complete combined canonical phrase need not appear literally in that heading. Explain the binding; "
-        "a heading does not permit replacing a material with a disease or one crop with another. "
-        "Preserve contrasts: 'Factor A changes Outcome X; Factor B changes Outcome Y but not Outcome X' "
-        "does not support a Factor B->changes->Outcome X edge. Bind each effect and negation to its actual subject. "
-        "Also check claim_text_match: if a contextual claim_text is provided, every assertion, qualifier and modality "
-        "in that restatement must be supported by this same evidence and explicit local referents. Extra inferred "
-        "mechanisms, health consequences, causal upgrades, or changed measured outcomes make it false. "
-        "A faithful paraphrase need not be verbatim; require exact substrings for proof anchors only. "
-        "Read compressed causal and explanatory constructions in their full sentence context. "
-        "An implicitly expressed relationship is not automatically a reversed relationship. "
-        "Identify which endpoints a causal connector actually joins; if more than one reading is plausible, "
-        "choose needs_review and describe the ambiguity instead of inventing an opposite direction. "
-        "Numerical values must describe the same measured outcome, unit and denominator as the extracted edge. "
-        "Do not reject neutral reporting language alone, but 'samples' requires an explicit sampling setting. "
-        "A neutral structured_rendering is just the structured claim repeated, not additional evidence. "
-        "Return JSON with decision (entailed, unsupported, needs_review), relation_match, direction_match, "
-        "certainty_match, proof {subject, relation, object} containing exact substrings of the selected evidence span, "
-        "and a brief rationale. Choose needs_review when wording is ambiguous."
-    )
-    system += ABBREVIATION_INSTRUCTIONS
-    system += (
-        ' Source evidence may contain explicitly marked non-adjacent fragments. '
-        'source_evidence_fragments preserves their original sentence IDs/pages; source_intervening_context '
-        'contains EVERY omitted sentence between them, including tables or conflicting findings. '
-        'A gap marker is application metadata, never source wording. Do not treat separate fragments '
-        'as one continuous quotation or infer a missing causal link. Check intervening text for conditions '
-        'and contradictions; choose needs_review if continuity or the direct edge cannot be established. '
-        'A table or running page header interrupting a source sentence is not by itself a scientific break: '
-        'sentence fragments can continue across that interruption if their actual text establishes continuity. '
-        'Assess continuity from the supplied text, not the existence of a gap alone. '
-        'Proof anchors must each occur literally within an actual selected fragment, not across a gap.')
     payload = {
         'source_evidence_fragments': candidate.get('source_evidence_fragments', []),
         'source_intervening_context': candidate.get('source_intervening_context', []),
@@ -456,9 +377,9 @@ def validate_source_claim(candidate: dict[str, Any], client: OpenCodeClient,
         "relation_trigger": relation_trigger if has_relation_trigger else None,
         "selected_evidence_span": span,
         "nearby_context": _nearby_context(candidate, span),
-        **({'source_reassessment': candidate['_source_reassessment']} if candidate.get('_source_reassessment') else {}),
     }
     def check_response(response):
+        response = bind_source_output(candidate, response)
         _check_source_response_complete(response)
         if response.get('decision') != 'entailed':
             return
@@ -474,14 +395,18 @@ def validate_source_claim(candidate: dict[str, Any], client: OpenCodeClient,
         if errors:
             raise EvidenceSelectionError('; '.join(errors))
 
-    judged = client.chat_json(system, json.dumps(payload, ensure_ascii=False), max_tokens=1600,
+    judged = client.chat_json(SOURCE_SYSTEM, json.dumps(payload, ensure_ascii=False), max_tokens=1800,
                               json_schema=_SOURCE_DECISION_SCHEMA, request_label=f"source: {candidate['candidate_id']}",
                               response_check=check_response)
+    judged = bind_source_output(candidate, judged)
     original_candidate = candidate
     abbreviation_review = judged.get('abbreviation_review')
     candidate, name_errors = prepare_name_expansions(candidate, abbreviation_review,
                                                     _nearby_context(candidate, span) + ' ' + span)
     alignments = judged.get("entity_alignment") if isinstance(judged.get("entity_alignment"), dict) else {}
+    for role in ('subject', 'object'):
+        if isinstance(alignments.get(role), dict):
+            alignments[role].setdefault('canonical', candidate.get(role, ''))
     grounded = {role: _source_alignment_grounded(alignments.get(role), candidate.get(role), proof_texts,
                                                _nearby_context(candidate, span))
                 for role in ("subject", "object")}
@@ -543,6 +468,8 @@ def validate_source_claim(candidate: dict[str, Any], client: OpenCodeClient,
         elif not any(_surface_anchored(trigger_for_check, text) for text in proof_texts):
             reasons.append("Relation trigger is missing from the selected evidence")
     result = {**base, "decision": decision, 'model_decision': judged.get('decision'),
+              'project_scope': judged.get('project_scope') or {
+                  'decision': 'needs_review', 'rationale': 'No model project-scope decision was recorded.'},
               'model_matches': {k: judged.get(k) for k in ('relation_match', 'direction_match', 'certainty_match')},
               "rationale": str(judged.get("rationale", "")).strip()[:400],
               'validation_policy': SOURCE_VALIDATION_POLICY}
@@ -574,22 +501,6 @@ def validate_source_claim(candidate: dict[str, Any], client: OpenCodeClient,
     proof = _proof_from_judgment(judged)
     if any(proof.values()):
         result["proof"] = proof
-    if nli_validator is not None:
-        try:
-            heading = str(candidate.get("source_evidence_section_heading")
-                          or candidate.get("source_section_heading") or "").strip()
-            contextual_binding = (
-                _contextual_topic_compatible(candidate, candidate.get("subject"), subject_surface)
-                or _contextual_topic_compatible(candidate, candidate.get("object"), object_surface)
-            )
-            premise = f"Section: {heading}. {span}" if contextual_binding and heading else span
-            scores = nli_validator.score(premise, claim_hypothesis(candidate))
-            result["nli"] = {"model": nli_validator.settings.nli_model, "scores": scores}
-            if result["decision"] == "entailed" and scores.get("contradiction", 0.0) >= 0.75:
-                result["decision"] = "needs_review"
-                result.setdefault("reasons", []).append("Independent NLI strongly contradicts the extracted claim")
-        except Exception as exc:
-            result["nli"] = {"model": nli_validator.settings.nli_model, "error": str(exc)[:240]}
     if result['decision'] == 'entailed':
         applied = commit_name_expansions(original_candidate, candidate, abbreviation_review)
         if applied:

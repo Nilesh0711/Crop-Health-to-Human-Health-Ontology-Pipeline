@@ -24,16 +24,24 @@ try {
   assert.match(liveActivity, /paper external: claim/)
   assert.match(liveActivity, /deepseek-v4.1-flash/)
   const { StopRunButton } = await server.ssrLoadModule('/src/components/workspace/WorkbenchPanels.jsx')
+  const { RedoExternalValidationButton, ResumeRunButton } = await server.ssrLoadModule('/src/components/workspace/WorkbenchPanels.jsx')
+  const redo = props => renderToStaticMarkup(React.createElement(RedoExternalValidationButton, props))
+  assert.equal(redo({available:false}), '')
+  assert.equal(redo({available:true,readOnly:true}), '')
+  assert.match(redo({available:true,onRedo:()=>{}}), /Redo external validation/)
+  assert.match(redo({available:true,onRedo:()=>{}}), /all eligible neighboring pairs/)
+  assert.match(redo({available:true,disabled:true}), /disabled/)
+  assert.match(renderToStaticMarkup(React.createElement(ResumeRunButton,{canResume:true})), /Resume run/)
   const stopButton = props => renderToStaticMarkup(React.createElement(StopRunButton, props))
   assert.equal(stopButton({active:false}), '')
   assert.match(stopButton({active:true, stopping:false}), /Stop pipeline/)
   assert.match(stopButton({active:true, stopping:true}), /disabled/)
   assert.match(stopButton({active:true, stopping:true}), /Stopping/)
   const { RunSetup } = await server.ssrLoadModule('/src/components/workspace/WorkbenchPanels.jsx')
-  const options = { max_pages: 0, max_claims: 0, articles_per_claim: 8, claims_per_packet: 4,
+  const options = { max_pages: 0, neighbor_max_pairs: 100, articles_per_pathway: 8, claims_per_packet: 4,
     extraction_mode: 'target_context', extraction_target_words: 800, extraction_generation_budget: 24576 }
   const taskModels = { extraction: 'opencode-go/deepseek-v4.1-flash', source: 'opencode-go/deepseek-v4.1-flash',
-    query: 'opencode-go/mimo-v2.6-flash', external: 'opencode-go/mimo-v2.6-pro', pathway_assembly: 'opencode-go/mimo-v2.6-flash' }
+    query: 'opencode-go/mimo-v2.6-flash', external: 'opencode-go/muse-spark-1.3-contributor', pathway_assembly: 'opencode-go/mimo-v2.6-flash' }
   const render = current => renderToStaticMarkup(React.createElement(RunSetup, {
     health: { pipeline: { task_models: taskModels, external_phase_models: {paper: taskModels.source, synthesis: taskModels.external} } },
     options: current, onOptions: () => {}, open: true, onToggle: () => {},
@@ -51,6 +59,11 @@ try {
   assert.match(target, /Per-paper judgement model/)
   assert.match(target, /Cross-paper synthesis model/)
   assert.match(target, /DeepSeek Flash judges each paper/)
+  assert.match(target, /Muse Spark 1.3 Contributor synthesizes the findings and audits/)
+  assert.match(target, /Muse requires reasoning/)
+  assert.match(target, /minimal effort when unchecked and high effort when checked/)
+  assert.match(target, /thinking-state">Minimal<\/span>/)
+  assert.doesNotMatch(target, /MiMo Pro/)
   assert.doesNotMatch(target, /<h3>Model thinking<\/h3>/)
   assert.equal((target.match(/<h3>Assigned models<\/h3>/g) || []).length, 1)
   for (const [key, label] of (await server.ssrLoadModule('/src/lib/thinking.js')).THINKING_STAGES) {
@@ -76,8 +89,8 @@ try {
   assert.match(whole, /Select claims from anywhere/)
   assert.match(whole, /Generation budget/)
   assert.match(whole, /PDF pages/)
-  assert.match(whole, /Claims to validate/)
-  assert.match(whole, /Search papers per claim/)
+  assert.match(whole, /Neighbor pairs to assess/)
+  assert.match(whole, /Search papers per neighboring pair/)
   const uncapped = render({ ...options, claims_per_packet: 0 })
   assert.match(uncapped, /0 = all eligible claims/)
   const { default: PathwayPanel } = await server.ssrLoadModule('/src/components/graph/PathwayPanel.jsx')

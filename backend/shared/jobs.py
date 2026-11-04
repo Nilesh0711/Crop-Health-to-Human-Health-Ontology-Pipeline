@@ -31,7 +31,7 @@ def save_job(output, job_id, job, *, update_latest=True):
     if update_latest:
         state = {key: record.get(key) for key in (
             'id', 'pdf_id', 'status', 'error', 'started_at', 'updated_at', 'finished_at',
-            'action', 'candidate_id', 'options', 'resume', 'interrupted')}
+            'action', 'candidate_id', 'options', 'resume', 'interrupted', 'redo_external_validation', 'external_assessment_id')}
         save_json(output / 'run_state.json', state)
 
 

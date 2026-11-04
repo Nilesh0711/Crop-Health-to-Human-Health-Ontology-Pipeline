@@ -2,7 +2,8 @@
 from copy import deepcopy
 
 from backend.domain.alignment import exact_in, normalized_phrase
-from backend.stages.external_validation.proofs import _DECISION_SCHEMA, _sentences
+from backend.stages.external_validation.proofs import _DECISION_SCHEMA
+from backend.stages.external_validation.evidence import selected_context
 
 
 SELECTION_SCHEMA = {'type': 'object', 'properties': {
@@ -20,30 +21,6 @@ PAPER_DECISION_SCHEMA['allOf'] = [{
 }]
 
 
-def selected_context(document, selection, *, finding=False):
-    """Reconstruct only real local IDs, keeping context gaps explicit."""
-    chunk = next((c for c in document.get('evidence_chunks', []) if c.get('chunk_id') == selection.get('chunk_id')), None)
-    numbers = selection.get('sentence_numbers')
-    sentences = _sentences((chunk or {}).get('text'))
-    maximum = 3 if finding else 6
-    if (not chunk or not isinstance(numbers, list) or not 1 <= len(numbers) <= maximum
-            or any(type(n) is not int for n in numbers) or numbers != sorted(set(numbers))
-            or not 1 <= numbers[0] <= numbers[-1] <= len(sentences)):
-        return None, 'Selection must use unique ascending sentence IDs from this paper/chunk'
-    fragments, group, previous = [], [], None
-    for number in numbers:
-        if previous is not None and number != previous + 1:
-            fragments.append(' '.join(group)); group = []
-        group.append(sentences[number - 1]); previous = number
-    fragments.append(' '.join(group))
-    if finding and sum(len(fragment.split()) for fragment in fragments) > 180:
-        return None, 'A finding quotation exceeds 180 words; choose a shorter finding and separate context'
-    gap = ' [NON-ADJACENT EVIDENCE] ' if finding else ' [NON-ADJACENT CONTEXT] '
-    return {**selection, **{key: chunk[key] for key in ('source_kind', 'table_id', 'row_number', 'figure_id') if key in chunk},
-            'fragments': fragments, 'is_contiguous': len(fragments) == 1,
-            'intervening_context': [{'number': number, 'text': sentences[number - 1]}
-                                    for number in range(numbers[0], numbers[-1] + 1) if number not in numbers] if finding else [],
-            'quoted_span': gap.join(fragments)}, None
 
 
 def provenance(candidate, document, row):
@@ -137,27 +114,3 @@ def guard_paper(candidate, document, row):
                       guardrail_reasons=list(dict.fromkeys(errors)),
                       rationale='Paper finding awaits evidence review: ' + '; '.join(dict.fromkeys(errors)))
     return result
-
-
-def grounded_roles(assessment, documents, allowed=None):
-    """Ground the model's contextual type claims without lexical synonym gates."""
-    by_id, grounded, errors = {d['evidence_document_id']: d for d in documents}, [], []
-    for item in assessment.get('role_evidence') or []:
-        doc = by_id.get(item.get('evidence_document_id'))
-        if doc is None or item.get('role') not in {'subject', 'object'}:
-            errors.append('Role evidence names an unknown paper or role'); continue
-        if allowed is not None and not set(item.get('sentence_numbers') or []) <= allowed.get(item.get('evidence_document_id'), {}).get(item.get('chunk_id'), set()):
-            errors.append('Role evidence selects sentences absent from the synthesis input'); continue
-        selection, error = selected_context(doc, item)
-        if error:
-            errors.append(error); continue
-        if (not any(exact_in(item.get('entity_mention'), text) for text in selection['fragments'])
-                or not any(exact_in(item.get('role_trigger'), text) for text in selection['fragments'])
-                or not str(item.get('rationale') or '').strip()):
-            errors.append('Role classification needs literal entity and role wording in its selected paper context'); continue
-        grounded.append({**item, 'quoted_span': selection['quoted_span'], 'fragments': selection['fragments'],
-                         'assessed_type': assessment.get(item['role'] + '_type')})
-    for role in ('subject', 'object'):
-        if not any(r['role'] == role for r in grounded):
-            errors.append(f'No quoted contextual evidence for {role} classification')
-    return grounded, list(dict.fromkeys(errors))

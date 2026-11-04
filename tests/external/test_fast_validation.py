@@ -14,8 +14,8 @@ from backend.shared.evidence_index import EvidenceIndex, EvidenceIndexError, POL
 from backend.shared.cancellation import current_token, check_cancelled
 from backend.stages.literature_retrieval.scheduling import collect_searches
 from backend.stages.literature_retrieval.workflow import _paper_material
-from backend.stages.trust_graph.ready import ReadyPaperJudge
-from backend.stages.trust_graph.workflow import assess_group
+from archive.legacy_pipeline.research_historical.trust_graph.ready import ReadyPaperJudge
+from archive.legacy_pipeline.research_historical.trust_graph.workflow import assess_group
 from tests.external.test_trust_graph import fixtures, GroupClient, config
 
 
@@ -146,8 +146,8 @@ def test_expanded_final_paper_input_is_not_validated_using_an_earlier_subset(tmp
 
 def test_retrieval_pending_keeps_findings_but_blocks_validated_graph(tmp_path):
     from backend.stages.graph_construction.graph import _edge_status
-    from backend.stages.external_validation.aggregation import aggregate_assessment
-    from backend.stages.trust_graph.ledger import evidence_balance
+    from archive.legacy_pipeline.research_historical.external_validation.aggregation import aggregate_assessment
+    from archive.legacy_pipeline.trust_graph.ledger import evidence_balance
     claims, packets, answers = fixtures(1, 1)
     client = GroupClient(answers)
     packet = packets['claim-0']; packet['retrieval_pending'] = True
@@ -160,7 +160,7 @@ def test_retrieval_pending_keeps_findings_but_blocks_validated_graph(tmp_path):
 
 def test_pending_packet_retries_retrieval_but_reuses_completed_source_queries(tmp_path, monkeypatch):
     from backend.stages.literature_retrieval import workflow
-    from backend.stages.external_validation.workflow import prepare_evidence, reusable_evidence
+    from archive.legacy_pipeline.research_historical.external_validation.workflow import prepare_evidence, reusable_evidence
     claims, _, _ = fixtures(1, 0)
     candidate = claims[0]
     monkeypatch.setattr(workflow, 'evidence_query_plan', lambda *args: {'europe_pmc': ['one'], 'openalex': ['two']})

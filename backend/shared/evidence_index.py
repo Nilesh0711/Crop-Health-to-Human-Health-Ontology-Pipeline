@@ -2,6 +2,7 @@
 import hashlib
 import json
 import sqlite3
+import threading
 import time
 import re
 import zlib
@@ -18,6 +19,7 @@ class EvidenceIndexError(RuntimeError):
 
 class EvidenceIndex:
     def __init__(self, directory, *, max_bytes=512 * 1024 * 1024, ttl_seconds=7 * 86400):
+        self.lock = threading.RLock()
         self.path = Path(directory) / 'evidence.sqlite3'
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.max_bytes, self.ttl_seconds = max_bytes, ttl_seconds
@@ -30,8 +32,9 @@ class EvidenceIndex:
 
     @contextmanager
     def _connect(self):
-        db = sqlite3.connect(self.path, timeout=20)
+        db = sqlite3.connect(self.path, timeout=60.0)
         try:
+            db.execute('PRAGMA busy_timeout = 60000')
             with db:
                 yield db
         finally:
@@ -42,19 +45,30 @@ class EvidenceIndex:
 
     def get_many(self, keys, *, expiring=True):
         results = {}
-        with self._connect() as db:
-            for start in range(0, len(keys), 400):
-                batch = [POLICY + ':' + k for k in keys[start:start + 400]]
-                rows = db.execute('SELECT key,content,digest,saved FROM entries WHERE key IN (' +
-                                  ','.join('?' for _ in batch) + ')', batch).fetchall()
-                for key, blob, digest, saved in rows:
-                    if expiring and time.time() - saved > self.ttl_seconds:
-                        continue
-                    raw = zlib.decompress(blob)
-                    if hashlib.sha256(raw).hexdigest() != digest:
-                        raise EvidenceIndexError('Stored evidence content hash does not match; refresh the evidence index')
-                    results[key.removeprefix(POLICY + ':')] = json.loads(raw)
-                    db.execute('UPDATE entries SET used=? WHERE key=?', (time.time(), key))
+        for attempt in range(5):
+            try:
+                with self._connect() as db:
+                    for start in range(0, len(keys), 400):
+                        batch = [POLICY + ':' + k for k in keys[start:start + 400]]
+                        rows = db.execute('SELECT key,content,digest,saved FROM entries WHERE key IN (' +
+                                          ','.join('?' for _ in batch) + ')', batch).fetchall()
+                        for key, blob, digest, saved in rows:
+                            if expiring and time.time() - saved > self.ttl_seconds:
+                                continue
+                            raw = zlib.decompress(blob)
+                            if hashlib.sha256(raw).hexdigest() != digest:
+                                raise EvidenceIndexError('Stored evidence content hash does not match; refresh the evidence index')
+                            results[key.removeprefix(POLICY + ':')] = json.loads(raw)
+                            try:
+                                db.execute('UPDATE entries SET used=? WHERE key=?', (time.time(), key))
+                            except sqlite3.OperationalError:
+                                pass
+                break
+            except sqlite3.OperationalError as exc:
+                if ('locked' in str(exc).lower() or 'busy' in str(exc).lower()) and attempt < 4:
+                    time.sleep(0.1 * (2 ** attempt))
+                else:
+                    raise
         self.hits += len(results)
         return results
 
@@ -62,21 +76,30 @@ class EvidenceIndex:
         self.put_many({key: value})
 
     def put_many(self, entries):
-        now = time.time()
-        with self._connect() as db:
-            for key, value in entries.items():
-                raw = json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode()
-                blob = zlib.compress(raw)
-                if len(blob) <= self.max_bytes:
-                    db.execute('INSERT OR REPLACE INTO entries VALUES (?,?,?,?,?,?)',
-                               (POLICY + ':' + key, blob, hashlib.sha256(raw).hexdigest(), now, now, len(blob)))
-            size = db.execute('SELECT COALESCE(SUM(size),0) FROM entries').fetchone()[0]
-            if size > self.max_bytes:
-                for name, amount in db.execute('SELECT key,size FROM entries ORDER BY used').fetchall():
-                    db.execute('DELETE FROM entries WHERE key=?', (name,))
-                    size -= amount
-                    if size <= self.max_bytes:
-                        break
+        with self.lock:
+            for attempt in range(5):
+                try:
+                    now = time.time()
+                    with self._connect() as db:
+                        for key, value in entries.items():
+                            raw = json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode()
+                            blob = zlib.compress(raw)
+                            if len(blob) <= self.max_bytes:
+                                db.execute('INSERT OR REPLACE INTO entries VALUES (?,?,?,?,?,?)',
+                                           (POLICY + ':' + key, blob, hashlib.sha256(raw).hexdigest(), now, now, len(blob)))
+                        size = db.execute('SELECT COALESCE(SUM(size),0) FROM entries').fetchone()[0]
+                        if size > self.max_bytes:
+                            for name, amount in db.execute('SELECT key,size FROM entries ORDER BY used').fetchall():
+                                db.execute('DELETE FROM entries WHERE key=?', (name,))
+                                size -= amount
+                                if size <= self.max_bytes:
+                                    break
+                    break
+                except sqlite3.OperationalError as exc:
+                    if ('locked' in str(exc).lower() or 'busy' in str(exc).lower()) and attempt < 4:
+                        time.sleep(0.1 * (2 ** attempt))
+                    else:
+                        raise
 
     def material(self, key, fetch):
         result = self.get(key)
@@ -104,20 +127,38 @@ class EvidenceIndex:
         if paragraphs:
             preview += '\n' + '\n'.join(str(p.get('text', '') if isinstance(p, dict) else p)
                                         for p in paragraphs)[:16000]
-        with self._connect() as db:
-            db.execute('DELETE FROM papers WHERE identity=?', (identity,))
-            db.execute('INSERT INTO papers VALUES (?,?,?)', (identity, metadata.get('title', ''), preview))
-            # The FTS catalogue is a bounded retrieval aid. Its original full
-            # metadata remains content-hashed in entries and expires normally.
-            db.execute('DELETE FROM papers WHERE rowid NOT IN (SELECT rowid FROM papers ORDER BY rowid DESC LIMIT 4096)')
+        with self.lock:
+            for attempt in range(5):
+                try:
+                    with self._connect() as db:
+                        db.execute('DELETE FROM papers WHERE identity=?', (identity,))
+                        db.execute('INSERT INTO papers VALUES (?,?,?)', (identity, metadata.get('title', ''), preview))
+                        # The FTS catalogue is a bounded retrieval aid. Its original full
+                        # metadata remains content-hashed in entries and expires normally.
+                        db.execute('DELETE FROM papers WHERE rowid NOT IN (SELECT rowid FROM papers ORDER BY rowid DESC LIMIT 4096)')
+                    break
+                except sqlite3.OperationalError as exc:
+                    if ('locked' in str(exc).lower() or 'busy' in str(exc).lower()) and attempt < 4:
+                        time.sleep(0.1 * (2 ** attempt))
+                    else:
+                        raise
 
     def search_papers(self, text, limit=20):
         terms = list(dict.fromkeys(w.lower() for w in re.findall(r'\w+', text) if len(w) > 2))[:24]
         if not terms:
             return []
         query = ' OR '.join('"' + word + '"' for word in terms)
-        with self._connect() as db:
-            rows = db.execute('SELECT identity FROM papers WHERE papers MATCH ? ORDER BY rank LIMIT ?', (query, limit)).fetchall()
+        rows = []
+        for attempt in range(5):
+            try:
+                with self._connect() as db:
+                    rows = db.execute('SELECT identity FROM papers WHERE papers MATCH ? ORDER BY rank LIMIT ?', (query, limit)).fetchall()
+                break
+            except sqlite3.OperationalError as exc:
+                if ('locked' in str(exc).lower() or 'busy' in str(exc).lower()) and attempt < 4:
+                    time.sleep(0.1 * (2 ** attempt))
+                else:
+                    raise
         stored = self.get_many(['paper-meta:' + r[0] for r in rows])
         return [{**stored['paper-meta:' + r[0]], '_retrieval_route': 'shared_evidence_index'} for r in rows
                 if 'paper-meta:' + r[0] in stored]

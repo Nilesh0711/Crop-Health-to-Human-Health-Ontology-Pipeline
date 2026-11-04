@@ -3,17 +3,19 @@ import copy
 import importlib
 import json
 from types import SimpleNamespace
+from dataclasses import replace
 from unittest.mock import Mock
 
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.config.settings import Settings, SCHEMA_VERSION
+from backend.config.settings import SCHEMA_VERSION
+from backend.config.settings import Settings
 from backend.pipelines.checkpoints import resume_metadata, save_checkpoint
 from backend.providers.llm import LLMServiceError
 from backend.shared.artifacts import save_rows
 from backend.shared.storage import file_hash, read_jsonl
-from backend.stages.external_validation.workflow import validation_signature
+from archive.legacy_pipeline.research_historical.external_validation.workflow import validation_signature
 from tests.regression.test_pipeline_v24 import source_claim, source_reply
 
 
@@ -22,7 +24,7 @@ def run_fixture(tmp_path, monkeypatch):
     module = importlib.import_module('backend.pipelines.document')
     pdf = tmp_path / 'sample.pdf'
     pdf.write_bytes(b'PDF fixture; deterministic parsing is supplied below')
-    settings = Settings(enable_nli=False, validation_batch_size=1)
+    settings = Settings(validation_batch_size=1,source_workers=1)
     output = tmp_path / 'outputs' / pdf.stem
     calls = {'source': [], 'query': [], 'external': [], 'extraction': 0}
     fail = {'source': None, 'external': None}
@@ -36,13 +38,16 @@ def run_fixture(tmp_path, monkeypatch):
         def health_check(self):
             return {'models': list(settings.task_models.values())}
         def chat_json(self, system, user, **kwargs):
-            ids = [item['candidate_id'] for item in json.loads(user)['items']]
+            items = json.loads(user)['items']
+            keyed = bool(items and 'item_id' in items[0])
+            ids = kwargs['request_label'].split(': ', 1)[1].split(', ') if keyed else [item['candidate_id'] for item in items]
             calls[self.task].extend(ids)
             if self.task == 'source' and fail['source'] in ids:
                 raise LLMServiceError('Simulated source failure')
             answer = source_reply() if self.task == 'source' else {'query': 'organic farming pollution',
                                                                   'openalex_query': 'organic farming pollution'}
-            return {'results': [{'candidate_id': identifier, **answer} for identifier in ids]}
+            return {'results': {item['item_id']: copy.deepcopy(answer) for item in items}} if keyed else {
+                'results': [{'candidate_id': identifier, **answer} for identifier in ids]}
 
     def extract(*args, **kwargs):
         calls['extraction'] += 1
@@ -75,13 +80,16 @@ def run_fixture(tmp_path, monkeypatch):
     monkeypatch.setattr(module, 'pdf_bibliography', lambda *args, **kwargs: [])
     monkeypatch.setattr(module, 'assess_text_quality', lambda *args: {'detected_quality': 'usable'})
     monkeypatch.setattr(module, 'extract_claims', extract)
-    monkeypatch.setattr(module, 'SemanticReranker', lambda *args: SimpleNamespace(
-        warmup=lambda: 'mock', embedding_cache_hits=0))
-    monkeypatch.setattr(module, 'prepare_evidence', lambda *args, **kwargs: {'evidence_documents': []})
-    monkeypatch.setattr(module, 'validate_candidate', external)
-    monkeypatch.setattr(module, 'assemble_pathways', lambda *args: {'counts':{}})
+    def assemble(root, client, settings, emit, **kwargs):
+        from backend.stages.pathway_assembly.corpus import collect_corpus
+        edges,endpoints=collect_corpus(root,provisional=True)
+        labels=sorted({e[role] for e in edges for role in ('subject','object')})
+        nodes=[{'id':label,'label':label,'type':'Unresolved','endpoint_ids':[]} for label in labels]
+        return {'graph':{'nodes':nodes,'edges':[{**e,'source':e['subject'],'target':e['object']} for e in edges]},
+                'counts':{'claims':len(edges),'entities':len(nodes),'papers':1},'endpoints':endpoints}
+    monkeypatch.setattr(module, 'assemble_pathways', assemble)
     return SimpleNamespace(module=module, pdf=pdf, output=output, settings=settings, calls=calls, fail=fail,
-                           run=lambda resume=False: module.run_pipeline(pdf, 0, 0, 8, lambda *args: None, claims_per_packet=4, resume=resume))
+                           run=lambda resume=False: module.run_pipeline(pdf, 0, 8, lambda *args: None, claims_per_packet=4, resume=resume))
 
 
 def test_source_resume_skips_extraction_and_successfully_saved_source_checks(run_fixture):
@@ -100,21 +108,31 @@ def test_source_resume_skips_extraction_and_successfully_saved_source_checks(run
     assert case.calls == before  # Completed external and query checks are reused too.
 
 
-def test_external_resume_reuses_queries_completed_claims_and_retained_packet(run_fixture):
+def test_active_source_flow_does_not_create_retired_semantic_votes(run_fixture):
     case = run_fixture
-    case.fail['external'] = 'two'
-    with pytest.raises(LLMServiceError, match='external failure'):
+    summary = case.run()
+    candidates = read_jsonl(case.output / 'candidates.jsonl')
+    assert summary['schema_valid'] == 2 and summary['source_entailed'] == 2
+    assert summary['semantic_stage'] == 'removed'
+    assert all('semantic_validation' not in candidate for candidate in candidates)
+    assert not (case.output / 'semantic_validation.jsonl').exists()
+    assert not (case.output / 'semantic_valid_candidates.jsonl').exists()
+    graph = json.loads((case.output / 'source_graph.json').read_text(encoding='utf-8'))
+    assert len(graph['edges']) == 2
+
+
+def test_external_failure_resumes_without_repeating_extraction_and_source(run_fixture,monkeypatch):
+    case=run_fixture
+    original=case.module.run_pathway_assessment
+    monkeypatch.setattr(case.module,'run_pathway_assessment',Mock(side_effect=LLMServiceError('Simulated pathway failure')))
+    with pytest.raises(LLMServiceError,match='pathway failure'):
         case.run()
-    assert case.calls['source'] == ['one', 'two']
-    assert case.calls['query'] == ['one', 'two']
-    case.fail['external'] = None
-    case.run(resume=True)
-    assert case.calls['extraction'] == 1
-    assert case.calls['source'] == ['one', 'two']
-    assert case.calls['query'] == ['one', 'two']
-    assert [identifier for identifier, _ in case.calls['external']] == ['one', 'two', 'two']
-    retained = case.calls['external'][-1][1]['attempts'][0]['evidence_documents']
-    assert retained == [{'evidence_document_id': 'retained-paper'}]
+    before=copy.deepcopy(case.calls)
+    monkeypatch.setattr(case.module,'run_pathway_assessment',original)
+    summary=case.run(resume=True)
+    assert case.calls==before
+    assert summary['externally_evaluated']==0
+    assert summary['pathway_validation']['individual_external_calls']==0
 
 
 def test_modified_claim_is_rechecked_instead_of_inheriting_an_old_source_verdict(run_fixture):
@@ -124,7 +142,7 @@ def test_modified_claim_is_rechecked_instead_of_inheriting_an_old_source_verdict
     rows[0]['source_evidence_span'] = 'Organic farming was introduced to the study area.'
     save_rows(case.output / 'candidates.jsonl', rows)
     summary = case.run(resume=True)
-    assert case.calls['source'] == ['one', 'two', 'one']
+    assert case.calls['source'] == ['one', 'two', 'one']  # One initial check of the changed claim; no reassessment.
     assert summary['source_entailed'] == 1
     assert read_jsonl(case.output / 'candidates.jsonl')[0]['source_validation']['decision'] == 'needs_review'
 
@@ -175,6 +193,21 @@ def test_resume_refuses_mismatched_checkpoint_provenance(run_fixture, change):
         resume_metadata(case.output, case.pdf, settings, pages, limit)
 
 
+def test_synthesis_model_change_reuses_extraction_but_invalidates_external_assessments(run_fixture):
+    from backend.stages.neighbor_validation.workflow import config_signature
+    case=run_fixture
+    case.run()
+    metadata=json.loads((case.output/'pipeline_checkpoint.json').read_text(encoding='utf-8'))
+    metadata['task_models']['external']='opencode-go/mimo-v2.6-pro'
+    save_checkpoint(case.output,metadata)
+    before=(case.output/'candidates.jsonl').read_bytes()
+    restored=resume_metadata(case.output,case.pdf,case.settings,0,4)
+    assert restored['extraction_complete']
+    assert (case.output/'candidates.jsonl').read_bytes()==before
+    target={'input_signature':'unchanged-source-and-graph'}
+    assert config_signature(target,case.settings)!=config_signature(target,replace(case.settings,external_model='opencode-go/mimo-v2.6-pro'))
+
+
 def test_resume_api_preserves_saved_findings_and_does_not_start_work_during_test(run_fixture, monkeypatch):
     case = run_fixture
     case.run()
@@ -191,7 +224,7 @@ def test_resume_api_preserves_saved_findings_and_does_not_start_work_during_test
     assert response.status_code == 202 and response.json()['resume']
     assert response.json()['logs'][0]['message'] == 'previous error'
     assert (case.output / 'candidates.jsonl').read_bytes() == before
-    assert (case.output / 'validation_runs.jsonl').exists()
+    assert (case.output / 'pipeline_checkpoint.json').exists()
     thread.return_value.start.assert_called_once()
 
 
@@ -219,28 +252,30 @@ def test_pipeline_persists_failed_and_pending_targets_without_completing_checkpo
     assert not checkpoint['extraction_complete'] and checkpoint['extraction_mode'] == 'target_context'
 
 
-def test_global_assembly_runs_after_external_validation_with_its_assigned_mimo_flash(run_fixture, monkeypatch):
-    case = run_fixture
-    def assembly(root, client, settings, emit):
-        assert root == case.output.parent
-        assert client.task == 'pathway_assembly'
-        assert client.model == 'opencode-go/mimo-v2.6-flash'
-        assert len(read_jsonl(case.output / 'validation_runs.jsonl')) == 2
-        assert len(case.calls['external']) == 2
-        return {'counts':{'claims':2, 'entities':3}}
-    monkeypatch.setattr(case.module, 'assemble_pathways', assembly)
-    assert case.run()['pathway_assembly']['claims'] == 2
+def test_global_assembly_runs_before_pathway_validation_with_mimo_flash(run_fixture, monkeypatch):
+    case=run_fixture
+    original=case.module.assemble_pathways
+    def assembly(root,client,settings,emit,**kwargs):
+        assert root==case.output.parent and client.task=='pathway_assembly'
+        assert client.model=='opencode-go/mimo-v2.6-flash'
+        assert kwargs['provisional'] is True
+        assert not case.calls['external'] and not case.calls['query']
+        return original(root,client,settings,emit,**kwargs)
+    monkeypatch.setattr(case.module,'assemble_pathways',assembly)
+    summary=case.run()
+    assert summary['pathway_assembly']['claims']==2
+    assert summary['knowledge_building_mode']=='pathway_only'
 
 
 def test_assembly_failure_resumes_without_repeating_extraction_or_validation(run_fixture, monkeypatch):
     case = run_fixture
-    def failed(*args):
+    def failed(*args,**kwargs):
         raise LLMServiceError('MiMo assembly provider error')
     monkeypatch.setattr(case.module, 'assemble_pathways', failed)
     with pytest.raises(LLMServiceError, match='assembly'):
         case.run()
     completed = copy.deepcopy(case.calls)
-    monkeypatch.setattr(case.module, 'assemble_pathways', lambda *args:{'counts':{}})
+    monkeypatch.setattr(case.module, 'assemble_pathways', lambda *args,**kwargs:{'graph':{'nodes':[],'edges':[]},'counts':{}})
     case.run(resume=True)
     assert case.calls == completed
 
@@ -252,8 +287,7 @@ def test_resume_rechecks_external_thinking_change_without_repeating_extraction(r
     case.run(resume=True)
     assert case.calls['extraction']==1
     assert case.calls['source']==['one','two']
-    assert case.calls['query']==['one','two']
-    assert [c for c,_ in case.calls['external']]==['one','two','one','two']
+    assert case.calls['query']==[] and case.calls['external']==[]  # standalone claims are never externally assessed
 
 
 def test_resume_rejects_changed_extraction_thinking(run_fixture,monkeypatch):
@@ -274,3 +308,108 @@ def test_legacy_extraction_without_thinking_metadata_is_treated_as_on(run_fixtur
     monkeypatch.setattr(case.module,'Settings',lambda:replace(case.settings,thinking={'extraction':False}))
     with pytest.raises(ValueError,match='original extraction Thinking'):
         case.run(resume=True)
+
+
+def test_source_scope_policy_refresh_reuses_extraction_and_preserves_previous_reading(run_fixture):
+    from backend.stages.source_validation.abbreviations import SOURCE_VALIDATION_POLICY
+    case = run_fixture
+    case.run()
+    rows = read_jsonl(case.output / 'source_validation.jsonl')
+    for row in rows:
+        row['validation_policy'] = 'old-fidelity-only-policy'
+        row.pop('project_scope')
+    save_rows(case.output / 'source_validation.jsonl', rows)
+    summary = case.run(resume=True)
+    assert case.calls['extraction'] == 1
+    assert len(case.calls['source']) == 4
+    assert summary['pathway_eligible_claims'] == 2
+    for row in read_jsonl(case.output / 'source_validation.jsonl'):
+        assert row['validation_policy'] == SOURCE_VALIDATION_POLICY
+        assert row['project_scope']['decision'] == 'in_scope'
+        assert row['previous_assessment']['validation_policy'] == 'old-fidelity-only-policy'
+    case.run(resume=True)
+    assert len(case.calls['source']) == 4
+
+
+def test_external_redo_and_its_resume_keep_extraction_source_and_manual_records(run_fixture, monkeypatch):
+    from backend.stages.source_validation.review import apply_manual_source_review, source_review_state
+    case = run_fixture
+    case.run()
+    candidates = read_jsonl(case.output / 'candidates.jsonl')
+    apply_manual_source_review(candidates[0], 'project_scope', 'accept',
+        expected_revision=source_review_state(candidates[0])['revision'], note='Researcher-reviewed source context.')
+    save_rows(case.output / 'candidates.jsonl', candidates)
+    save_rows(case.output / 'source_validation.jsonl', [c['source_validation'] for c in candidates])
+    original = case.module.run_pathway_assessment
+    calls = []
+    def external(*args, **kwargs):
+        calls.append(kwargs.get('assessment_id'))
+        return original(*args, **kwargs)
+    monkeypatch.setattr(case.module, 'run_pathway_assessment', external)
+    before = (case.output / 'candidates.jsonl').read_bytes()
+    summary = case.module.run_pipeline(case.pdf, 0, 8, lambda *args: None,
+        claims_per_packet=4, resume=True, external_assessment_id='redo-test')
+    assert summary['external_assessment_id'] == 'redo-test'
+    assert json.loads((case.output / 'pipeline_checkpoint.json').read_text())['external_assessment_id'] == 'redo-test'
+    case.run(resume=True)
+    assert calls == ['redo-test', 'redo-test']
+    assert case.calls['extraction'] == 1 and len(case.calls['source']) == 2
+    assert (case.output / 'candidates.jsonl').read_bytes() == before
+
+
+def test_clear_scope_exclusions_skip_assembly_without_falsifying_pdf_fidelity(run_fixture, monkeypatch):
+    case = run_fixture
+    original_reply = source_reply
+    def excluded_reply():
+        return {**original_reply(), 'project_scope': {
+            'decision': 'out_of_scope', 'rationale': 'The supplied assertion is outside the project mechanism.'}}
+    monkeypatch.setitem(globals(), 'source_reply', excluded_reply)
+    summary = case.run()
+    assert summary['source_entailed'] == 2
+    assert summary['source_project_scope']['out_of_scope'] == 2
+    assert summary['pathway_eligible_claims'] == 0
+    assert summary['pathway_assembly']['claims'] == 0
+    assert len(case.calls['source']) == 2  # No redundant reread of a clear scope exclusion.
+    assert len(read_jsonl(case.output / 'candidates.jsonl')) == 2
+
+
+def test_uncertain_scope_stays_for_manual_review_without_another_model_reading(run_fixture, monkeypatch):
+    case = run_fixture
+    original_reply = source_reply
+    reads = []
+    def scope_reply():
+        reads.append(True)
+        answer = original_reply()
+        if len(reads) <= 2:
+            answer['project_scope'] = {'decision': 'needs_review', 'rationale': 'The local domain context is ambiguous.'}
+        return answer
+    monkeypatch.setitem(globals(), 'source_reply', scope_reply)
+    summary = case.run()
+    assert case.calls['extraction'] == 1 and len(case.calls['source']) == 2
+    assert summary['pathway_eligible_claims'] == 0
+    assert summary['source_project_scope']['needs_review'] == 2
+    for row in read_jsonl(case.output / 'source_validation.jsonl'):
+        assert row['project_scope']['decision'] == 'needs_review'
+        assert 'source_review_audit' not in row
+    case.run(resume=True)
+    assert len(case.calls['source']) == 2
+
+
+def test_resume_preserves_manual_source_and_scope_acceptances_without_model_reassessment(run_fixture, monkeypatch):
+    from backend.stages.source_validation.review import apply_manual_source_review, source_review_state
+    case = run_fixture
+    original_reply = source_reply
+    monkeypatch.setitem(globals(), 'source_reply', lambda: {**original_reply(), 'decision': 'needs_review',
+        'project_scope': {'decision': 'needs_review', 'rationale': 'Manual reading is needed.'}})
+    case.run()
+    candidates = read_jsonl(case.output / 'candidates.jsonl')
+    for candidate in candidates:
+        for dimension in ('source_fidelity', 'project_scope'):
+            apply_manual_source_review(candidate, dimension, 'accept', expected_revision=source_review_state(candidate)['revision'])
+    save_rows(case.output / 'candidates.jsonl', candidates)
+    save_rows(case.output / 'source_validation.jsonl', [c['source_validation'] for c in candidates])
+    summary = case.run(resume=True)
+    assert summary['source_entailed'] == summary['pathway_eligible_claims'] == 2
+    assert summary['pathway_assembly']['claims'] == 2
+    assert case.calls['extraction'] == 1 and len(case.calls['source']) == 2
+    assert all('manual_reviews' in c['source_validation'] for c in read_jsonl(case.output / 'candidates.jsonl'))

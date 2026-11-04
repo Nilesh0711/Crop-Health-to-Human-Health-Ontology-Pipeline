@@ -2,12 +2,13 @@ import { useState } from 'react'
 
 const readable = value => String(value || '').replaceAll('_', ' ')
 
-export function ClaimContext({ candidate }) {
-  const verified = candidate.source_validation?.decision === 'entailed'
+export function ClaimContext({ candidate, sourceReview }) {
+  const manuallyAccepted = sourceReview?.active_reviews?.source_fidelity?.decision === 'accept'
+  const verified = (sourceReview?.fidelity_decision || candidate.source_validation?.decision) === 'entailed'
     && candidate.source_validation?.claim_text_match === true
   const qualifiers = Object.entries(candidate.qualifiers || {}).filter(([, value]) => value)
   return <section className="claim-context-details" aria-label="Contextual claim and restrictions">
-    <div className="detail-title"><span className="eyebrow">CONTEXTUAL CLAIM</span><span className={`detail-badge ${verified ? 'verified' : ''}`}>{verified ? 'Source verified' : candidate.claim_text_origin === 'extracted' ? 'Unverified restatement' : 'Structured claim'}</span></div>
+    <div className="detail-title"><span className="eyebrow">CONTEXTUAL CLAIM</span><span className={`detail-badge ${verified || manuallyAccepted ? 'verified' : ''}`}>{manuallyAccepted ? 'Source accepted manually' : verified ? 'Source verified' : candidate.claim_text_origin === 'extracted' ? 'Unverified restatement' : 'Structured claim'}</span></div>
     <p className="contextual-claim">{candidate.claim_text || `${candidate.subject} → ${readable(candidate.relation)} → ${candidate.object}`}</p>
     <dl className="claim-facts">
       <div><dt>Subject type</dt><dd>{candidate.subject_type}</dd></div>
@@ -25,20 +26,32 @@ export function ClaimContext({ candidate }) {
   </section>
 }
 
-export function ValidationTrace({ candidate, validation }) {
+export function ValidationTrace({ candidate, validation, sourceReview, reviewHistory = [], externalTarget }) {
   const semantic = candidate.semantic_validation
   const source = candidate.source_validation
+  const scope = source?.project_scope
   const stages = [
     { name: 'Structure', decision: candidate.schema_error ? 'Failed' : 'Passed', rationale: candidate.schema_error || 'Format and evidence anchors checked. Relations are open; entity labels are provisional. Scientific support and project scope require evidence assessment.' },
     ...(semantic?.decision === 'not_run' ? [] : [{ name: 'Scope + types', decision: semantic?.decision, rationale: semantic?.rationale, reasons: semantic?.reasons }]),
     { name: 'Source fidelity', decision: source?.decision, rationale: source?.rationale, reasons: source?.reasons },
-    { name: 'External literature', decision: validation?.validation_status, rationale: validation?.error || (validation ? `${validation.support_summary?.independent_groups ?? 0} independent supporting result group(s); ${validation.support_summary?.independent_document_groups == null ? '' : `${validation.support_summary.independent_document_groups} supporting document group(s); `}${validation.support_summary?.source_reference ?? 0} supporting source reference(s).` : 'Not evaluated. An earlier stage may have stopped the claim, or this run is still in progress.') },
+    { name: 'Project scope', decision: scope?.decision || 'Not assessed', rationale: scope?.rationale || 'No claim-level source-scope assessment is recorded. Resume the saved run to assess scope; extraction can be reused.' },
+    ...Object.entries(sourceReview?.active_reviews || {}).map(([dimension, review]) => ({
+      name: dimension === 'source_fidelity' ? 'Manual source fidelity' : 'Manual project scope',
+      decision: review.decision === 'accept' ? 'Accepted' : 'Rejected',
+      rationale: `${review.note || 'Researcher decision; original model assessment retained.'} Recorded ${review.at}.`,
+    })),
+    { name: 'External literature', decision: validation?.validation_status || (['whole_pathway','neighboring_claims'].includes(externalTarget) ? 'Whole-pathway target' : undefined), rationale: validation?.error || (validation ? `${validation.support_summary?.independent_groups ?? 0} independent supporting result group(s); ${validation.support_summary?.independent_document_groups == null ? '' : `${validation.support_summary.independent_document_groups} supporting document group(s); `}${validation.support_summary?.source_reference ?? 0} supporting source reference(s).` : ['whole_pathway','neighboring_claims'].includes(externalTarget) ? 'Not evaluated as a standalone claim. Active runs assess complete continuous pathways.' : 'Not evaluated. An earlier stage may have stopped the claim, or this run is still in progress.') },
   ]
   return <section className="validation-trace" aria-label="Validation decision trace"><span className="eyebrow">DECISION TRACE</span>
+    {(sourceReview?.scope_decision || scope?.decision) === 'out_of_scope' && <p className="decision-note">Excluded from pathway assembly because this relationship is outside the project domain. This does not mean the PDF assertion is false or unsupported. The claim and source evidence remain available for audit.</p>}
+    {(sourceReview?.scope_decision || scope?.decision) === 'needs_review' && <p className="decision-note">Project relevance remains unresolved. This claim is held out of pathway assembly until scope is assessed as in scope.</p>}
+    {!!sourceReview?.stale_dimensions?.length && <p className="inline-error">The claim, evidence or original assessment changed. Previous manual decisions no longer apply; review this version again.</p>}
+    {!!reviewHistory.length && <details className="context-packet"><summary>Manual source review history · {reviewHistory.length} decision(s)</summary>{reviewHistory.map((review, index) => <p key={review.event_id || index}>{readable(review.dimension)}: {review.decision === 'accept' ? 'Accepted' : 'Rejected'} · {review.at}. {review.note}</p>)}</details>}
+    {source?.previous_assessment && <details className="context-packet"><summary>Previous source policy assessment</summary><p>{source.previous_assessment.decision}. {source.previous_assessment.rationale}</p><p>Project scope: {readable(source.previous_assessment.project_scope?.decision) || 'Not assessed'}. {source.previous_assessment.project_scope?.rationale}</p></details>}
     {validation?.validation_status === 'retrieval_pending' && <div className="quote-box"><strong>Retrieval is incomplete</strong><p>Available paper findings are shown below. Missing searches or citations remain pending; resume retries them. This claim has not entered the validated graph.</p>
       {(validation.attempts?.at(-1)?.pending_sources || []).map((item, index) => <p key={index}>{item.provider || item.kind}: {item.reason}. {item.query || item.reference_id || ''}</p>)}</div>}
     {!!source?.applied_name_corrections?.length && <details className="context-packet"><summary>Source-verified full names</summary>{source.applied_name_corrections.map((edit, index) => <div key={index}><p>{readable(edit.field)}: {edit.before} → {edit.after}</p><blockquote>{edit.definition_quote}</blockquote><p>{edit.rationale}</p></div>)}</details>}
-    {source?.source_review_audit && <details className="context-packet"><summary>Bounded source reassessment · both readings preserved</summary><p>Original: {source.source_review_audit.original.decision}. {source.source_review_audit.original.rationale}</p><p>Reassessment: {source.source_review_audit.reassessment.decision}. {source.source_review_audit.reassessment.rationale}</p></details>}
+    {source?.source_review_audit && <details className="context-packet"><summary>Historical automated source reassessment · saved readings</summary><p>Automatic source reassessment is now disabled. These readings belong to an earlier run.</p>{['original', 'reassessment'].map(reading => <div key={reading}><p>{reading}: {source.source_review_audit[reading].decision}. {source.source_review_audit[reading].rationale}</p><p>Project scope: {readable(source.source_review_audit[reading].project_scope?.decision) || 'Not assessed'}. {source.source_review_audit[reading].project_scope?.rationale}</p></div>)}</details>}
     {!!source?.abbreviation_review?.unresolved?.length && <p className="inline-error">Unresolved source abbreviations: {source.abbreviation_review.unresolved.join(', ')}. Full names require an unambiguous definition in the supplied PDF context.</p>}
     {stages.map(stage => <div className="trace-row" key={stage.name}><span className="trace-stage">{stage.name}</span><div><strong>{readable(stage.decision) || 'Not run'}</strong><p>{stage.rationale || 'No decision recorded.'}</p>{stage.reasons?.map(reason => <p className="trace-reason" key={reason}>{reason}</p>)}</div></div>)}
     {!!candidate.extraction_review_hints?.length && <details className="context-packet"><summary>Extraction review notes · claim retained</summary><p>These heuristic notes do not reject or correct the claim. Evidence assessment determines their significance.</p>{candidate.extraction_review_hints.map(hint => <p key={hint}>{readable(hint)}</p>)}</details>}
@@ -85,38 +98,65 @@ export function ExtractionDiscards({ records }) {
     {open && records.map((record, index) => <article className="discard-record" key={index}><strong>{record.proposed_claim?.subject || 'Malformed claim'} → {readable(record.proposed_claim?.relation)} → {record.proposed_claim?.object || '?'}</strong><p className="trace-reason">{readable(record.reason)}</p>{record.proposed_claim_text && <p>{record.proposed_claim_text}</p>}<small>Packet {record.packet_number} · {record.section_heading}</small>{record.source_evidence_span && <blockquote>{record.source_evidence_span}</blockquote>}<p>Subject anchor: {record.proposed_source_anchors?.subject || 'Not saved in this run'}<br />Object anchor: {record.proposed_source_anchors?.object || 'Not saved in this run'}<br />Relation anchor: {record.proposed_source_anchors?.relation || 'Not saved in this run'}</p></article>)}
   </section>
 }
-export function ClaimActions({ candidate, validation, repairEligibility, revisions = [], busy = false, onAction, readOnly = false }) {
-  const source = candidate.source_validation || {}
+export function ManualSourceReview({ candidate, review, busy = false, onAction, readOnly = false }) {
+  const [note, setNote] = useState('')
+  if (readOnly || !candidate.source_validation || !review) return null
+  return <section className="claim-repair-action" aria-label="Manual source review">
+    <strong>Review source evidence and project relevance</strong>
+    <p>Automatic source reassessment is off. Accept or reject PDF fidelity and project scope separately after reading the source. Both must pass for pathway assembly. These buttons make no LLM calls and do not establish external scientific support.</p>
+    {[['source_fidelity', 'PDF fidelity', 'source', review?.fidelity_decision], ['project_scope', 'Project scope', 'scope', review?.scope_decision]].map(([dimension, label, action, effective]) => <div className="manual-source-review-row" key={dimension}>
+      <span><strong>{label}</strong><small>Current: {readable(effective) || 'Not assessed'}{review?.active_reviews?.[dimension] ? ' · manual decision' : ' · model assessment'}</small></span>
+      <button type="button" className="button secondary" aria-label={`Accept ${label.toLowerCase()}`} aria-pressed={review?.active_reviews?.[dimension]?.decision === 'accept'} disabled={busy || !onAction || !review?.can_accept || !review?.revision} onClick={() => onAction(`accept_${action}`, note)}>Accept</button>
+      <button type="button" className="button secondary" aria-label={`Reject ${label.toLowerCase()}`} aria-pressed={review?.active_reviews?.[dimension]?.decision === 'reject'} disabled={busy || !onAction || !review?.revision} onClick={() => onAction(`reject_${action}`, note)}>Reject</button>
+    </div>)}
+    <label className="manual-source-review-note">Review note (optional)<textarea rows={2} maxLength={2000} value={note} onChange={event => setNote(event.target.value)} disabled={busy} /></label>
+    {review && !review.can_accept && <small>Acceptance requires valid claim structure and recorded source evidence. Repair missing or invalid evidence first.</small>}
+    <small>Manual decisions are saved with the original model assessment. Resume the saved pipeline after reviewing claims to rebuild affected pathways.</small>
+  </section>
+}
+
+export function ClaimActions({ candidate, sourceReview, repairEligibility, revisions = [], busy = false, onAction, readOnly = false, pathwayOnly = false }) {
+  const source = { ...(candidate.source_validation || {}), ...(sourceReview ? { decision: sourceReview.fidelity_decision } : {}) }
   const semantic = candidate.semantic_validation || {}
   const conflict = repairEligibility?.external_contradictions?.[0]
   const proofContradiction = !!conflict
-  const canRepair = repairEligibility?.allowed ?? (['unsupported', 'needs_review'].includes(source.decision)
-    || (!!candidate.repair_revision && source.decision !== 'entailed'))
-  const canRetry = !candidate.schema_error && source.decision === 'entailed'
-    && (!validation || ['pipeline_error', 'external_in_progress', 'retrieval_pending'].includes(validation.validation_status))
-  const canReassess = !candidate.schema_error && source.decision === 'entailed' && validation && !canRetry && !canRepair
-  const reason = canRepair
-    ? (proofContradiction ? `${conflict.rationale || 'External evidence contains a verified quoted contradiction.'} A repair must still match the original PDF.`
-      : [...(source.reasons || semantic.reasons || []), source.rationale || semantic.rationale].filter(Boolean).join(' / '))
-    : validation?.error || (canReassess ? 'Reassess this saved claim using the current external-validation method.' : 'External validation has not completed for this claim.')
+  const isRepresentationHold = !proofContradiction && source.decision === 'needs_review'
+    && source.model_matches?.relation_match === true
+    && source.model_matches?.direction_match === true
+    && (source.claim_text_match === false || source.model_matches?.certainty_match === false)
+    const canRepair = !candidate.superseded_by?.length && (repairEligibility?.allowed ?? (['unsupported', 'needs_review'].includes(source.decision)
+    || (!!candidate.repair_revision && source.decision !== 'entailed')))
+  const reason = proofContradiction
+    ? `${conflict.rationale || 'External evidence contains a verified quoted contradiction.'} A repair must still match the original PDF.`
+    : [...(source.reasons || semantic.reasons || []), source.rationale || semantic.rationale].filter(Boolean).join(' / ')
   return <>
-    {!readOnly && (canRepair || canRetry || canReassess) && <div className="claim-repair-action">
-      <p><strong>{proofContradiction ? 'Proof-backed contradiction: ' : canRepair ? 'Source correction needed: ' : canReassess ? 'External reassessment: ' : 'External validation unfinished: '}</strong>{reason}</p>
+    <ManualSourceReview candidate={candidate} review={sourceReview} busy={busy} onAction={onAction} readOnly={readOnly} />
+      {!!candidate.superseded_by?.length && <p className="soft-note">Preserved original; superseded by {candidate.superseded_by.length} atomic source claims. Inspect its revision history for the children and their evidence.</p>}
+      {candidate.parent_candidate_id && <p className="soft-note">Atomic child of {candidate.parent_candidate_id}; original source provenance is retained.</p>}
+    {!readOnly && canRepair && <div className="claim-repair-action">
+      {isRepresentationHold && <div className="soft-note">
+        <strong className="detail-badge">Source relation grounded · Needs atomic split or certainty adjustment</strong>
+        <p>Core relation matches the PDF, but claim text bundles secondary propositions or certainty needs adjustment. Use <strong>Re-extract atomic claims</strong> to split it into independent atomic edges.</p>
+      </div>}
+      <p><strong>{proofContradiction ? 'Proof-backed contradiction: ' : isRepresentationHold ? 'Atomic split / certainty adjustment needed: ' : 'Source correction needed: '}</strong>{reason}</p>
       {proofContradiction && <blockquote>{conflict.evidence?.[0]?.quoted_span}</blockquote>}
       <button type="button" className="button secondary" disabled={busy || !onAction}
-        onClick={() => onAction(canRepair ? 'repair' : 'retry_external')}>
-        {canRepair ? 'Repair and revalidate claim' : canReassess ? 'Reassess external evidence' : 'Retry unfinished external checks'}
+        onClick={() => onAction('repair')}>
+        Repair and revalidate claim
       </button>
-      <small>{canRepair ? 'One source-grounded correction per click, followed by source and external checks. Original versions are retained.'
-        : 'Only this claim runs. Compatible evidence and completed paper judgements are reused; the current assessment method and external Thinking setting apply. Original decisions are retained in history.'}</small>
+        <button type="button" className={`button ${isRepresentationHold ? 'primary' : 'secondary'}`} disabled={busy || !onAction}
+          onClick={() => onAction('reextract')}>Re-extract atomic claims</button>
+        <small>Re-extract only this claim's selected source sentences, source-check each child and reassess affected connections. The original remains in audit history.</small>
+      <small>{pathwayOnly ? 'Source-grounded repair or atomic re-extraction, then reassembly and affected neighboring-pair checks. Original versions are retained; changed inputs invalidate stale assessments.' : 'One source-grounded correction per click, followed by source and pathway checks. Original versions are retained.'}</small>
     </div>}
     {!!revisions.length && <details className="context-packet"><summary>Claim revision history · {revisions.length} attempt(s)</summary>
       {revisions.map((revision, index) => <div key={revision.operation_id || index}>
-        <p><strong>{revision.action === 'repair' ? 'Source repair' : 'External retry'} · {revision.status}</strong></p>
+          <p><strong>{revision.action === 'repair' ? 'Source repair' : revision.action === 'reextract' ? 'Atomic re-extraction' : 'External retry'} · {revision.status}</strong></p>
         <p>Before: {revision.original_candidate?.subject} → {revision.original_candidate?.relation} → {revision.original_candidate?.object}</p>
         <p>Previous source verdict: {revision.original_candidate?.source_validation?.decision || 'not evaluated'}</p>
         {revision.original_candidate?.source_validation?.reasons?.map((reason, i) => <p key={i}>{reason}</p>)}
         {revision.revised_candidate && <p>After: {revision.revised_candidate.subject} → {revision.revised_candidate.relation} → {revision.revised_candidate.object}</p>}
+          {revision.proposed_candidates?.map(child => <p key={child.candidate_id}>Child: {child.subject} → {child.relation} → {child.object} · Source: {child.source_validation?.decision || 'not assessed'} · {child.candidate_id}</p>)}
         {revision.error && <p className="inline-error">{revision.error}</p>}
         {revision.status === 'no_grounded_correction' && <p>The model produced no admissible source-grounded correction. The original claim was retained.</p>}
       </div>)}

@@ -16,7 +16,7 @@ from typing import Any, Callable
 
 from backend.config.settings import ALLOWED_PIPELINE_MODELS, TASK_DEFAULT_MODELS, Settings
 from backend.providers.structured_output import parse_json_object, StructuredOutputError, IncompleteResponseError, SchemaValidationError, ResponseStructureError, EvidenceSelectionError
-from backend.providers.inference import InferenceHTTP, InferenceError, normalize_usage
+from backend.providers.inference import InferenceHTTP, InferenceError, normalize_usage, model_reasoning_effort
 from backend.shared.activity import input_token_label
 from backend.shared.cancellation import PipelineStopped, check_cancelled
 from backend.providers.response_repair import (
@@ -61,8 +61,13 @@ class _AssignedModelClient:
 
 
 def model_reasoning_policy(selector: str, thinking_enabled: bool | None = None) -> dict[str, Any]:
-    """Report provider-controlled reasoning without inventing an effort setting."""
-    del selector
+    """Report the actual model-specific control, including required reasoning."""
+    effort = model_reasoning_effort(selector,thinking_enabled)
+    if effort is not None:
+        return {'requested_reasoning_effort':effort,
+                'requested_thinking':'enabled' if thinking_enabled else 'minimal',
+                'requested_thinking_budget':None,'thinking_off_supported':False,
+                'thinking_control':'explicit-stage-effort' if thinking_enabled else 'provider-minimum-reasoning'}
     if thinking_enabled is not None:
         return {'requested_reasoning_effort': 'provider_default', 'requested_thinking': 'enabled' if thinking_enabled else 'disabled',
                 'requested_thinking_budget': None, 'thinking_control': 'explicit-stage-setting'}
@@ -112,6 +117,8 @@ def format_request_metrics(metrics: dict[str, Any]) -> str:
         prefix += f"; generation budget (answer + reasoning)={metrics['output_limit_tokens']} tokens"
     prefix += f"; requested effort={metrics.get('requested_reasoning_effort', 'provider_default')}"
     prefix += f"; requested thinking={metrics.get('requested_thinking', 'provider_default')}"
+    if metrics.get('thinking_control') == 'provider-minimum-reasoning':
+        prefix += '; model requires reasoning; minimum effort requested'
     if metrics.get('requested_thinking') == 'disabled' and metrics.get('reasoning_tokens', 0) > 0:
         prefix += '; provider reported reasoning despite Thinking off'
     if metrics.get("requested_thinking_budget"):
@@ -223,6 +230,19 @@ class OpenCodeClient:
             return self._chat_api_once(system, user, max_tokens, json_schema, request_label, selector, response_check,
                                        answer_token_hint=answer_token_hint)
         except (LLMError, OSError, ValueError) as exc:
+            fallback = getattr(self.settings, 'fallback_models', {}).get(self.task)
+            err_str = str(exc).lower()
+            is_infra_or_loop = any(term in err_str for term in (
+                'rate or usage limit', '429', 'endpoint is unavailable', 'ratelimitexhausted',
+                'provider request failed', 'truncated at its token limit', 'connection failed', 'timed out',
+                'upstream request failed', 'model_coming_soon', 'did not finish a complete final answer'
+            ))
+            if fallback and fallback != selector and is_infra_or_loop:
+                self._progress({'status': 'warning',
+                                'message': f"Model {selector} failed ({exc}); substituting fallback {fallback} for remaining targets"})
+                self.model = fallback
+                return self._chat_api_once(system, user, max_tokens, json_schema, request_label, fallback, response_check,
+                                           answer_token_hint=answer_token_hint)
             message = f"{self.task or 'LLM'} model {selector} failed: {exc}"
             with self._metrics_lock:
                 self._service_error = message
@@ -253,6 +273,35 @@ class OpenCodeClient:
                 raise _ResponseRecoveryFailure(content, exc, 'response_regeneration') from exc
             except StructuredOutputError as exc:
                 raise _ResponseRecoveryFailure(content, exc, 'format_repair') from exc
+            if isinstance(parsed, dict):
+                items = []
+                if isinstance(parsed.get('results'), dict):
+                    items.extend(parsed['results'].values())
+                elif isinstance(parsed.get('results'), list):
+                    items.extend(parsed['results'])
+                else:
+                    items.append(parsed)
+                for item in items:
+                    if isinstance(item, dict) and isinstance(item.get('entity_alignment'), dict):
+                        for align in item['entity_alignment'].values():
+                            if isinstance(align, dict) and 'mention' in align and not align.get('evidence'):
+                                align['evidence'] = align['mention']
+                if isinstance(parsed.get('groups'), list) and isinstance(parsed.get('registry_assignments'), dict):
+                    assigned_groups = set()
+                    for val in parsed['registry_assignments'].values():
+                        if val is not None:
+                            assigned_groups.add(val)
+                            try:
+                                assigned_groups.add(int(val))
+                            except (ValueError, TypeError):
+                                pass
+                            assigned_groups.add(str(val))
+                    for group in parsed['groups']:
+                        if isinstance(group, dict) and 'joins_existing_registry_node' in group and 'group_id' in group:
+                            gid = group['group_id']
+                            group['joins_existing_registry_node'] = (
+                                gid in assigned_groups or str(gid) in assigned_groups
+                            )
             try:
                 validate_schema(parsed, schema)
                 if response_check:
@@ -338,10 +387,11 @@ class OpenCodeClient:
             if not self.settings.json_repair_attempts:
                 raise
             repair_user = repair_input(failure.content, schema, failure.parse_error)
+            original_content = failure.content
 
             def accept_patch(content):
                 patch, _ = parse_json_object(content)
-                parsed, _ = apply_model_patch(failure.content, patch, schema)
+                parsed, _ = apply_model_patch(original_content, patch, schema)
                 if response_check:
                     try:
                         response_check(parsed)
@@ -381,12 +431,13 @@ class OpenCodeClient:
                 raise _ResponseRecoveryFailure(response.get('content', ''),
                     IncompleteResponseError('Model output was truncated at its token limit'), 'response_regeneration')
             if response['finish_reason'] != 'stop':
-                raise LLMError('Model did not finish a complete final answer; formatting repair was not attempted')
+                raise _ResponseRecoveryFailure(response.get('content', ''),
+                    IncompleteResponseError('Model did not finish a complete final answer'), 'response_regeneration')
             parsed, adjustments = parser(response['content'])
             status = 'ok'
             return parsed
-        except PipelineStopped:
-            status, error = 'cancelled', 'Stopped locally by user; remote provider cancellation is unconfirmed'
+        except PipelineStopped as exc:
+            status, error = 'cancelled', f'Local request cancelled: {exc}; remote provider cancellation is unconfirmed'
             raise
         except InferenceError as exc:
             status, error = exc.status, str(exc)

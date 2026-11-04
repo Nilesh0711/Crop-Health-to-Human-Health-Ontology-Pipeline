@@ -79,3 +79,22 @@ def test_input_token_usage_remains_visible_when_output_usage_is_missing():
     assert events[-1]['input_tokens'] == 321
     assert '321 input tokens (provider-reported)' in format_request_metrics(metrics[0])
     assert 'TPS: N/A' in format_request_metrics(metrics[0])
+
+
+def test_pathway_assembly_joins_existing_registry_node_auto_healed():
+    import json
+    client = OpenCodeClient(Settings())
+    data = {
+        "groups": [
+            {"group_id": 1, "explanation": "matches N1", "canonical_label": "Node 1", "joins_existing_registry_node": False},
+            {"group_id": 2, "explanation": "no node match", "canonical_label": "Node 2", "joins_existing_registry_node": True}
+        ],
+        "endpoint_assignments": {"E1": 1, "E2": 2},
+        "registry_assignments": {"N1": 1, "N2": None}
+    }
+    with patch.object(client._inference, "chat", return_value={
+            "content": json.dumps(data), "finish_reason": "stop", "usage": {"prompt_tokens": 10, "completion_tokens": 10}}):
+        parsed = client.chat_json("system", "input")
+    groups = {g["group_id"]: g for g in parsed["groups"]}
+    assert groups[1]["joins_existing_registry_node"] is True
+    assert groups[2]["joins_existing_registry_node"] is False

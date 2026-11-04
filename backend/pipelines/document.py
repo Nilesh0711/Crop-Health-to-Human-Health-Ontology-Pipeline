@@ -9,41 +9,34 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable
 from pypdf import PdfReader
-from backend.config.settings import ONTOLOGY_DIR, SCHEMA_VERSION, Settings
-from backend.shared.batching import iter_batched_judgments
-from backend.shared.cache import RunCache
-from backend.pipelines.external import prefetch_evidence
-from backend.pipelines.trust import run_trust_assessment
-from backend.stages.trust_graph.projection import publish_graphs
-from backend.stages.trust_graph.ledger import scientific_signature
+from backend.config.settings import ONTOLOGY_DIR, SCHEMA_VERSION, APPLICATION_VERSION, Settings
+from backend.shared.batching import iter_parallel_judgments
+from backend.pipelines.neighbor_validation import run_pathway_assessment
 from backend.shared.cancellation import check_cancelled
 from backend.shared.activity import TaggedMessage
 from backend.providers.llm import (
-    LLMServiceError,
     OpenCodeClient,
     format_request_metrics,
     model_reasoning_policy,
     request_log_level,
 )
-from backend.providers.nli import NLIValidator
-from backend.stages.evidence_ranking.passages import SemanticReranker
 from backend.shared.storage import file_hash, utc_now, read_jsonl
 from backend.shared.artifacts import save_rows
 from backend.pipelines.checkpoints import claim_stage_signature, resume_metadata, save_checkpoint
-from backend.stages.query_planning.planner import translate_queries
-from backend.stages.external_validation.workflow import validate_candidate, prepare_evidence, validation_signature
-from backend.stages.graph_construction.graph import graph_from_candidates, reasoning_paths, write_graphml
 from backend.stages.claim_extraction.deduplication import deduplicate_source_claims
 from backend.domain.claim_context import apply_source_provenance
 from backend.stages.evaluation.metrics import write_evaluation_sample
 from backend.stages.pdf_parsing.quality import assess_text_quality
 from backend.stages.source_validation.checker import validate_source_claim
-from backend.stages.source_validation.reassessment import reassess_source_claim
+from backend.stages.source_validation.review import source_fidelity_decision, source_review_state
 from backend.stages.source_validation.abbreviations import SOURCE_VALIDATION_POLICY
+from backend.stages.source_validation.scope import source_scope_decision, source_pathway_eligible, source_scope_counts
+from backend.stages.source_validation.summary import source_assessment_counts
 from backend.stages.source_validation.context import section_context
 from backend.domain.vocabulary import normalize_entity
 from backend.stages.pdf_parsing.structure import inspect_pdf
-from backend.stages.claim_extraction.extractor import extract_claims
+from backend.stages.pdf_parsing.layout import PARSING_POLICY, LEGACY_PARSING_POLICY
+from backend.stages.claim_extraction.extractor import extract_claims, refresh_candidate_citations
 from backend.stages.claim_extraction.targeting import TARGETING_VERSION
 from backend.stages.pathway_assembly.assembly import assemble_pathways
 from backend.stages.pdf_parsing.packets import (
@@ -53,13 +46,78 @@ from backend.stages.pdf_parsing.packets import (
 )
 
 
-def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_claim: int,
+def _validate_sources(candidates, structurally_valid, packets, output_dir, settings, client, emit, resume):
+    """Reuse compatible readings and persist each new source/scope assessment."""
+    saved_source = {row['candidate_id']: row for row in read_jsonl(output_dir / 'source_validation.jsonl')} if resume else {}
+    source_results = []
+    pending_source = []
+    prior_source = {}
+    packets_by_number = {packet['packet_number']: packet for packet in packets if 'packet_number' in packet}
+    for candidate in structurally_valid:
+        if candidate.get('superseded_by'):
+            if previous := saved_source.get(candidate['candidate_id']) or candidate.get('source_validation'):
+                candidate['source_validation'] = previous
+                source_results.append(previous)
+            continue  # Historical parent reading; children carry current atomic decisions.
+        context = section_context(candidate, packets_by_number.get(candidate.get('source_packet_number'), {}))
+        if context:
+            candidate['source_section_context'] = context
+        previous = saved_source.get(candidate['candidate_id'], {})
+        cached_candidate = {**candidate, 'source_validation': previous}
+        manual = source_review_state(cached_candidate)['active_reviews'] if previous.get('manual_reviews') else {}
+        manually_rejected = any(r['decision'] == 'reject' for r in manual.values())
+        if (previous.get('input_signature') == claim_stage_signature(candidate, settings.source_model, settings.task_thinking['source'])
+                and (manually_rejected or ((previous.get('validation_policy') == SOURCE_VALIDATION_POLICY or manual)
+                and source_scope_decision(cached_candidate) != 'not_assessed' and not previous.get('batch_error')))
+                and previous.get('decision') in {'entailed', 'unsupported', 'needs_review'}):
+            candidate['source_validation'] = previous
+            source_results.append(previous)
+        else:
+            if previous:
+                prior_source[candidate['candidate_id']] = previous
+            candidate.pop('source_validation', None)
+            pending_source.append(candidate)
+    save_rows(output_dir / 'source_validation.jsonl', source_results)
+    if resume:
+        emit('info', f'Reusing {len(source_results)} completed source judgements; {len(pending_source)} claims remain')
+    for candidate, source_result in iter_parallel_judgments(
+            pending_source, client, validate_source_claim, settings.validation_batch_size,
+            progress=lambda message: emit("info", message), label="Source", keyed=True, workers=settings.source_workers):
+        candidate["source_validation"] = source_result
+        if candidate['candidate_id'] in prior_source:
+            source_result['previous_assessment'] = prior_source[candidate['candidate_id']]
+        if source_result.get('applied_name_corrections'):
+            emit('info', f"Expanded source-defined names for {candidate['candidate_id']}: "
+                 + '; '.join(f"{edit['field']}: {edit['before']} -> {edit['after']}"
+                             for edit in source_result['applied_name_corrections']))
+        provenance_changes = apply_source_provenance(candidate, source_result)
+        if provenance_changes:
+            emit('info', f"Moved source occurrence context to provenance for {candidate['candidate_id']}: "
+                 + ', '.join(change['field'] for change in provenance_changes))
+        source_result['input_signature'] = claim_stage_signature(candidate, settings.source_model, settings.task_thinking['source'])
+        source_results.append(source_result)
+        save_rows(output_dir / "source_validation.jsonl", source_results)
+        save_rows(output_dir / "candidates.jsonl", candidates)
+        emit("success" if source_pathway_eligible(candidate) else "warning",
+             TaggedMessage(f"Source: {source_result['decision']}; project scope: {source_scope_decision(candidate)} | {candidate['subject']} -> {candidate['relation']} -> {candidate['object']}",
+                           'source_validation', candidate['candidate_id']))
+    scope_summary = source_scope_counts(candidates)
+    scope_counts = scope_summary['source_project_scope']
+    emit('info', TaggedMessage(
+        f"Source checks complete: {scope_counts['in_scope']} in scope, {scope_counts['out_of_scope']} outside scope, "
+        f"{scope_counts['needs_review']} scope review, {scope_counts['not_assessed']} scope unassessed; "
+        f"{scope_summary['pathway_eligible_claims']} PDF-supported, in-scope claims eligible for assembly",
+        'source_validation'))
+
+
+def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
                  emit: Callable[[str, str], None], claims_per_packet: int | None = None,
                  resume: bool = False, extraction_mode: str | None = None,
                  extraction_target_words: int | None = None,
                  extraction_generation_budget: int | None = None,
                  thinking: dict[str, bool] | None = None,
-                 knowledge_building_mode: str | None = None, trust_batch_size: int | None = None) -> dict[str, Any]:
+                 neighbor_max_pairs: int | None = None,
+                 external_assessment_id: str | None = None) -> dict[str, Any]:
     output_dir = ONTOLOGY_DIR / pdf_path.stem
     output_dir.mkdir(parents=True, exist_ok=True)
     run_started = time.monotonic()
@@ -75,13 +133,10 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         emit("info", f"{name.replace('_', ' ').capitalize()} elapsed: {stage_timings[name]:.1f}s")
 
     settings = Settings()
-    # Direct Python callers retain the previous flow unless explicitly selected;
-    # web run settings default to the new comparison mode.
-    mode = knowledge_building_mode or 'validated_first'
-    previous_judge = settings.external_judgement_mode if settings.external_judgement_mode != 'trust_graph' else 'per_paper_synthesis'
-    settings = replace(settings, knowledge_building_mode=mode,
-                       trust_batch_size=trust_batch_size or settings.trust_batch_size,
-                       external_judgement_mode='trust_graph' if mode == 'trust_graph' else previous_judge)
+    mode = 'pathway_only'
+    settings = replace(settings,
+                       external_top_k=articles_per_pathway,
+                       neighbor_max_pairs=settings.neighbor_max_pairs if neighbor_max_pairs is None else neighbor_max_pairs)
     settings = replace(settings, thinking=thinking if thinking is not None else settings.thinking,
                        extraction_mode=extraction_mode if extraction_mode is not None else settings.extraction_mode,
                        extraction_target_words=(extraction_target_words if extraction_target_words is not None
@@ -99,15 +154,23 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         'schema_version': SCHEMA_VERSION, 'pdf_sha256': file_hash(pdf_path), 'task_models': settings.task_models,
         'max_pages': max_pages, 'claims_per_packet': claims_per_packet, 'extraction_complete': False,
         'extraction_mode': settings.extraction_mode, 'extraction_target_words': settings.extraction_target_words,
-        'extraction_generation_budget': settings.extraction_min_output_budget, 'targeting_version': TARGETING_VERSION}
+        'extraction_generation_budget': settings.extraction_min_output_budget, 'targeting_version': TARGETING_VERSION,
+        'parsing_policy':PARSING_POLICY}
     checkpoint['thinking'] = settings.task_thinking
     checkpoint['knowledge_building_mode'] = mode
-    checkpoint['trust_batch_size'] = settings.trust_batch_size
+    checkpoint['neighbor_max_pairs'] = settings.neighbor_max_pairs
+    if external_assessment_id is not None and not resume:
+        raise ValueError('External reassessment requires saved extraction')
+    external_assessment_id = external_assessment_id or checkpoint.get('external_assessment_id')
+    if external_assessment_id:
+        checkpoint['external_assessment_id'] = external_assessment_id
+        save_checkpoint(output_dir, checkpoint)
+        emit('stage', TaggedMessage('External reassessment: using separate query, retrieval and judgement checkpoints; saved extraction and compatible source checks are reused', 'external_validation'))
     available_models = OpenCodeClient(settings).health_check().get("models", [])
     for task, model in settings.task_models.items():
         if model.split('#', 1)[0] not in available_models:
             raise RuntimeError(f"No configured OpenCode model is available for {task}: {model}")
-    if settings.external_judgement_mode in {'per_paper_synthesis', 'trust_graph'} and settings.external_paper_model not in available_models:
+    if settings.external_paper_model not in available_models:
         raise RuntimeError(f'Configured per-paper primary is unavailable: {settings.external_paper_model}')
     def log_model_request(metrics: dict[str, Any]) -> None:
         with request_log_lock:
@@ -119,7 +182,7 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         replace(settings, request_timeout_seconds=settings.extraction_timeout_seconds) if task == 'extraction' else settings,
         model, task=task, on_request=log_model_request, on_progress=lambda event: emit("progress", json.dumps(event)),
         response_dir=output_dir / 'model_responses') for task, model in settings.task_models.items()}
-    extractor, client = (task_clients[task] for task in ('extraction', 'external'))
+    extractor = task_clients['extraction']
     def llm_call_summary() -> dict[str, Any]:
         counters = {task: task_client.request_metrics for task, task_client in task_clients.items()}
         return {**counters, 'validation': counters['external'], 'helper': counters['query'],
@@ -128,8 +191,11 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         emit('info', f"LLM {task}: {model}; Thinking {'on' if settings.task_thinking[task] else 'off'}")
     emit('info', f"Extraction mode: {settings.extraction_mode}; claim limit per extraction region: {claims_per_packet}; "
          f"initial generation budget (reasoning + answer): {settings.extraction_min_output_budget} tokens")
-    pdf_inspection = inspect_pdf(PdfReader(str(pdf_path)), max_pages)
+    parsing_policy = checkpoint.get('parsing_policy',LEGACY_PARSING_POLICY) if resume else PARSING_POLICY
+    pdf_inspection = inspect_pdf(PdfReader(str(pdf_path)), max_pages, parsing_policy)
     packets = list(iter_pdf_context_packets(pdf_path, max_pages, inspection=pdf_inspection))
+    if resume and (saved_packets := read_jsonl(output_dir / 'extraction_contexts.jsonl')):
+        packets = saved_packets  # Never renumber saved evidence using a different parser.
     source_identifiers = source_article_identifiers(pdf_path)
     pdf_quality = {key: value for key, value in pdf_inspection.items() if key != 'regions'}
     save_rows(output_dir / 'pdf_page_quality.jsonl', pdf_quality['pages'])
@@ -161,6 +227,7 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
             "completed_at": utc_now(),
             "run_status": "blocked_text_quality",
             "schema_version": SCHEMA_VERSION,
+            "application_version": APPLICATION_VERSION,
             "claims_per_packet": claims_per_packet,
             "llm_calls": llm_call_summary(),
             "task_models": settings.task_models,
@@ -177,12 +244,8 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         }
         (output_dir / "summary.json").write_text(json.dumps(blocked_summary, ensure_ascii=False, indent=2), encoding="utf-8")
         raise ValueError("The PDF text is too degraded for faithful extraction. OCR or a cleaner PDF is required.")
-    if document_scope["scope"] == "out_of_scope":
-        emit("warning", "Document scope screening found no clear pathway evidence; extraction will still inspect each packet conservatively")
-    elif document_scope["scope"] == "upstream_only":
-        emit("info", "Paper is upstream-only; retained for evidence-backed pathway bridges, not treated as a health-outcome paper")
     finish_stage("document_preparation")
-    if resume:
+    if resume and checkpoint.get('extraction_complete') and (output_dir / 'candidates.jsonl').is_file():
         emit('stage', 'Resuming saved extraction; completed model judgements will be reused only when their input signatures match')
         if checkpoint.get('imported_extraction') and checkpoint.get('claims_per_packet') is None:
             emit('warning', 'Saved extraction reused: its original claim limit per packet was not recorded; no new extraction was requested')
@@ -191,9 +254,12 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
         extraction_rejection_counts = checkpoint.get('rejection_counts', {})
         canonical_duplicates = checkpoint.get('canonical_duplicates', 0)
         packet_results = read_jsonl(output_dir / 'extraction_packets.jsonl')
+        bib = pdf_bibliography(pdf_path, inspection=pdf_inspection)
+        candidates = refresh_candidate_citations(candidates, bib, emit)
+        save_rows(output_dir / 'candidates.jsonl', candidates)
     else:
         save_checkpoint(output_dir, checkpoint)
-        emit("stage", "Extracting evidence-anchored claims from PDF")
+        emit("stage", "Resuming extraction of evidence-anchored claims from PDF" if resume else "Extracting evidence-anchored claims from PDF")
         packet_results: list[dict[str, Any]] = []
         save_rows(output_dir / 'extraction_contexts.jsonl', packets)
         try:
@@ -202,6 +268,7 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                 source_identifiers=source_identifiers, claims_per_packet=claims_per_packet, packet_results=packet_results,
                 bibliography=pdf_bibliography(pdf_path, inspection=pdf_inspection),
                 extraction_mode=settings.extraction_mode, target_words=settings.extraction_target_words,
+                resume_cache_dir=output_dir if resume else None,
             )
         finally:
             # Keep failed and not-started targets visible even when a primary
@@ -232,219 +299,50 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
     emit("info", f"Structural checks accepted {len(structurally_valid)}/{len(candidates)} candidates; "
          "relations are open and entity labels are provisional")
 
-    semantic_results: list[dict[str, Any]] = []
-    # Compatibility ledger only. This is not a model vote or an admission gate.
     for candidate in structurally_valid:
-        candidate['semantic_validation'] = {'candidate_id': candidate['candidate_id'], 'decision': 'not_run',
-                                            'rationale': 'Standalone semantic gate removed; roles/scope assessed jointly with external evidence.'}
+        candidate.pop('semantic_validation', None)
         for role in ('subject', 'object'):
             candidate[f'{role}_normalization'] = normalize_entity(candidate[role], candidate[f'{role}_type'])
-    save_rows(output_dir / 'semantic_validation.jsonl', [])
     save_rows(output_dir / 'candidates.jsonl', candidates)
-    semantic_accepted = structurally_valid
-    save_rows(output_dir / 'semantic_valid_candidates.jsonl', [])
-    emit('info', 'Standalone semantic model check disabled; all schema-valid claims proceed to source fidelity')
-    emit("stage", f"Checking source evidence for {len(semantic_accepted)} claims")
-    saved_source = {row['candidate_id']: row for row in read_jsonl(output_dir / 'source_validation.jsonl')} if resume else {}
-    source_results = []
-    pending_source = []
-    packets_by_number = {packet['packet_number']: packet for packet in packets if 'packet_number' in packet}
-    for candidate in semantic_accepted:
-        context = section_context(candidate, packets_by_number.get(candidate.get('source_packet_number'), {}))
-        if context and candidate.get('source_validation', {}).get('decision') != 'entailed':
-            candidate['source_section_context'] = context
-        previous = saved_source.get(candidate['candidate_id'], {})
-        if (previous.get('input_signature') == claim_stage_signature(candidate, settings.source_model, settings.task_thinking['source'])
-                and previous.get('validation_policy') == SOURCE_VALIDATION_POLICY
-                and previous.get('decision') in {'entailed', 'unsupported', 'needs_review'} and not previous.get('batch_error')):
-            candidate['source_validation'] = previous
-            source_results.append(previous)
-        else:
-            candidate.pop('source_validation', None)
-            pending_source.append(candidate)
-    save_rows(output_dir / 'source_validation.jsonl', source_results)
-    if resume:
-        emit('info', f'Reusing {len(source_results)} completed source judgements; {len(pending_source)} claims remain')
-    for candidate, source_result in iter_batched_judgments(
-            pending_source, task_clients['source'], validate_source_claim, settings.validation_batch_size,
-            progress=lambda message: emit("info", message), label="Source"):
-        candidate["source_validation"] = source_result
-        if source_result.get('applied_name_corrections'):
-            emit('info', f"Expanded source-defined names for {candidate['candidate_id']}: "
-                 + '; '.join(f"{edit['field']}: {edit['before']} -> {edit['after']}"
-                             for edit in source_result['applied_name_corrections']))
-        provenance_changes = apply_source_provenance(candidate, source_result)
-        if provenance_changes:
-            emit('info', f"Moved source occurrence context to provenance for {candidate['candidate_id']}: "
-                 + ', '.join(change['field'] for change in provenance_changes))
-        source_result['input_signature'] = claim_stage_signature(candidate, settings.source_model, settings.task_thinking['source'])
-        source_results.append(source_result)
-        save_rows(output_dir / "source_validation.jsonl", source_results)
-        save_rows(output_dir / "candidates.jsonl", candidates)
-        emit("success" if source_result["decision"] == "entailed" else "warning",
-             f"Source status: {source_result['decision']} | {candidate['subject']} -> {candidate['relation']} -> {candidate['object']}")
-    if mode == 'trust_graph':
-        reviewable = [c for c in semantic_accepted if c.get('source_validation', {}).get('decision') in {'unsupported', 'needs_review'}
-                      and not c['source_validation'].get('source_review_audit') and not c['source_validation'].get('batch_error')]
-        if reviewable:
-            emit('stage', f'Bounded source reassessment: {len(reviewable)} non-positive claims; original decisions retained')
-        for candidate, source_result in iter_batched_judgments(reviewable, task_clients['source'], reassess_source_claim,
-                settings.validation_batch_size, progress=lambda m: emit('info', m), label='Source reassessment'):
-            candidate['source_validation'] = source_result
-            apply_source_provenance(candidate, source_result)
-            source_result['input_signature'] = claim_stage_signature(candidate, settings.source_model, settings.task_thinking['source'])
-            source_results[:] = [r for r in source_results if r['candidate_id'] != candidate['candidate_id']]
-            source_results.append(source_result)
-            save_rows(output_dir / 'source_validation.jsonl', source_results)
-            save_rows(output_dir / 'candidates.jsonl', candidates)
+    emit("stage", f"Checking source fidelity and project scope for {len(structurally_valid)} claims")
+    _validate_sources(candidates, structurally_valid, packets, output_dir, settings,
+                      task_clients['source'], emit, resume)
     finish_stage("source_validation")
-    provisional = None
-    if mode == 'trust_graph':
-        emit('stage', 'Assembling provisional source-grounded pathways before external evidence assessment')
-        provisional = assemble_pathways(ONTOLOGY_DIR, task_clients['pathway_assembly'], settings, emit, provisional=True)
-        finish_stage('provisional_assembly')
-    source_entailed = [candidate for candidate in semantic_accepted
-                       if candidate["source_validation"]["decision"] == "entailed"]
+    emit('stage', 'Assembling provisional pathways from PDF-supported, in-scope claims before external evidence assessment')
+    provisional = assemble_pathways(ONTOLOGY_DIR, task_clients['pathway_assembly'], settings, emit, provisional=True)
+    finish_stage('provisional_assembly')
+    source_entailed = [candidate for candidate in structurally_valid
+                       if source_fidelity_decision(candidate) == "entailed"]
     save_rows(output_dir / "source_entailed_candidates.jsonl",
                 [{"candidate_id": item["candidate_id"]} for item in source_entailed])
-    results: list[dict[str, Any]] = read_jsonl(output_dir / 'validation_runs.jsonl') if resume else []
-    save_rows(output_dir / "validation_runs.jsonl", results)
-    initial_graph = graph_from_candidates(candidates, results, view="main")
-    initial_source_graph = graph_from_candidates(candidates, results, view="source")
-    initial_audit_graph = graph_from_candidates(candidates, results, view="audit")
-    (output_dir / "graph.json").write_text(json.dumps(initial_graph, ensure_ascii=False, indent=2), encoding="utf-8")
-    (output_dir / "source_graph.json").write_text(json.dumps(initial_source_graph, ensure_ascii=False, indent=2), encoding="utf-8")
-    (output_dir / "audit_graph.json").write_text(json.dumps(initial_audit_graph, ensure_ascii=False, indent=2), encoding="utf-8")
-    selected = source_entailed[:max_claims] if max_claims else source_entailed
-    saved_external = {row['candidate_id']: row for row in results}
-    complete_external = {candidate['candidate_id'] for candidate in selected
-                         if saved_external.get(candidate['candidate_id'], {}).get('validation_signature')
-                         == validation_signature(candidate, settings, articles_per_claim, settings.external_top_chunks)
-                         and saved_external[candidate['candidate_id']].get('validation_status')
-                         not in {None, 'pipeline_error', 'external_in_progress', 'retrieval_pending'}}
-    if mode == 'trust_graph':
-        complete_external = {cid for cid in complete_external if saved_external[cid].get('claim_input_signature') ==
-                             scientific_signature(next(c for c in selected if c['candidate_id'] == cid))}
-    if mode != 'trust_graph':
-        selected = [candidate for candidate in selected if candidate['candidate_id'] not in complete_external]
-    if resume:
-        emit('info', f'Reusing {len(complete_external)} completed external judgements; {len(selected)} claims remain')
-    saved_queries = {row['candidate_id']: row for row in read_jsonl(output_dir / 'query_translations.jsonl')} if resume else {}
-    query_translations = {}
-    for candidate in selected:
-        previous = saved_queries.get(candidate['candidate_id'], {})
-        if (previous.get('input_signature') == claim_stage_signature(candidate, settings.query_model, settings.task_thinking['query'])
-                and not previous.get('result', {}).get('batch_error')):
-            query_translations[candidate['candidate_id']] = previous['result']
-    def save_query(candidate, result):
-        saved_queries[candidate['candidate_id']] = {'candidate_id': candidate['candidate_id'], 'result': result,
-            'input_signature': claim_stage_signature(candidate, settings.query_model, settings.task_thinking['query'])}
-        save_rows(output_dir / 'query_translations.jsonl', list(saved_queries.values()))
-    query_translations.update(translate_queries(
-        [candidate for candidate in selected if candidate['candidate_id'] not in query_translations
-         and candidate['candidate_id'] not in complete_external],
-        task_clients['query'], settings.query_batch_size, progress=lambda message: emit("info", message),
-        on_checkpoint=save_query))
-    finish_stage("query_planning")
-    run_cache = RunCache()
-    if settings.evidence_index_enabled:
-        from backend.shared.evidence_index import EvidenceIndex
-        run_cache.persistent = EvidenceIndex(ONTOLOGY_DIR / '.evidence_index',
-            max_bytes=settings.evidence_index_max_mb * 1024 * 1024,
-            ttl_seconds=settings.evidence_index_ttl_hours * 3600)
-    emit("stage", f"Validating {len(selected)} claims against Europe PMC and OpenAlex literature")
-    nli_validator: NLIValidator | None = None
-    has_external_work = bool(selected) and (mode != 'trust_graph' or len(complete_external) < len(selected))
-    if has_external_work and settings.enable_nli:
-        emit("info", f"Loading external contradiction checker {settings.nli_model} on {settings.nli_device}")
-        try:
-            nli_validator = NLIValidator(settings)
-            nli_validator.warmup()
-            emit("success", "External contradiction checker ready")
-        except Exception as exc:
-            emit("warning", f"External contradiction checker unavailable: {exc}")
-    reranker = SemanticReranker(settings) if has_external_work else None
-    if reranker and run_cache.persistent is not None:
-        reranker.evidence_index = run_cache.persistent
-    if reranker:
-        emit("info", f"Loading semantic reranker {settings.embedding_model}")
-        try:
-            backend = reranker.warmup()
-            emit("success", f"Semantic reranker ready ({backend})")
-        except Exception as exc:
-            emit("error", f"Semantic reranker failed before retrieval: {exc}")
-            results.extend({"schema_version": SCHEMA_VERSION, "candidate_id": candidate["candidate_id"],
-                            "validation_status": "pipeline_error", "error": str(exc)}
-                           for candidate in selected)
-            save_rows(output_dir / "validation_runs.jsonl", results)
-            if mode == 'trust_graph':
-                raise
-            selected = []
-    emit('info', TaggedMessage(f"Retrieval lookahead: {'enabled' if settings.external_prefetch else 'disabled'}; one retrieval owner; cloud judgements remain sequential", 'literature_search'))
-    def prepare_next(candidate):
-        check_cancelled()
-        return prepare_evidence(candidate, client, reranker, settings, articles_per_claim, settings.external_top_chunks,
-            progress=lambda message: emit('info', message), query_translation=query_translations.get(candidate['candidate_id']),
-            cache=run_cache, resume_record=saved_external.get(candidate['candidate_id']) if resume else None)
-    trust_stats = None
-    if mode == 'trust_graph':
-        trust_stats = run_trust_assessment(selected, candidates, provisional, output_dir, client, reranker, settings,
-                             articles_per_claim, query_translations, run_cache, results, emit, resume=resume, nli_validator=nli_validator)
-    with prefetch_evidence(selected if mode != 'trust_graph' else [], prepare_next, settings.external_prefetch) as evidence_iterator:
-        for position, (candidate, evidence_future) in enumerate(evidence_iterator, 1):
-            emit("info", f"Claim {position}/{len(selected)}: {candidate['subject']} â†’ {candidate['relation']} â†’ {candidate['object']}")
-            def save_external_checkpoint(record: dict[str, Any]) -> None:
-                record.pop('candidate', None)
-                results[:] = [row for row in results if row['candidate_id'] != record['candidate_id']]
-                results.append(record)
-                save_rows(output_dir / 'validation_runs.jsonl', results)
-            try:
-                prepared = evidence_future.result()
-                result = validate_candidate(candidate, client, reranker, settings, articles_per_claim, settings.external_top_chunks,
-                                            progress=lambda message: emit("info", message),
-                                            nli_validator=nli_validator,
-                                            query_translation=query_translations.get(candidate["candidate_id"]), cache=run_cache,
-                                            on_checkpoint=save_external_checkpoint,
-                                            resume_record=saved_external.get(candidate['candidate_id']) if resume else None,
-                                            prepared_evidence=prepared)
-                # candidates.jsonl is the canonical candidate store. Avoid embedding
-                # its large source context again in every external-validation row.
-                result.pop("candidate", None)
-            except LLMServiceError:
-                raise
-            except Exception as exc:
-                result = {"schema_version": SCHEMA_VERSION, "candidate_id": candidate["candidate_id"],
-                          "validation_status": "pipeline_error", "error": str(exc)}
-                emit("error", f"Claim failed: {exc}")
-            save_external_checkpoint(result)
-            emit("success", f"Claim status: {result['validation_status']}")
-    finish_stage("external_validation")
-    assembly = (publish_graphs(ONTOLOGY_DIR, provisional, settings) if mode == 'trust_graph' else
-                assemble_pathways(ONTOLOGY_DIR, task_clients['pathway_assembly'], settings, emit))
-    finish_stage('pathway_assembly')
-    emit("stage", "Building knowledge graph")
-    graph = graph_from_candidates(candidates, results, view="main")
-    source_graph = graph_from_candidates(candidates, results, view="source")
-    audit_graph = graph_from_candidates(candidates, results, view="audit")
-    (output_dir / "graph.json").write_text(json.dumps(graph, ensure_ascii=False, indent=2), encoding="utf-8")
-    (output_dir / "source_graph.json").write_text(json.dumps(source_graph, ensure_ascii=False, indent=2), encoding="utf-8")
-    (output_dir / "audit_graph.json").write_text(json.dumps(audit_graph, ensure_ascii=False, indent=2), encoding="utf-8")
-    write_graphml(graph, output_dir / "knowledge_graph.graphml")
-    paths = reasoning_paths(graph)
-    evaluation_path = write_evaluation_sample(output_dir, candidates, results, preserve_existing_labels=resume)
-    finish_stage("graph_building")
+    # Historical per-claim results remain on disk for audit only. No new
+    # individual external assessments or trust-score updates are performed.
+    results = []
+    emit('stage', 'Assessing neighboring claims and their local connections against external research')
+    pathway_stats = run_pathway_assessment(ONTOLOGY_DIR, output_dir, provisional, task_clients, settings, emit,
+        **({'assessment_id': external_assessment_id} if external_assessment_id else {}))
+    finish_stage('neighbor_external_validation')
+    graph = json.loads((output_dir / 'graph.json').read_text(encoding='utf-8'))
+    source_graph = json.loads((output_dir / 'source_graph.json').read_text(encoding='utf-8'))
+    audit_graph = json.loads((output_dir / 'audit_graph.json').read_text(encoding='utf-8'))
+    paths = []
+    assembly = provisional
+    evaluation_path = write_evaluation_sample(output_dir, candidates, [], preserve_existing_labels=resume)
+    finish_stage('graph_building')
     summary = {"pdf": pdf_path.name, "pdf_sha256": file_hash(pdf_path), "model": settings.extraction_model,
                "extraction_model": settings.extraction_model, "validation_model": settings.external_model, "completed_at": utc_now(),
                "external_phase_models": settings.external_phase_models,
-               "run_status": "completed_with_warnings" if failed_packets or any(r.get('validation_status') == 'retrieval_pending' for r in results) else "completed",
-               "retrieval_pending": sum(r.get('validation_status') == 'retrieval_pending' for r in results),
-               "evidence_index": run_cache.persistent.stats() if run_cache.persistent else None,
+               "run_status": "completed_with_warnings" if failed_packets or pathway_stats['outcomes'].get('assessment_incomplete') or not pathway_stats['coverage']['complete_pair_coverage'] else "completed",
+               "retrieval_pending": pathway_stats['outcomes'].get('assessment_incomplete',0),
+               "external_incomplete": pathway_stats['outcomes'].get('assessment_incomplete',0),
+               "evidence_index": pathway_stats["evidence_index"],
                "extraction_coverage": {"complete": not failed_packets, "total_packets": len(packet_results),
                                        "completed_packets": completed_packets, 'failed_packets': failed_packets,
                                        'unit': 'targets' if settings.extraction_mode == 'target_context' else 'packets',
                                        'exhaustive_claim_recall': False,
                                        'claim_limit_reached_regions': sum(row.get('claim_limit_reached', False) for row in packet_results)},
                "schema_version": SCHEMA_VERSION,
+               "application_version": APPLICATION_VERSION,
                "resumed": resume,
                "llm_transport": 'api',
                "json_repair_attempts": settings.json_repair_attempts,
@@ -458,9 +356,10 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                "extraction_generation_budget": checkpoint.get('extraction_generation_budget', settings.extraction_min_output_budget),
                "targeting_version": checkpoint.get('targeting_version'),
                "external_judgement_policy": settings.external_judgement_mode,
-               "knowledge_building_mode": mode, "trust_batch_size": settings.trust_batch_size,
-               "trust_assessment": trust_stats,
-               "external_top_k": articles_per_claim,
+               "knowledge_building_mode": mode, "external_validation_target": "neighboring_claims",
+               **({'external_assessment_id': external_assessment_id} if external_assessment_id else {}),
+               "pathway_validation": pathway_stats, "neighbor_max_pairs": settings.neighbor_max_pairs,
+               "external_top_k": articles_per_pathway,
                "external_top_chunks": settings.external_top_chunks,
                "external_input_max_characters": settings.external_input_max_characters,
                "helper_model": settings.query_model,
@@ -468,27 +367,20 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
                "task_models": settings.task_models,
                "models_used": sorted({item['model'] for item in model_requests}),
                "validation_batch_size": settings.validation_batch_size,
-               "query_batch_size": settings.query_batch_size,
                "retrieval_workers": settings.retrieval_workers,
                "wall_elapsed_seconds": round(time.monotonic() - run_started, 3),
                "stage_timings_seconds": stage_timings,
-               "retrieval_cache": run_cache.stats,
-               "embedding_cache_hits": reranker.embedding_cache_hits if reranker else 0,
+               "retrieval_cache": pathway_stats["retrieval_cache"],
+               "embedding_cache_hits": pathway_stats["embedding_cache_hits"],
                "canonical_duplicates_removed": canonical_duplicates,
                "llm_calls": llm_call_summary(),
                "embedding_model": settings.embedding_model,
                "cross_encoder_model": settings.cross_encoder_model,
-               "nli_model": settings.nli_model if settings.enable_nli else None,
+
                "extracted": len(candidates), "schema_valid": len(structurally_valid),
                "semantic_accepted": 0, "semantic_stage": "removed",
-               "semantic_type_normalized": sum(item.get("action") == "normalize_types"
-                                                and item.get("normalization_applied") is True
-                                                for item in semantic_results),
-               "semantic_needs_review": sum(item["decision"] == "needs_review" for item in semantic_results),
-               "semantic_rejected": sum(item["decision"] == "rejected" for item in semantic_results),
-               "source_entailed": len(source_entailed),
-               "source_needs_review": sum(item["decision"] == "needs_review" for item in source_results),
-               "source_unsupported": sum(item["decision"] == "unsupported" for item in source_results),
+               "semantic_type_normalized": 0, "semantic_needs_review": 0, "semantic_rejected": 0,
+               **source_assessment_counts(candidates),
                "externally_evaluated": sum(r.get('validation_status') not in
                    {None, 'pipeline_error', 'external_in_progress', 'retrieval_pending'} for r in results),
                "extraction_rejections": sum(value for key, value in extraction_rejection_counts.items()
@@ -507,8 +399,7 @@ def run_pipeline(pdf_path: Path, max_pages: int, max_claims: int, articles_per_c
     (output_dir / "reasoning_paths.json").write_text(json.dumps(paths, ensure_ascii=False, indent=2), encoding="utf-8")
     emit(
         "success",
-        f"Finished: {len(candidates)} extracted, {len(results)} externally evaluated, "
-        f"{graph['counts']['supported']} independently supported and "
-        f"{graph['counts']['corroborated']} corroborated graph claims",
+        f"Finished: {len(candidates)} source claims; {pathway_stats['assessed_pairs']} neighboring pairs assessed; "
+        f"{pathway_stats['outcomes'].get('connection_supported', 0)} locally supported connections",
     )
     return summary

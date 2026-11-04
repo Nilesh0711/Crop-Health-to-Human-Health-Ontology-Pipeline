@@ -18,5 +18,5 @@ def assemble_saved_pathways(root, output, emit, thinking=None):
         emit(request_log_level(metrics), format_request_metrics(metrics))
     client = OpenCodeClient(settings, task='pathway_assembly', on_request=log,
         on_progress=lambda event:emit('progress', json.dumps(event)), response_dir=output / 'model_responses')
-    snapshot = assemble_pathways(root, client, settings, emit)
-    return {'run_status':'completed', 'pathway_assembly':snapshot['counts']}
+    snapshot = assemble_pathways(root, client, settings, emit, provisional=True)
+    return {'run_status':'completed', 'pathway_assembly':snapshot['counts'], 'external_validation_pending':True}

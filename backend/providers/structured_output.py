@@ -27,7 +27,7 @@ class DuplicateJSONPropertyError(SchemaValidationError):
 
 
 class EvidenceSelectionError(StructuredOutputError):
-    """Complete, schema-valid assessment has ungrounded proof selections.
+    """Complete, schema-valid assessment has ungrounded or inconsistent findings.
 
     Guarded evidence callers must withhold that proof and retain it for review.
     After the bounded recovery, this is reviewable data, not a service outage.

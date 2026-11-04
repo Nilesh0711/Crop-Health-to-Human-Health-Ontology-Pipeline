@@ -5,7 +5,7 @@ import pytest
 
 from backend.config.settings import Settings
 from backend.providers.inference import InferenceHTTP
-from scripts.research.reasoning_comparison import ResearchThinkingHTTP
+from archive.legacy_pipeline.research_tools.reasoning_comparison import ResearchThinkingHTTP
 
 
 @pytest.mark.parametrize('mode',['provider_default','disabled'])
@@ -57,7 +57,7 @@ def test_production_http_keeps_provider_default(monkeypatch):
 def test_target_preserves_context_and_rejects_outside_evidence(monkeypatch,numbers,valid):
     from backend.providers.llm import OpenCodeClient
     from backend.providers.structured_output import IncompleteResponseError
-    from scripts.research.reasoning_comparison import TargetedExtractionClient
+    from archive.legacy_pipeline.research_tools.reasoning_comparison import TargetedExtractionClient
     captured=[]
     def receive(self,system,prompt,**kwargs):
         captured.append((system,prompt))

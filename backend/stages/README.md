@@ -1,44 +1,54 @@
 # Pipeline stages
 
 `backend/pipelines/document.py` controls stage ordering, checkpoints, failures
-and final artifacts. A stage boundary does not introduce another model call.
+and final artifacts. Stage boundaries express ownership, not an extra model call.
 
-| Stage | Main interface | Input and responsibility | Result |
-| --- | --- | --- | --- |
-| `pdf_parsing` | `structure.inspect_pdf`, `packets.iter_pdf_context_packets`, `quality.assess_text_quality` | PDF chapters, bibliography links, literal sentences and quality | Page audit and provenance-bearing context packets |
-| `claim_extraction` | `extractor.extract_claims`, `deduplication.deduplicate_source_claims` | Packets and stage-owned prompt/schema; exact anchors and artifact checks | Claims, citation links and extraction audit |
-| `source_validation` | `checker.validate_source_claim` | Fixed claim and original PDF evidence | Entailed, unsupported or review decision |
-| `query_planning` | `planner.translate_queries`, `planner.evidence_query_plan` | Claim, qualifiers and bounded source context | Complementary translated/neutral index queries |
-| `literature_retrieval` | `workflow.retrieve_round`, `clients.*` | Citation resolution, discovery, publication deduplication and fetching | Evidence documents, citation lifecycle and coverage |
-| `evidence_ranking` | `articles._hybrid_order`, `passages.SemanticReranker` | Metadata fusion and BGE/MedCPT passage ranking | Selected papers/chunks and auditable scores |
-| `external_validation` | `workflow.validate_candidate`, `joint.judge_evidence_pack`, `proofs.decision_errors` | Fixed claim and every selected paper packet | Joint Pro assessment, guarded quotations, contextual types and aggregate evidence state |
-| `trust_graph` | `workflow.assess_group`, `ledger.evidence_balance`, `projection.publish_graphs` | Provisional source-grounded connections, shared paper packets and claim-local proof | Grouped DeepSeek/Pro assessment, distinct-study balances, compatibility records and validated projection |
-| `pathway_assembly` | `assembly.assemble_pathways`, `paths.assembled_paths` | All saved triplets, local source context and a global MiMo Flash entity registry | Original directed edges connected through shared entities; no causal-chain validation |
-| `graph_construction` | `graph.graph_from_candidates`, `graph.reasoning_paths` | Saved claims and guarded decisions | Source/external/audit graphs, exports and provisional paths |
-| `evaluation` | `metrics.evaluation_sample`, `metrics.score_evaluation` | Predictions and separately entered human gold fields | Annotation samples and metrics |
+| Stage | Main interface | Purpose and result |
+| --- | --- | --- |
+| `pdf_parsing` | `structure.inspect_pdf`, `packets.iter_pdf_context_packets`, `quality.assess_text_quality` | Parse chapters, bibliography links and literal sentences; report text quality |
+| `claim_extraction` | `extractor.extract_claims`, `deduplication.deduplicate_source_claims` | Extract atomic claims with conditions, sentence anchors, citations and coverage |
+| `source_validation` | `checker.validate_source_claim`, `review.*` | Assess PDF fidelity and project scope separately; preserve human review decisions |
+| `pathway_assembly` | `assembly.assemble_pathways`, `paths.assembled_paths` | Align source-grounded entities globally and propose directed chains |
+| `query_planning` | `neighbors.translate_pathway`, `planner.evidence_query_plan` | Plan neighboring-claim and junction queries; preserve neutral retrieval variants |
+| `literature_retrieval` | `workflow.retrieve_round`, `clients.*` | Resolve citations, discover papers, fetch text and retain retrieval coverage |
+| `evidence_ranking` | `articles._hybrid_order`, `passages.SemanticReranker`, `pathways.*` | Rank publications/passages and cover pathway retrieval targets |
+| `neighbor_validation` | `workflow.assess_pathway`, `judgement.judge_paper`, `judgement.synthesize`, `proof_audit.audit_support` | Assess papers with DeepSeek Flash; Muse Spark 1.3 Contributor synthesizes and independently audits proposed local support |
+| `external_validation` | `evidence.*`, `history.verified_contradictions` | Shared exact-text packing/quotation checks and historical evidence readers |
+| `graph_construction` | `graph.graph_from_candidates`, `graph.write_graphml`, `graph.reasoning_paths` | Build source/audit snapshots and GraphML; retain historical corroborated health-path traversal |
+| `evaluation` | `metrics.evaluation_sample`, `metrics.score_evaluation` | Produce independent annotation samples and evaluation metrics |
 
-Retrieval uses ranking interfaces to select papers/passages. External validation
-coordinates retrieval before the joint judgement. A relevance score does not
-establish scientific truth. Graph/evaluation consume the resulting evidence
-states. `backend/pipelines/claim_repair.py` reuses these stages while preserving
-prior claims, revisions and unrelated findings.
+A relevance score selects text; it does not establish scientific truth. The
+source model judges PDF fidelity and scope, while the external models judge
+supplied research evidence for neighboring claims and local connections. Deterministic evidence checks
+bind selected identifiers and literal text to their actual papers. NLI is not part of active execution.
 
-## Resources and shared rules
+## Shared ownership and historical code
 
-- `claim_extraction/prompt.md` is the runtime template, loaded by `prompt.py`
-  with controlled ontology definitions and extraction limits appended.
-- `claim_extraction/contract.py` owns the response shape and lexical guards.
-- `claim_extraction/targeting.py` assigns deterministic target regions and marks
-  reading-only context. See [runtime extraction modes](claim_extraction/README.md).
-- `external_validation/prompt_reference.md` documents the external contract;
-  runtime instructions, schema and guards live in `joint.py` and `proofs.py`.
-- Scientific types, quoted alignment, claim context, modality and literal search
-  terms shared across stages live in `backend/domain/`.
-- Providers, settings, storage, caching and batching have their own packages.
-  Package imports do not instantiate models.
-- Standalone scope/semantic helpers are removed; joint external judgement owns
-  evidence-grounded type and pathway assessment.
+- `claim_extraction/prompt.md` is loaded by its stage-owned prompt builder.
+- `source_validation/prompt.py` owns source-fidelity prompt construction;
+  `source_validation/scope.py` defines general project relevance.
+- `neighbor_validation/judgement.py` owns active paper and synthesis prompts.
+- `external_validation/evidence.py` numbers exact sentences, deduplicates repeated
+  text losslessly and reconstructs proof. Historical proof guards remain readable.
+- Scientific ontology, source alignment, context and modality helpers live in
+  `backend/domain/`; infrastructure and providers have their own packages.
+- Retired per-claim, joint-paper and trust executors are isolated under
+  `archive/legacy_pipeline/research_historical/`. Production cannot import them; old test cases
+  and research data remain intact.
 
-Models, thresholds, proof requirements, JSON artifacts and API behavior are
-preserved by this structural refactor. Regression tests cover those contracts;
-architecture tests prevent reverse dependencies and import cycles.
+Stages do not import API, CLI or pipeline entry points. Package imports do not
+load models. Architecture tests enforce dependency direction and prevent cycles.
+
+## Calls and scientific decisions
+
+The active model calls are extraction (DeepSeek Flash), source/scope checking
+(DeepSeek Flash; three independent claims per call by default), entity identity
+assembly (MiMo Flash), local-link/junction query planning (MiMo Flash), paper
+assessment (DeepSeek Flash) and cross-paper local synthesis (Muse Spark 1.3 Contributor). Two source
+batches can run concurrently. The external Thinking switch controls both paper
+and synthesis calls; all five stage switches default Off.
+
+Parsing, hybrid candidate retrieval, article/passage ranking, adjacency selection,
+exact proof reconstruction and graph publication do not each add a hosted LLM
+call. BGE/MedCPT supply local ranking signals. Deterministic checks enforce the
+response and evidence contract; they do not independently decide scientific truth.

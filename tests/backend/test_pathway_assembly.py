@@ -58,13 +58,21 @@ class Aligner:
                 if canonical(node['canonical_label']) == label or node['node_id'] == endpoint.get('provisional_node_id'):
                     if node['node_id'] not in group['existing_node_ids']:
                         group['existing_node_ids'].append(node['node_id'])
-        answer = {'groups':list(groups.values())}
+        endpoint_assignments = {}
+        registry_assignments = {node['node_id']: None for node in data['registry_nodes']}
+        metadata = []
+        for group_id, group in enumerate(groups.values(), 1):
+            endpoint_assignments.update({identifier: group_id for identifier in group['endpoint_ids']})
+            registry_assignments.update({identifier: group_id for identifier in group['existing_node_ids']})
+            metadata.append({key: group[key] for key in ('canonical_label', 'explanation')} | {
+                'group_id': group_id, 'joins_existing_registry_node': bool(group['existing_node_ids'])})
+        answer = dict(endpoint_assignments=endpoint_assignments, registry_assignments=registry_assignments, groups=metadata)
         kwargs['response_check'](answer)
         return answer
 
 
 def configuration(**kwargs):
-    return replace(Settings(), pathway_assembly_batch_size=1, **kwargs)
+    return replace(Settings(), pathway_assembly_batch_size=1, pathway_candidate_strategy='exhaustive', **kwargs)
 
 
 def test_connected_validated_claims_across_papers_keep_edges_and_conditions(tmp_path):
@@ -111,22 +119,23 @@ def test_new_paper_compares_with_global_registry_without_regenerating_old_occurr
     saved_claim(tmp_path, 'B', 'These infected grains', 'has_contaminant', 'cadmium')
     second = assemble_pathways(tmp_path, client, configuration())
     assert second['counts']['entities'] == 3
-    incoming = {r['endpoint_id'] for call in client.calls[old_count:] for r in call['incoming_endpoints']}
-    assert not incoming.intersection(old_ids)
-    assert len(incoming) == 2
+    incoming = {(r['document_key'], r['role']) for call in client.calls[old_count:] for r in call['incoming_endpoints']}
+    assert incoming == {('B', 'subject'), ('B', 'object')}
     assert any(call['registry_nodes'] for call in client.calls[old_count:])
 
 
 def test_registry_is_sharded_without_dropping_global_occurrences(tmp_path):
+    from backend.stages.pathway_assembly.contract import SYSTEM
+    budget = len(SYSTEM) + 4200  # Preserve a small payload budget as instructions evolve.
     for n in range(7):
         saved_claim(tmp_path, str(n), f'crop {n}', 'has_contaminant', f'toxin {n}')
     client = Aligner()
-    snapshot = assemble_pathways(tmp_path, client, configuration(pathway_assembly_input_characters=6500))
+    snapshot = assemble_pathways(tmp_path, client, configuration(pathway_assembly_input_characters=budget))
     assert snapshot['counts']['endpoints'] == 14
     assert len(client.calls) > 14  # Multiple global registry shards for later batches.
     all_ids = [i for node in snapshot['graph']['nodes'] for i in node['endpoint_ids']]
     assert len(all_ids) == len(set(all_ids)) == 14
-    assert all(len(json.dumps(call, ensure_ascii=False)) <= 6500 for call in client.calls)
+    assert all(len(json.dumps(call, ensure_ascii=False)) <= budget for call in client.calls)
 
 
 def test_provider_failure_does_not_publish_partial_snapshot_and_resume_keeps_completed_calls(tmp_path):
@@ -214,26 +223,22 @@ def test_global_assembly_worker_uses_saved_claim_workflow_not_full_pipeline(tmp_
 
 
 def test_large_shared_node_keeps_all_occurrence_contexts_across_registry_fragments(tmp_path):
+    from backend.stages.pathway_assembly.contract import SYSTEM
     for n in range(12):
         saved_claim(tmp_path, f'paper-{n:02}', 'wheat grains', 'has_contaminant', 'mycotoxins')
     client = Aligner()
-    snapshot = assemble_pathways(tmp_path, client, configuration(pathway_assembly_input_characters=6500))
+    snapshot = assemble_pathways(tmp_path, client, configuration(pathway_assembly_input_characters=len(SYSTEM) + 4200))
     assert snapshot['counts']['entities'] == 2
-    last_id = snapshot['endpoints'][-1]['endpoint_id']
+    last = snapshot['endpoints'][-1]
     scanned = {context['paper'] for call in client.calls
-               if any(e['endpoint_id'] == last_id for e in call['incoming_endpoints'])
+               if any((e['document_key'], e['role']) == (last['document_key'], last['role']) for e in call['incoming_endpoints'])
                for node in call['registry_nodes'] for context in node['identity_context']}
     assert {f'paper-{n:02}' for n in range(11)} <= scanned
     assert sum(len(node['endpoint_ids']) for node in snapshot['graph']['nodes']) == 24
 
 
 def test_pathway_model_changes_do_not_invalidate_existing_external_judgments():
-    from dataclasses import asdict
-    from types import SimpleNamespace
-    from backend.stages.external_validation.workflow import validation_signature
+    from backend.pipelines.neighbor_validation import config_signature
     settings = Settings()
-    old = SimpleNamespace(**asdict(settings), task_thinking=settings.task_thinking, task_models={k:v for k,v in settings.task_models.items()
-                                                        if k != 'pathway_assembly'})
-    claim = {'candidate_id':'kept', 'subject':'wheat', 'relation':'has_contaminant', 'object':'cadmium'}
-    assert validation_signature(claim, settings) == validation_signature(claim, old)
-    assert validation_signature(claim, replace(settings, pathway_assembly_model='opencode-go/mimo-v2.6-pro')) == validation_signature(claim, old)
+    target = {'policy': 'neighbor-pair-v1', 'input_signature': 'test-sig'}
+    assert config_signature(target, settings) == config_signature(target, replace(settings, pathway_assembly_model='opencode-go/mimo-v2.6-pro'))

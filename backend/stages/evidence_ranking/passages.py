@@ -7,6 +7,7 @@ from typing import Any
 from collections import OrderedDict
 from hashlib import sha256
 import re
+from threading import RLock
 from pathlib import Path
 from backend.config.settings import Settings
 from backend.providers.runtime_pool import runtime, inference
@@ -20,9 +21,17 @@ def embedding_revision(backend, model, name):
             encoder = getattr(model[0], 'auto_model', model)
         except (TypeError, IndexError, KeyError):
             encoder = model
+    encoder = getattr(encoder, 'model', encoder)
     revision = getattr(getattr(encoder, 'config', None), '_commit_hash', None)
     if isinstance(revision, str) and revision:
         return revision
+    try:
+        from huggingface_hub import try_to_load_from_cache
+        cached = try_to_load_from_cache(name, 'config.json')
+        if isinstance(cached, str) and re.fullmatch(r'[0-9a-f]{40}', Path(cached).parent.name):
+            return Path(cached).parent.name
+    except (ImportError, OSError, ValueError):
+        pass
     directory = Path(name)
     if directory.is_dir():
         files = sorted(p for p in directory.rglob('*') if p.is_file() and p.suffix in
@@ -42,6 +51,9 @@ class SemanticReranker:
         self._embedding_cache: OrderedDict[str, Any] = OrderedDict()
         self.embedding_cache_hits = 0
         self.evidence_index = None
+        self._embedding_lock, self._cross_lock = RLock(), RLock()
+        self._cross_cache = OrderedDict()
+        self.cross_encoder_cache_hits = 0
 
     def _load_embedding_model(self) -> Any:
         if self._embedding_runtime is None:
@@ -112,13 +124,30 @@ class SemanticReranker:
         if not texts:
             return []
         check_cancelled()
-        backend, model = self._load_embedding_model()
         # BGE v1.5 was trained with a retrieval instruction on the query side;
         # passages remain unprefixed. Keeping this in Settings also makes the
         # behavior explicit if a future embedding model needs no instruction.
         query = f"{self.settings.embedding_query_instruction}{hypothesis}"
         values = [query, *texts]
+        vectors = self.encode_texts(values)
+        return [float(vectors[0] @ vector) for vector in vectors[1:]]
+
+    def encode_texts(self, values):
+        with self._embedding_lock:
+            return self._encode_texts(values)
+
+    def _encode_texts(self, values: list[str]) -> list[Any]:
+        """Batch normalized text vectors, sharing revision-bound caches and runtimes.
+
+        No cross-encoder is loaded. Callers choose their own retrieval instruction;
+        contextual entity matching uses symmetric, unprefixed endpoint profiles.
+        """
+        if not values:
+            return []
+        check_cancelled()
+        backend, model = self._load_embedding_model()
         revision = embedding_revision(backend, model, self.settings.embedding_model)
+        self.embedding_identity = {'backend': backend, 'model': self.settings.embedding_model, 'revision': revision}
         identity = revision or f'process-runtime:{id(model)}'
         keys = [sha256(f"{backend}|{self.settings.embedding_model}|{identity}|{value}".encode("utf-8")).hexdigest() for value in values]
         vectors = {key: self._embedding_cache[key] for key in keys if key in self._embedding_cache}
@@ -150,8 +179,7 @@ class SemanticReranker:
                 self._embedding_cache.move_to_end(key)
         while len(self._embedding_cache) > 4096:
             self._embedding_cache.popitem(last=False)
-        query_vector = vectors[keys[0]]
-        return [float(query_vector @ vectors[key]) for key in keys[1:]]
+        return [vectors[key] for key in keys]
 
     def _encode(self, backend: str, model: Any, values: list[str]) -> Any:
         if backend == "sentence-transformers":
@@ -165,43 +193,79 @@ class SemanticReranker:
                     encoder(**batch).last_hidden_state[:, 0], p=2, dim=1).cpu().numpy()
 
     def cross_scores(self, query: str, texts: list[str]) -> list[float]:
-        with inference(self.settings.cross_encoder_device):
-            return self._cross_scores(query, texts)
+        return self.cross_pairs([(query, text) for text in texts])
 
-    def _cross_scores(self, query: str, texts: list[str]) -> list[float]:
-        """Score query/passage pairs jointly with a genuine cross-encoder."""
-        if not texts:
+    def cross_pairs(self, pairs):
+        if not pairs:
             return []
-        check_cancelled()
-        backend, model = self._load_cross_encoder()
-        pairs = [(query, text) for text in texts]
-        if backend == "sentence-transformers":
-            raw = model.predict(pairs, show_progress_bar=False, batch_size=self.settings.cross_encoder_batch_size)
-            return [float(value[0] if getattr(value, "ndim", 0) else value) for value in raw]
-        torch, tokenizer, encoder, device = model
-        scores: list[float] = []
-        for start in range(0, len(pairs), self.settings.cross_encoder_batch_size):
-            batch_pairs = pairs[start:start + self.settings.cross_encoder_batch_size]
-            encoded = tokenizer([item[0] for item in batch_pairs], [item[1] for item in batch_pairs],
-                                padding=True, truncation=True, max_length=512, return_tensors="pt")
-            encoded = {name: value.to(device) for name, value in encoded.items()}
-            with torch.inference_mode():
-                logits = encoder(**encoded).logits
-            if logits.shape[-1] == 1:
-                scores.extend(float(value) for value in logits[:, 0].cpu().tolist())
-            else:
-                probabilities = torch.softmax(logits, dim=-1)
-                scores.extend(float(value) for value in probabilities[:, -1].cpu().tolist())
-        return scores
+        with self._cross_lock:
+            backend, model = self._load_cross_encoder()
+            revision = embedding_revision(backend, model, self.settings.cross_encoder_model)
+            prefix = f"{self.settings.cross_encoder_model}:{revision}:{backend}:"
+            keys = [sha256((prefix + repr(pair)).encode()).hexdigest() for pair in pairs]
+            scores = {key:self._cross_cache[key] for key in keys if key in self._cross_cache}
+            self.cross_encoder_cache_hits += sum(key in scores for key in keys)
+            if self.evidence_index and revision:
+                stored = self.evidence_index.get_many(['cross-v1:'+k for k in dict.fromkeys(keys) if k not in scores],expiring=False)
+                for key in keys:
+                    if key not in scores and 'cross-v1:'+key in stored:
+                        scores[key] = float(stored['cross-v1:'+key])
+                        self.cross_encoder_cache_hits += 1
+            missing = {key:pair for key,pair in zip(keys,pairs) if key not in scores}
+            fresh = {}
+            items = list(missing.items())
+            for start in range(0,len(items),self.settings.cross_encoder_batch_size):
+                check_cancelled()
+                batch = items[start:start+self.settings.cross_encoder_batch_size]
+                with inference(self.settings.cross_encoder_device):
+                    values = self._predict_pairs(backend,model,[pair for _,pair in batch])
+                for (key,_),value in zip(batch,values):
+                    scores[key] = fresh[key] = float(value)
+            if self.evidence_index and revision and fresh:
+                self.evidence_index.put_many({'cross-v1:'+k:v for k,v in fresh.items()})
+            for key in keys:
+                self._cross_cache[key] = scores[key]
+                self._cross_cache.move_to_end(key)
+            while len(self._cross_cache)>8192:
+                self._cross_cache.popitem(last=False)
+            return [scores[key] for key in keys]
+
+    def _predict_pairs(self, backend, model, pairs):
+        if backend == 'sentence-transformers':
+            raw = model.predict(pairs,show_progress_bar=False,batch_size=self.settings.cross_encoder_batch_size)
+            return [float(value[0] if getattr(value,'ndim',0) else value) for value in raw]
+        torch,tokenizer,encoder,device = model
+        encoded = tokenizer([q for q,_ in pairs],[t for _,t in pairs],padding=True,truncation=True,max_length=512,return_tensors='pt')
+        encoded = {name:value.to(device) for name,value in encoded.items()}
+        with torch.inference_mode():
+            logits = encoder(**encoded).logits
+        return (logits[:,0] if logits.shape[-1]==1 else torch.softmax(logits,dim=-1)[:,-1]).cpu().tolist()
 
     def rerank(self, query: str, texts: list[str]) -> list[tuple[float, int]]:
         scores = self.cross_scores(query, texts)
         return sorted(((score, index) for index, score in enumerate(scores)), reverse=True)
 
-    def select(self, hypothesis: str, chunks: list[Any], article_key: str, top_chunks: int,
-               neutral_query: str | None = None) -> list[dict[str, Any]]:
+    def select(self, hypothesis, chunks, article_key, top_chunks, neutral_query=None):
+        return self.select_many([(hypothesis,neutral_query)],chunks,article_key,top_chunks)[0]
+
+    def select_many(self, queries, chunks, article_key, top_chunks):
         if not chunks:
-            return []
+            return [[] for _ in queries]
+        plans = [self._selection_input(hypothesis,chunks,top_chunks,neutral) for hypothesis,neutral in queries]
+        pairs = []
+        for (hypothesis,neutral),plan in zip(queries,plans):
+            texts,ids = plan['texts'],plan['dense_candidates']
+            pairs.extend((hypothesis,texts[i]) for i in ids)
+            pairs.extend(((neutral or hypothesis),texts[i]) for i in ids)
+        scores = self.cross_pairs(pairs)
+        offset,selected = 0,[]
+        for plan in plans:
+            count = len(plan['dense_candidates'])
+            selected.append(self._selection_output(plan,scores[offset:offset+count],scores[offset+count:offset+2*count],article_key,top_chunks))
+            offset += 2*count
+        return selected
+
+    def _selection_input(self,hypothesis,chunks,top_chunks,neutral_query):
         records = [item if isinstance(item, dict) else {"text": str(item)} for item in chunks]
         texts = [str(item.get("text") or "") for item in records]
         dense_scores = self.rank_texts(hypothesis, texts)
@@ -222,8 +286,13 @@ class SemanticReranker:
         dense_candidates = sorted(range(len(records)), key=lambda index: initial[index], reverse=True)[
             :max(top_chunks * 6, self.settings.cross_encoder_candidates)
         ]
-        cross_scores = self.cross_scores(hypothesis, [texts[index] for index in dense_candidates])
-        neutral_cross = self.cross_scores(neutral_query, [texts[index] for index in dense_candidates]) if neutral_query else cross_scores
+        return dict(records=records,texts=texts,dense_scores=dense_scores,neutral_scores=neutral_scores,
+                    kinds=kinds,dense_candidates=dense_candidates)
+
+    def _selection_output(self,plan,cross_scores,neutral_cross,article_key,top_chunks):
+        records,texts,dense_scores,neutral_scores,kinds,dense_candidates = (plan[k] for k in
+            ('records','texts','dense_scores','neutral_scores','kinds','dense_candidates'))
+        bonuses = {"result":0.005,"methods":-0.005,"other":0.0}
         neutral_cross_by_id = dict(zip(dense_candidates, neutral_cross))
         neutral_cross_order = sorted(dense_candidates, key=lambda i: neutral_cross_by_id[i], reverse=True)
         neutral_cross_rank = {index: rank for rank, index in enumerate(neutral_cross_order, 1)}

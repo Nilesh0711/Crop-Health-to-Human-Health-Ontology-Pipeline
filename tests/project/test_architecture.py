@@ -1,7 +1,15 @@
 """Keep stage ownership and dependency direction enforceable as the backend grows."""
 import ast
+import subprocess
+import sys
 
 from backend.config.paths import BACKEND_DIR, EXTRACTION_PROMPT, EXTERNAL_VALIDATION_PROMPT
+
+
+def test_active_backend_has_no_undefined_variables():
+    result = subprocess.run([sys.executable, '-m', 'ruff', 'check', 'backend'],
+        cwd=BACKEND_DIR.parent, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def backend_imports(path):
@@ -64,7 +72,43 @@ def test_retired_model_transports_and_gates_cannot_be_selected():
     assert not {'model', 'ollama_url', 'scope_model', 'semantic_model', 'helper_model',
                 'validation_model', 'external_priority_model', 'external_priority_articles_per_claim',
                 'opencode_transport', 'opencode_command', 'opencode_server_url',
-                'opencode_agent'} & {f.name for f in fields(Settings)}
+                'opencode_agent', 'knowledge_building_mode', 'external_judgement_mode',
+                'trust_batch_size', 'paper_ready_judgement', 'query_batch_size',
+                'external_prefetch', 'enable_nli_promotion'} & {f.name for f in fields(Settings)}
     assert set(Settings().task_models) == {'extraction', 'source', 'query', 'external', 'pathway_assembly'}
     for task, model in Settings().task_models.items():
         assert llm.OpenCodeClient(Settings(), task=task).model == model
+
+
+def test_live_backend_cannot_import_retired_research_executors():
+    for path in BACKEND_DIR.rglob('*.py'):
+        for node in ast.walk(ast.parse(path.read_text(encoding='utf-8'))):
+            names = ([node.module or ''] if isinstance(node, ast.ImportFrom) else
+                     [alias.name for alias in node.names] if isinstance(node, ast.Import) else [])
+            assert not any(name.startswith(('archive.legacy_pipeline','scripts.research.historical')) for name in names), str(path)
+    from backend.config.settings import Settings
+    assert Settings().knowledge_building_mode == Settings().external_judgement_mode == 'pathway_only'
+
+
+def test_dependency_manifests_contain_only_installable_requirements():
+    from packaging.requirements import Requirement
+    for filename in ('requirements.txt', 'requirements-dev.txt', 'deploy/render/requirements.txt'):
+        path = BACKEND_DIR.parent / filename
+        if not path.exists():
+            continue
+        for line in path.read_text(encoding='utf-8').splitlines():
+            value = line.strip()
+            if value and not value.startswith(('#', '-r ')):
+                Requirement(value)
+
+
+def test_local_validation_has_no_global_route_or_nli_execution():
+    from backend.config.settings import Settings, APPLICATION_VERSION
+    from dataclasses import fields
+    names={f.name for f in fields(Settings)}
+    assert not {'pathway_max_paths','pathway_max_hops','enable_nli','nli_model','nli_device'} & names
+    assert APPLICATION_VERSION=='neighbor-validation-v50'
+    assert (BACKEND_DIR / 'stages/neighbor_validation/targets.py').is_file()
+    assert not (BACKEND_DIR / 'stages/pathway_validation').exists()
+    assert not (BACKEND_DIR / 'stages/trust_graph').exists()
+    assert not (BACKEND_DIR / 'providers/nli.py').exists()

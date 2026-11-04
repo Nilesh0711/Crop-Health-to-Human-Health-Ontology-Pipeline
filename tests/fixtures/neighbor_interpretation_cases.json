@@ -1,0 +1,11 @@
+[
+  {"id":"exact_support","stance":"supports","claim_match":"exact","conditions_match":true,"synthesis_stance":"supported"},
+  {"id":"exact_opposing_result","stance":"contradicts","claim_match":"exact","conditions_match":true,"synthesis_stance":"contradicted"},
+  {"id":"unverified_descriptor","stance":"supports","claim_match":"partial","conditions_match":true,"synthesis_stance":"partially_supported"},
+  {"id":"unverified_magnitude","stance":"supports","claim_match":"partial","conditions_match":true,"synthesis_stance":"partially_supported"},
+  {"id":"different_setting","stance":"contradicts","claim_match":"context_only","conditions_match":false,"synthesis_stance":"unresolved"},
+  {"id":"unknown_setting","stance":"supports","claim_match":"context_only","conditions_match":null,"synthesis_stance":"unresolved"},
+  {"id":"related_outcome_same_conditions","stance":"supports","claim_match":"context_only","conditions_match":true,"synthesis_stance":"unresolved"},
+  {"id":"related_outcome_only","stance":"contradicts","claim_match":"partial","conditions_match":true,"synthesis_stance":"unresolved"},
+  {"id":"not_addressed","stance":"not_addressed","claim_match":"not_addressed","conditions_match":null,"synthesis_stance":"unresolved"}
+]

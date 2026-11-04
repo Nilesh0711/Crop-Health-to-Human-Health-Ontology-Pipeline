@@ -6,7 +6,7 @@ from backend.domain.alignment import exact_in
 from backend.domain.vocabulary import normalize_entity
 
 
-SOURCE_VALIDATION_POLICY = 'source-context-grounded-v2'
+SOURCE_VALIDATION_POLICY = 'source-fidelity-and-project-scope-v5'
 TEXT_FIELDS = ('subject', 'object', 'relation', 'claim_text', 'source_context',
                'qualifiers.crop_or_species', 'qualifiers.population', 'qualifiers.condition',
                'qualifiers.comparator', 'qualifiers.metric')
@@ -31,19 +31,19 @@ ABBREVIATION_INSTRUCTIONS = (
     'chemical formulae and formal gene/strain identifiers. Do not guess an expansion from world knowledge. '
     'Return abbreviation_review: status=clear if none need expansion, expanded if every abbreviation is '
     'unambiguously expanded from supplied source context, or unresolved if any identity is undefined/ambiguous. '
-    'For each field changed, provide before and after, short_form, full_form, a verbatim definition_quote '
+    'For each field changed, provide its field path and after value, short_form, full_form, a verbatim definition_quote '
     'from the supplied context containing BOTH forms, and a brief rationale for their identity. Each correction '
     'may ONLY replace that short form with its full form in that field; repeat corrections in order for multiple '
     'short forms in one field. Already spelled-out canonical names need NO correction even if the PDF uses '
     'an abbreviation. Never propose before=after; do not expand abbreviations that occur only in verbatim proof. '
     'Correct the claim_text and qualifier occurrences too. For relation identifiers '
     'use a spelled-out snake_case full_form. Make NO other edits to predicates, conditions, modality or types. '
-    'Judge the claim AFTER those proposed name expansions in this SAME response: canonical values in '
-    'entity_alignment must equal the expanded endpoints, and all fidelity booleans/proof must describe that '
+    'Judge the claim AFTER those proposed name expansions in this SAME response: align source mentions '
+    'with the expanded endpoints without repeating their canonical names; all fidelity booleans/proof must describe that '
     'expanded claim. Expanding a name does not establish its scientific correctness. '
     'If any abbreviation cannot be resolved from the supplied text, list it in unresolved and choose needs_review. '
     'Abstract example (placeholder names, never evidence): source "Disease D (DD) affects Crop C" '
-    'and subject="DD": propose subject="Disease D", keep proof.subject="DD", quote "Disease D (DD)" '
+    'and subject="DD": propose subject="Disease D", keep the subject mention="DD", quote "Disease D (DD)" '
     'for the expansion, and also expand DD wherever it occurs in claim_text or qualifiers. '
 )
 

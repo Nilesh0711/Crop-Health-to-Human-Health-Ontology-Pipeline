@@ -4,7 +4,7 @@ const shortModel = model => String(model || '').split('/').pop()
 export default function ModelPerformance({ requests = [], summary, policy, routing }) {
   if (!requests.length && !summary?.llm_calls) return null
   const taskModels = summary?.task_models || routing
-  const roles = taskModels ? Object.entries(taskModels).map(([task, model]) => [({scope: 'Document screening', extraction: 'Extraction', semantic: 'Type checking', source: 'Source verification', query: 'Search planning', external: 'External evidence', external_priority: 'Top independent article'})[task] || task, model, task]) : [
+  const roles = taskModels ? Object.entries(taskModels).map(([task, model]) => [({scope: 'Document screening', extraction: 'Extraction', semantic: 'Type checking', source: 'Source verification', pathway_assembly: 'Pathway assembly', query: 'Search planning', external: 'External evidence', external_priority: 'Top independent article'})[task] || task, model, task]) : [
     ['Extraction', summary?.extraction_model, 'extraction'],
     ['Scope / typing / query planning', summary?.helper_model || summary?.validation_model, 'helper'],
     ['Source / external evidence', summary?.validation_model, 'validation'],

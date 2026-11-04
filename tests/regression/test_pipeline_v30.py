@@ -7,9 +7,9 @@ import threading
 
 import pytest
 
-from backend.config.settings import Settings
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
 from backend.providers.llm import LLMServiceError, OpenCodeClient
-from backend.stages.external_validation.workflow import validate_candidate
+from archive.legacy_pipeline.research_historical.external_validation.workflow import validate_candidate
 from backend.providers.inference import InferenceError
 from tests.regression.test_pipeline_v28 import response
 
@@ -38,8 +38,8 @@ def test_joint_assessment_uses_one_client_for_all_documents():
     documents = [article('cite', 99, 'source_reference'), article('second', .03), article('top', .05)]
     client = SimpleNamespace(model='pro')
     decisions = [{'evidence_document_id': d['evidence_document_id'], 'decision': 'insufficient'} for d in documents]
-    with patch('backend.stages.external_validation.workflow.retrieve_round', return_value={'evidence_documents': documents}), \
-            patch('backend.stages.external_validation.workflow.judge_evidence_pack', return_value=(decisions, {'policy': 'joint_multi_paper'})) as judge:
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round', return_value={'evidence_documents': documents}), \
+            patch('archive.legacy_pipeline.research_historical.external_validation.workflow.judge_evidence_pack', return_value=(decisions, {'policy': 'joint_multi_paper'})) as judge:
         result = validate_candidate({'candidate_id': 'synthetic'}, client, None, Settings(external_judgement_mode='joint'))
     judge.assert_called_once()
     assert judge.call_args.args[2] == documents

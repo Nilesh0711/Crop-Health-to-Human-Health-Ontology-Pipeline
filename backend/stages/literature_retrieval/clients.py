@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import io
+import html
 import re
 import urllib.error
 import urllib.parse
@@ -26,7 +27,13 @@ FULLTEXT_BY_ID_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/{article_
 CROSSREF_URL = "https://api.crossref.org/works"
 OPENALEX_WORK_URL = "https://api.openalex.org/works/{doi_url}"
 OPENALEX_SEARCH_URL = "https://api.openalex.org/works"
-_REFERENCE_STOPWORDS = {"a", "an", "and", "the", "of", "for", "in", "on", "to", "with", "from", "by"}
+PUBMED_SEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+PUBMED_SUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
+UNPAYWALL_WORK_URL = "https://api.unpaywall.org/v2/{doi}"
+_REFERENCE_STOPWORDS = {"a", "an", "and", "the", "of", "for", "in", "on", "to", "with", "from", "by", "i", "b", "em", "sub", "sup", "lt", "gt"}
+
+
+_OPENALEX_QUOTA_EXHAUSTED = False
 
 
 def fetch_json(url: str, settings: Settings) -> dict[str, Any]:
@@ -47,6 +54,10 @@ def fetch_json(url: str, settings: Settings) -> dict[str, Any]:
             with urllib.request.urlopen(request, timeout=45) as response:
                 return json.loads(response.read(settings.max_fulltext_bytes).decode("utf-8"))
         except urllib.error.HTTPError as exc:
+            if exc.code == 429 and 'api.openalex.org' in url:
+                global _OPENALEX_QUOTA_EXHAUSTED
+                _OPENALEX_QUOTA_EXHAUSTED = True
+                raise
             if exc.code not in {429, 500, 502, 503, 504} or attempt:
                 raise
             time.sleep(0.6)
@@ -58,47 +69,170 @@ def search(query: str, settings: Settings, page_size: int) -> list[dict[str, Any
     return fetch_json(f"{SEARCH_URL}?{params}", settings).get("resultList", {}).get("result", [])
 
 
-def resolve_bibliographic_reference(reference: dict[str, Any], settings: Settings) -> dict[str, Any] | None:
+def resolve_bibliographic_reference(reference: dict[str, Any], settings: Settings, diagnostics=None) -> dict[str, Any] | None:
     """Resolve a source-paper bibliography entry without treating it as evidence."""
-    citation = str(reference.get("citation_text") or "").strip()
+    def fail(reason):
+        if diagnostics is not None:
+            diagnostics.update(reason=reason)
+        return None
+    raw_citation = str(reference.get("citation_text") or "").strip()
+    citation = re.sub(r"([A-Za-z]{2,})-\s+([a-z]{2,})", r"\1\2", raw_citation)
     known_doi = str(reference.get("doi") or "").strip()
     if not known_doi:
         doi_match = re.search(r'10\.\d{4,9}/[^\s<>"\]]+', citation, re.IGNORECASE)
         known_doi = doi_match.group(0).rstrip('.,;)') if doi_match else ''
     if known_doi:
+        known_doi = re.sub(r'^https?://(?:dx\.)?doi\.org/','',known_doi,flags=re.I)
+        if not re.fullmatch(r'10\.\d{4,9}/\S+',known_doi):
+            return fail('malformed_doi')
         return {"doi": known_doi, "title": "", "reference_number": reference.get("reference_number"), "resolution_method": "bibliography_doi"}
     if not citation:
-        return None
-    params = urllib.parse.urlencode({"query.bibliographic": citation[:1500], "rows": 1,
+        return fail('missing_reference_text')
+    params = urllib.parse.urlencode({"query.bibliographic": citation[:1500], "rows": 3,
                                      "select": "DOI,title,author,published-print,published-online,container-title"})
     try:
         items = fetch_json(f"{CROSSREF_URL}?{params}", settings).get("message", {}).get("items", [])
     except MetadataError as exc:
         if exc.status in {404, 410}:
-            return None
+            return fail('reference_not_indexed')
         raise
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError):
-        return None
+        if diagnostics is not None:
+            raise  # Retrieval scheduling records a pending technical lookup, not absent evidence.
+        return fail('reference_lookup_failed')
     if not items:
-        return None
-    item = items[0]
-    title_value = item.get("title") or []
-    title = str(title_value[0] if isinstance(title_value, list) and title_value else title_value or "").strip()
-    title_terms = {term for term in re.findall(r"[a-z0-9]+", title.casefold()) if term not in _REFERENCE_STOPWORDS}
+        return fail('no_reference_candidates')
     citation_terms = set(re.findall(r"[a-z0-9]+", citation.casefold()))
     # Crossref's top result is only retained when its title is visibly present
     # in the local bibliography entry. This prevents a fuzzy resolver result
     # from silently becoming a cited evidence paper.
-    if len(title_terms) < 3 or len(title_terms & citation_terms) / len(title_terms) < 0.9:
-        return None
-    authors = item.get('author') or []
-    first_family = str(authors[0].get('family') or '').casefold() if authors else ''
-    years = {str(year) for key in ('published-print', 'published-online')
-             for dates in (item.get(key) or {}).get('date-parts', []) for year in dates[:1]}
-    if not first_family or first_family not in citation.casefold() or not years.intersection(re.findall(r'\b(?:19|20)\d{2}\b', citation)):
-        return None
-    return {"doi": str(item.get("DOI") or "").strip().casefold(), "title": title,
+    matches = {}
+    for item in items:
+        value = item.get('title') or []
+        title = str(value[0] if isinstance(value,list) and value else value or '').strip()
+        clean_title = re.sub(r'<[^>]+>', ' ', html.unescape(title))
+        terms = {t for t in re.findall(r'[a-z0-9]+', clean_title.casefold()) if t not in _REFERENCE_STOPWORDS and len(t) > 1}
+        authors = item.get('author') or []
+        family = str(authors[0].get('family') or '').casefold() if authors else ''
+        years = {str(y) for key in ('published-print', 'published-online', 'issued')
+                 for dates in (item.get(key) or {}).get('date-parts', []) for y in dates[:1]}
+        doi = str(item.get('DOI') or '').strip().casefold()
+        overlap = len(terms & citation_terms) / len(terms) if terms else 0.0
+        title_matches = (len(terms) >= 3 and (overlap >= 0.85 or (len(terms) >= 6 and len(terms - citation_terms) <= 1)))
+        if (title_matches and family and family in citation.casefold() and years.intersection(re.findall(r'\b(?:19|20)\d{2}\b', citation)) and doi):
+            matches[doi] = clean_title
+    if len(matches)!=1:
+        return fail('ambiguous_reference_match' if matches else 'title_author_year_mismatch')
+    doi,title = next(iter(matches.items()))
+    return {"doi": doi, "title": title,
             "reference_number": reference.get("reference_number"), "resolution_method": "crossref_title_author_year"}
+
+
+def openalex_pdf_locations(work):
+    locations = [work.get('best_oa_location') or {}, work.get('primary_location') or {}, *(work.get('locations') or [])]
+    return list(dict.fromkeys(str(loc['pdf_url']).strip() for loc in locations
+        if isinstance(loc,dict) and loc.get('pdf_url') and (loc == work.get('best_oa_location') or loc.get('is_oa')
+                                  or (work.get('open_access') or {}).get('is_oa'))))[:4]
+
+
+def unpaywall_open_access_copy(doi: str, settings: Settings) -> dict[str, Any] | None:
+    """Return open-access location and PDF URL from Unpaywall (free, legal OA aggregator)."""
+    normalized_doi = str(doi or "").strip().casefold()
+    if not normalized_doi:
+        return None
+    email = getattr(settings, 'openalex_email', '') or 'nilesh.cs25@kgpian.iitkgp.ac.in'
+    url = f"{UNPAYWALL_WORK_URL.format(doi=urllib.parse.quote(normalized_doi))}?email={urllib.parse.quote(email)}"
+    try:
+        data = fetch_json(url, settings)
+    except (MetadataError, urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError):
+        return None
+    if not isinstance(data, dict) or not data.get('is_oa'):
+        return None
+    best = data.get('best_oa_location') or {}
+    pdf_url = str(best.get('url_for_pdf') or '').strip()
+    landing_url = str(best.get('url') or data.get('doi_url') or '').strip()
+    pdf_urls = [pdf_url] if pdf_url else []
+    for loc in data.get('oa_locations') or []:
+        if isinstance(loc, dict) and loc.get('url_for_pdf'):
+            u = str(loc['url_for_pdf']).strip()
+            if u and u not in pdf_urls:
+                pdf_urls.append(u)
+    return {
+        "source": "UNPAYWALL",
+        "id": normalized_doi,
+        "doi": normalized_doi,
+        "title": str(data.get("title") or "").strip(),
+        "journalTitle": str(data.get("journal_name") or "").strip(),
+        "pubYear": str(data.get("year") or "").strip(),
+        "authorString": "",
+        "abstractText": "",
+        "isOpenAccess": "Y",
+        "_open_access_pdf_url": pdf_url or (pdf_urls[0] if pdf_urls else landing_url),
+        "_open_access_pdf_urls": pdf_urls,
+        "_landing_page_url": landing_url,
+        "_open_access_license": str(best.get("license") or "").strip(),
+        "_retrieval_route": "unpaywall_oa_lookup",
+    }
+
+
+def search_pubmed(query: str, settings: Settings, page_size: int) -> list[dict[str, Any]]:
+    """Search PubMed via NCBI Entrez E-utilities alongside Europe PMC and OpenAlex."""
+    email = getattr(settings, 'openalex_email', '') or 'nilesh.cs25@kgpian.iitkgp.ac.in'
+    search_params = urllib.parse.urlencode({
+        'db': 'pubmed',
+        'term': query,
+        'retmode': 'json',
+        'retmax': min(max(1, page_size), 100),
+        'email': email,
+        'tool': 'crop_health_workbench'
+    })
+    try:
+        search_data = fetch_json(f"{PUBMED_SEARCH_URL}?{search_params}", settings)
+    except (MetadataError, urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError):
+        return []
+    id_list = search_data.get('esearchresult', {}).get('idlist', [])
+    if not id_list:
+        return []
+    sum_params = urllib.parse.urlencode({
+        'db': 'pubmed',
+        'id': ','.join(id_list),
+        'retmode': 'json',
+        'email': email,
+        'tool': 'crop_health_workbench'
+    })
+    try:
+        sum_data = fetch_json(f"{PUBMED_SUMMARY_URL}?{sum_params}", settings)
+    except (MetadataError, urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError):
+        return []
+    result_dict = sum_data.get('result', {})
+    results: list[dict[str, Any]] = []
+    for pmid in id_list:
+        item = result_dict.get(pmid)
+        if not isinstance(item, dict):
+            continue
+        doi = ''
+        pmc = ''
+        for aid in item.get('articleids', []):
+            if isinstance(aid, dict):
+                if aid.get('idtype') == 'doi':
+                    doi = str(aid.get('value') or '').casefold()
+                elif aid.get('idtype') == 'pmc':
+                    pmc = str(aid.get('value') or '')
+        authors = [str(a.get('name') or '') for a in item.get('authors', []) if isinstance(a, dict) and a.get('name')]
+        results.append({
+            'source': 'PUBMED',
+            'id': pmid,
+            'doi': doi,
+            'pmcid': pmc,
+            'title': str(item.get('title') or '').rstrip('.'),
+            'journalTitle': str(item.get('source') or ''),
+            'pubYear': str((item.get('pubdate') or '')[:4]),
+            'authorString': ', '.join(authors[:8]),
+            'abstractText': '',
+            'isOpenAccess': 'Y' if pmc else 'N',
+            '_retrieval_route': 'pubmed_broad_search',
+        })
+    return results
 
 
 def openalex_open_access_copy(doi: str, settings: Settings) -> dict[str, Any] | None:
@@ -108,12 +242,23 @@ def openalex_open_access_copy(doi: str, settings: Settings) -> dict[str, Any] | 
     Both still pass passage reranking and entailment; the bibliography/metadata
     record alone never counts as support. Public PDF bytes remain transient.
     """
+    global _OPENALEX_QUOTA_EXHAUSTED
+    if _OPENALEX_QUOTA_EXHAUSTED and not getattr(settings, 'openalex_api_key', None):
+        return None
     normalized_doi = str(doi or "").strip().casefold()
     if not normalized_doi:
         return None
     doi_url = urllib.parse.quote(f"https://doi.org/{normalized_doi}", safe="")
+    oa_url = OPENALEX_WORK_URL.format(doi_url=doi_url)
+    auth_params = {}
+    if getattr(settings, 'openalex_api_key', None):
+        auth_params['api_key'] = settings.openalex_api_key
+    if getattr(settings, 'openalex_email', None):
+        auth_params['mailto'] = settings.openalex_email
+    if auth_params:
+        oa_url += f"?{urllib.parse.urlencode(auth_params)}"
     try:
-        work = fetch_json(OPENALEX_WORK_URL.format(doi_url=doi_url), settings)
+        work = fetch_json(oa_url, settings)
     except MetadataError as exc:
         if exc.status in {404, 410}:
             return None
@@ -124,7 +269,8 @@ def openalex_open_access_copy(doi: str, settings: Settings) -> dict[str, Any] | 
     if actual_doi and actual_doi != normalized_doi:
         return None
     location = work.get("best_oa_location") or work.get("primary_location") or {}
-    pdf_url = str(location.get("pdf_url") or "").strip()
+    pdf_urls = openalex_pdf_locations(work)
+    pdf_url = pdf_urls[0] if pdf_urls else ''
     landing_page_url = str(location.get("landing_page_url") or "").strip()
     abstract = _openalex_abstract(work.get("abstract_inverted_index"))
     if not pdf_url and len(abstract) < 80:
@@ -140,6 +286,7 @@ def openalex_open_access_copy(doi: str, settings: Settings) -> dict[str, Any] | 
         "abstractText": abstract,
         "isOpenAccess": "Y" if bool((work.get("open_access") or {}).get("is_oa")) else "N",
         "_open_access_pdf_url": pdf_url,
+        "_open_access_pdf_urls": pdf_urls,
         "_landing_page_url": landing_page_url,
         "_open_access_license": str(location.get("license") or "").strip(),
     }
@@ -164,14 +311,26 @@ def search_openalex(query: str, settings: Settings, page_size: int) -> list[dict
     abstract or transient public PDF must still pass passage reranking and the
     exact model and anchor checks used for every external document.
     """
-    # Preserve PDF-only records; evidence access is checked after merging index results.
-    params = urllib.parse.urlencode({
+    global _OPENALEX_QUOTA_EXHAUSTED
+    if _OPENALEX_QUOTA_EXHAUSTED and not getattr(settings, 'openalex_api_key', None):
+        raise OSError("openalex_search_rate_limited")
+    params_dict = {
         "search": query,
         "select": ("id,doi,title,publication_year,authorships,abstract_inverted_index,"
-                   "open_access,best_oa_location,primary_location"),
+                   "open_access,best_oa_location,primary_location,locations"),
         "per-page": min(max(1, page_size), 200),
-    })
-    payload = fetch_json(f"{OPENALEX_SEARCH_URL}?{params}", settings)
+    }
+    if getattr(settings, 'openalex_api_key', None):
+        params_dict['api_key'] = settings.openalex_api_key
+    if getattr(settings, 'openalex_email', None):
+        params_dict['mailto'] = settings.openalex_email
+    params = urllib.parse.urlencode(params_dict)
+    try:
+        payload = fetch_json(f"{OPENALEX_SEARCH_URL}?{params}", settings)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            _OPENALEX_QUOTA_EXHAUSTED = True
+        raise
     results: list[dict[str, Any]] = []
     for work in payload.get("results", []):
         if not isinstance(work, dict):
@@ -184,7 +343,8 @@ def search_openalex(query: str, settings: Settings, page_size: int) -> list[dict
         authorships = work.get("authorships") or []
         authors = [str((authorship.get("author") or {}).get("display_name") or "").strip()
                    for authorship in authorships if isinstance(authorship, dict)]
-        pdf_url = str(location.get("pdf_url") or "").strip()
+        pdf_urls = openalex_pdf_locations(work)
+        pdf_url = pdf_urls[0] if pdf_urls else ''
         landing_url = str(location.get("landing_page_url") or work.get("id") or "").strip()
         results.append({
             "source": "OPENALEX",
@@ -197,6 +357,7 @@ def search_openalex(query: str, settings: Settings, page_size: int) -> list[dict
             "abstractText": _openalex_abstract(work.get("abstract_inverted_index")),
             "isOpenAccess": "Y" if bool((work.get("open_access") or {}).get("is_oa")) else "N",
             "_open_access_pdf_url": pdf_url,
+            "_open_access_pdf_urls": pdf_urls,
             "_landing_page_url": landing_url,
             "_open_access_license": str(location.get("license") or "").strip(),
             "_retrieval_route": "openalex_broad_search",
@@ -279,7 +440,8 @@ def fetch_open_access_pdf_pages(url: str, settings: Settings) -> list[dict[str, 
         pages: list[dict[str, Any]] = []
         references_started = False
         for page_number, page in enumerate(reader.pages[:80], 1):
-            raw = page.extract_text() or ""
+            from backend.stages.pdf_parsing.layout import page_text
+            raw, _layout = page_text(page)
             lines = [line.strip() for line in raw.splitlines() if line.strip()]
             kept: list[str] = []
             for line in lines:
@@ -298,12 +460,6 @@ def fetch_open_access_pdf_pages(url: str, settings: Settings) -> list[dict[str, 
     except Exception:
         return []
     return pages
-
-
-def fetch_open_access_pdf_text(url: str, settings: Settings) -> str | None:
-    """Backward-compatible text view; the workflow uses page-aware records."""
-    pages = fetch_open_access_pdf_pages(url, settings)
-    return "\n\n".join(page["text"] for page in pages) or None
 
 
 def paragraphs_from_plain_text(text: str) -> list[str]:

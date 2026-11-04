@@ -1,6 +1,6 @@
 """Feed saved model decisions into the document proof guard for unit tests."""
 
-from backend.stages.external_validation.proofs import guard_document_decision
+from archive.legacy_pipeline.research_historical.external_validation.guards import guard_document_decision
 
 
 def judge_document(client, candidate, document, nli_validator=None):

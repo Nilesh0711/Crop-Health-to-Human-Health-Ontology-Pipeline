@@ -1,19 +1,25 @@
 import { THINKING_STAGES, defaultThinking } from '../../lib/thinking.js'
 import { activityStage, activityStageLabel, filterActivity, ACTIVITY_STAGES } from '../../lib/activity.js'
 import { useEffect, useRef, useState } from 'react'
-import { Activity, ArrowRight, Check, CheckCircle2, ChevronDown, CircleAlert, Clock3, FileText, GitBranch, Layers3, LoaderCircle, Network, PanelLeftClose, PanelLeftOpen, Play, Search, Settings2, Sparkles, Square } from 'lucide-react'
+import { Activity, ArrowRight, Check, CheckCircle2, ChevronDown, CircleAlert, Clock3, FileText, GitBranch, Layers3, LoaderCircle, Network, PanelLeftClose, PanelLeftOpen, Play, RefreshCw, Search, Settings2, Sparkles, Square } from 'lucide-react'
 
 export function StopRunButton({ active, stopping, onStop }) {
   if (!active) return null
   return <button className="button stop-button" type="button" disabled={stopping} onClick={onStop}
     title="Stop this run and preserve saved progress">{stopping ? <LoaderCircle size={15} className="spin" /> : <Square size={14} />}
-    {stopping ? 'Stopping?' : 'Stop pipeline'}</button>
+    {stopping ? 'Stopping…' : 'Stop pipeline'}</button>
 }
 
 export function ResumeRunButton({ canResume, disabled, onResume }) {
   if (!canResume) return null
   return <button className="button secondary" type="button" disabled={disabled} onClick={onResume}
     title="Reuse extracted claims and completed checks; continue unfinished work"><Play size={15} /> Resume run</button>
+}
+
+export function RedoExternalValidationButton({ available, disabled, onRedo, readOnly = false }) {
+  if (!available || readOnly) return null
+  return <button className="button secondary" type="button" disabled={disabled} onClick={onRedo}
+    title="Redo retrieval and external judgements for all eligible neighboring pairs within the current budget. Reuse saved extraction and compatible source checks; preserve earlier results."><RefreshCw size={15} /> Redo external validation</button>
 }
 
 export function SidebarToggle({ hidden, onToggle }) {
@@ -43,8 +49,7 @@ export function WorkspaceNavigation({ view, onChange, claims, paths, errors }) {
   return <nav className="tabs" aria-label="Paper workspace views">
     {[
       ['claims', 'Claims', Layers3, claims],
-      ['graph', 'Graph', Network],
-      ['paths', 'Paths', GitBranch, paths],
+      ['network', 'Network & pathways', Network, paths],
       ['activity', 'Activity', Activity, errors || undefined],
       ['details', 'Run details', Settings2],
     ].map(([key, label, Icon, count]) => <button type="button" key={key}
@@ -60,7 +65,7 @@ export function FindingsToolbar({ search, onSearch, filter, onFilter, counts, sh
     <div className="findings-search"><Search size={17} /><input type="search" aria-label="Search claims and evidence"
       placeholder="Search a claim, subject, or paper…" value={search} onChange={event => onSearch(event.target.value)} /></div>
     <div className="claim-filters" aria-label="Filter claims by decision">
-      {[['all', 'All claims'], ['source', 'Source supported'], ['supported', 'External support'], ['review', 'Review / pending'], ['rejected', 'Rejected']].map(([key, label]) =>
+      {[['all', 'All claims'], ['source', 'Source supported'], ...(counts.unvalidated ? [['unvalidated', 'No individual external verdict']] : []), ...(counts.supported || filter === 'supported' ? [['supported', 'Historical external support']] : []), ['review', 'Review / pending'], ['rejected', 'Excluded / rejected']].map(([key, label]) =>
         <button key={key} type="button" className={filter === key ? 'active' : ''} aria-pressed={filter === key}
           onClick={() => onFilter(key)}>{label}<span>{counts[key]}</span></button>)}
     </div>
@@ -120,8 +125,9 @@ export function RequestProgress({ progress, running }) {
     <p>{progress.task}</p>
     <div className="request-metrics">
       {active && progress.active_request_count > 1 && <span><b>{progress.active_request_count}</b> model requests running in parallel; showing one active request</span>}
-      {progress.requested_thinking && <span>Thinking <b>{({ enabled: 'On', disabled: 'Off' })[progress.requested_thinking] || progress.requested_thinking}</b></span>}
+      {progress.requested_thinking && <span>Thinking <b>{({ enabled: 'On', disabled: 'Off', minimal: 'Minimal (required by model)' })[progress.requested_thinking] || progress.requested_thinking}</b></span>}
       {progress.paper_count != null && <span><b>{progress.paper_count}</b> papers</span>}
+        {progress.pathway_edge_count != null && <span><b>{progress.pathway_edge_count}</b> connected edges in this pathway</span>}
       {progress.claim_count != null && <span><b>{progress.claim_count}</b> claims sharing this request</span>}
       {progress.chunk_count != null && <span><b>{progress.chunk_count}</b> chunks</span>}
       {progress.output_limit_tokens != null && <span><b>{Number(progress.output_limit_tokens).toLocaleString()}</b> generation token limit (answer + reasoning)</span>}
@@ -148,14 +154,15 @@ export function PdfQualityReport({ quality }) {
     {quality.warnings?.map(warning => <p key={warning}>{warning}</p>)}
     <details className="context-packet"><summary>Per-page text, bibliography and reading-order diagnostics</summary>
       <div className="diagnostic-table"><table><thead><tr><th>PDF page</th><th>Words</th><th>Body / reference characters</th><th>Reading order</th><th>Flags</th></tr></thead>
-        <tbody>{quality.pages?.map(page => <tr key={page.page}><td>{page.page}{!page.within_page_limit && ' (outside limit)'}</td><td>{page.word_count}</td><td>{page.body_characters} / {page.reference_characters}</td><td>{page.reading_order.replaceAll('_', ' ')}</td><td>{page.flags.map(flagLabel).join('; ') || 'No automatic flags'}</td></tr>)}</tbody></table></div>
+        <tbody>{quality.pages?.map(page => <tr key={page.page}><td>{page.page}{!page.within_page_limit && ' (outside limit)'}</td><td>{page.word_count}</td><td>{page.body_characters} / {page.reference_characters}</td><td>{(page.layout?.method || 'plain').replaceAll('_', ' ')} · {(page.reading_order || 'not_verified').replaceAll('_', ' ')}{page.layout?.reason && <small> {page.layout.reason.replaceAll('_', ' ')}</small>}</td><td>{page.flags.map(flagLabel).join('; ') || 'No automatic flags'}</td></tr>)}</tbody></table></div>
     </details>
   </section>
 }
 
 const modelName = value => {
   const id = String(value || '').split('/').pop().split('#')[0]
-  return ({ 'mimo-v2.6-flash': 'MiMo Flash', 'deepseek-v4.1-flash': 'DeepSeek Flash', 'mimo-v2.6-pro': 'MiMo Pro' })[id] || id || 'Assigned model'
+  return ({ 'mimo-v2.6-flash': 'MiMo Flash', 'deepseek-v4.1-flash': 'DeepSeek Flash', 'mimo-v2.6-pro': 'MiMo Pro',
+    'muse-spark-1.3-contributor': 'Muse Spark 1.3 Contributor' })[id] || id || 'Assigned model'
 }
 
 export function RunSetup({ health, options, onOptions, open, onToggle }) {
@@ -166,25 +173,16 @@ export function RunSetup({ health, options, onOptions, open, onToggle }) {
       <button type="button" className="button secondary" aria-expanded={open} aria-controls="run-settings" onClick={onToggle}>
         <Settings2 size={16} />{open ? 'Hide settings' : 'Run settings'}<ChevronDown size={15} className={open ? 'chevron open' : 'chevron'} /></button></div>
     <div className="steps">{[
-      ['Extract claims', FileText, modelName(tasks.extraction)], ['Check source', Check, modelName(tasks.source)],
-      ...(options.knowledge_building_mode !== 'validated_first' ? [['Candidate pathways', GitBranch, modelName(tasks.pathway_assembly)]] : []),
+      ['Extract claims', FileText, modelName(tasks.extraction)], ['Check source & scope', Check, modelName(tasks.source)],
+      ['Candidate pathways', GitBranch, modelName(tasks.pathway_assembly)],
       ['Find papers', Search, modelName(tasks.query)], ['Assess evidence', Sparkles, phases.paper ? `${modelName(phases.paper)} → ${modelName(phases.synthesis)}` : modelName(tasks.external)],
-      ...(options.knowledge_building_mode === 'validated_first' ? [['Assemble pathways', GitBranch, modelName(tasks.pathway_assembly)]] : []), ['Build graph', GitBranch, 'Evidence states'],
+      ['Build graph', GitBranch, 'Evidence states'],
     ].map(([label, Icon, detail], index) => <div className="step-group" key={label}>
       {index > 0 && <ArrowRight size={15} className="step-arrow" />}<div className="step"><span className="step-icon"><Icon size={18} /></span><span><strong>{label}</strong><small>{detail}</small></span></div>
     </div>)}</div>
     {open && <div id="run-settings" className="run-settings">
-      <div className="settings-section-title"><h3>Knowledge building</h3><p>Compare grouped trust assessment with the existing claim-first flow.</p></div>
-      <label>Knowledge building mode<select aria-label="Knowledge building mode" value={options.knowledge_building_mode ?? 'trust_graph'}
-        onChange={event => onOptions({ ...options, knowledge_building_mode: event.target.value })}>
-        <option value="trust_graph">Trust graph: assemble first, assess groups</option>
-        <option value="validated_first">Previous: validate claims, then assemble</option>
-      </select><small>Trust graph keeps per-edge verdicts, shares paper requests and records support minus contradiction. The score is not a probability.</small></label>
-      {options.knowledge_building_mode !== 'validated_first' && <label>Claims per shared assessment<input type="number" min={1} max={6}
-        aria-label="Claims per shared assessment" value={options.trust_batch_size ?? 3}
-        onChange={event => onOptions({ ...options, trust_batch_size: Number(event.target.value) })} />
-        <small>Default 3. Smaller groups reduce context and output pressure. Disconnected claims are assessed too. Up to {health?.pipeline?.external_paper_workers ?? 3} independent paper requests run in parallel; this is separate from the claim group size.</small></label>}
-      {options.knowledge_building_mode !== 'validated_first' && <p className="soft-note">Paper assessments appear as papers become ready. Compatible source text and local models are reused across runs. If a search service misses its deadline, available findings are saved and missing sources stay pending for resume.</p>}
+      <div className="settings-section-title"><h3>Neighboring-claim validation</h3><p>Source-grounded claims are assembled first. External evidence assesses two adjacent relationships and their local connection.</p></div>
+      <p className="soft-note">MiMo Flash plans searches for each relationship and its connection conditions. {modelName(phases.paper || tasks.source)} assesses each paper; {modelName(phases.synthesis || tasks.external)} synthesizes the findings and audits proposed support against external quotations. Local support does not establish an entire chain. Claims outside selected pairs remain externally unvalidated.</p>
       <div className="settings-section-title"><h3>Claim extraction</h3><p>Choose what each extraction call is responsible for.</p></div>
       <label>Extraction mode<select value={options.extraction_mode ?? 'target_context'}
         onChange={event => onOptions({ ...options, extraction_mode: event.target.value })}>
@@ -205,26 +203,28 @@ export function RunSetup({ health, options, onOptions, open, onToggle }) {
       {[
         ['max_pages', 'PDF pages', 0, 1000, '0 = all text pages'],
         ['claims_per_packet', 'Claims per extraction call', 0, 8, '0 = all eligible claims; 1–8 = optional maximum per call'],
-        ['max_claims', 'Claims to validate', 0, 500, '0 = all extracted claims'],
-        ['articles_per_claim', 'Search papers per claim', 1, 30, 'All usable attached citations are additional'],
+        ['neighbor_max_pairs', 'Neighbor pairs to assess', 1, 500, 'Additional local pairs remain visibly unassessed'],
+        ['articles_per_pathway', 'Search papers per neighboring pair', 1, 30, 'All usable attached citations are additional'],
       ].map(([key, label, min, max, hint]) => <label key={key}>{label}<input type="number" min={min} max={max} value={options[key]}
         onChange={event => onOptions({ ...options, [key]: Number(event.target.value) })} /><small>{hint}</small></label>)}
       <div className="settings-section-title"><h3>Assigned models</h3><p>Each task uses its configured primary model. Thinking defaults to Off for every stage.</p></div>
       {THINKING_STAGES.map(([key, label]) => {
         const enabled = options.thinking?.[key] ?? false
+        const minimumReasoning = key === 'external' && ((phases.synthesis || tasks.external) === 'opencode-go/muse-spark-1.3-contributor')
         return <div className="assigned-model" role="group" aria-label={`${label} model settings`} key={key}>
-          {key === 'external' && <label>Per-paper judgement model<input value={phases.paper || ''} readOnly placeholder="Loading model assignment…" /><small>Assesses each paper; Trust graph mode groups related claims within the request</small></label>}
+          {key === 'external' && <label>Per-paper judgement model<input value={phases.paper || ''} readOnly placeholder="Loading model assignment…" /><small>Assesses two neighboring claims against each paper</small></label>}
           <label>{key === 'external' ? 'Cross-paper synthesis' : label} model<input value={tasks[key] || ''} readOnly title={tasks[key] || 'Model assignment loading'}
             placeholder="Loading model assignment…" /><small>Configured on the backend</small></label>
           <label className="thinking-toggle"><span>Thinking</span>
             <input type="checkbox" role="switch" aria-label={`${label} thinking`} aria-checked={enabled} checked={enabled}
               onChange={event => onOptions({ ...options, thinking: { ...defaultThinking(), ...options.thinking, [key]: event.target.checked } })} />
-            <span className="thinking-state">{enabled ? 'On' : 'Off'}</span></label>
+            <span className="thinking-state">{enabled ? 'On' : minimumReasoning ? 'Minimal' : 'Off'}</span></label>
+          {minimumReasoning && <small>Muse requires reasoning: this switch requests minimal effort when unchecked and high effort when checked. Per-paper DeepSeek thinking can still be Off.</small>}
         </div>
       })}
       <p className="settings-note">Thinking and the answer share the generation budget. Off keeps the same evidence input. Changing extraction thinking requires a new run; other changed stages recheck their cached judgements on resume.</p>
       <p className="settings-note">{modelName(phases.paper)} judges each paper; {modelName(phases.synthesis || tasks.external)} synthesizes their findings and exact evidence. External Thinking controls both phases. Model errors appear in Activity. External timeout: {health?.pipeline?.external_timeout_seconds ?? 1200} seconds.</p>
     </div>}
-    <p className="soft-note">Source fidelity checks the original PDF. External validation assesses retrieved research, contextual types, and pathway relevance. Its Thinking switch applies to both paper judgements and cross-paper synthesis.</p>
+    <p className="soft-note">The source call checks PDF fidelity and project scope separately. Only PDF-supported, in-scope claims enter pathway assembly. External validation assesses neighboring claims and their local connection. Longer chains remain unassessed as complete mechanisms. Its Thinking switch applies to both paper judgements and cross-paper synthesis.</p>
   </section>
 }

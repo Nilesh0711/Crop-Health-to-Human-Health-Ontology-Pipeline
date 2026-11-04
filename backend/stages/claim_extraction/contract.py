@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 import re
-from backend.shared.text_structure import REFERENCE_HEADING_TEXT
 from backend.domain.ontology import ENTITY_TYPES
 
 
 GENERIC_ENTITIES = {"agriculture", "food", "temperature", "yield", "disease", "soil", "pests", "crop", "health", "nutrition", "nutrient",
                     "crop growth", "crop productivity", "soil health", "soil quality", "nutrient levels",
                     "plantdisease", "soilcondition", "climatefactor", "humanexposure", "humanhealthoutcome", "agriculturalpractice"}
-
-
-REFERENCE_SECTION_HEADING_RE = re.compile(
-    rf"^\s*(?:\d+(?:\.\d+)*\.?\s+)?{REFERENCE_HEADING_TEXT}\s*$",
-    re.IGNORECASE | re.MULTILINE,
-)
 
 
 EXTRACTION_MAX_CLAIMS_PER_PACKET = 0  # No application claim-count cap by default.
@@ -100,11 +93,10 @@ EXTRACTION_RESPONSE_SCHEMA = {
                             "comparator": {"type": "string"},
                             "metric": {"type": "string"},
                         },
-                        "required": ["crop_or_species", "population", "condition", "comparator", "metric"],
                         "additionalProperties": False,
                     },
                 },
-                "required": ["claim_text", "source_context", "subject", "subject_source_mention", "relation", "object", "object_source_mention",
+                "required": ["claim_text", "subject", "subject_source_mention", "relation", "object", "object_source_mention",
                              "relation_trigger", "subject_type", "object_type",
                              "evidence_sentence_numbers", "certainty", "qualifiers"],
                 "additionalProperties": False,

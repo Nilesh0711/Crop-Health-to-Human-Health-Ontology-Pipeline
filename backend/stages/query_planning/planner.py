@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Callable
+from typing import Any
 from backend.domain.search_terms import _RELATION_EVIDENCE_TERMS, _retrieval_endpoint, _retrieval_text
-from backend.shared.batching import iter_batched_judgments
 from backend.providers.llm import LLMError, OpenCodeClient
 
 
@@ -103,19 +102,6 @@ def translate_query(client: OpenCodeClient, candidate: dict[str, Any]) -> dict[s
         openalex_query = ""
     return {"query": query, "raw_query": raw_query, "query_strategy": strategy,
             "openalex_query": openalex_query}
-
-
-def translate_queries(candidates: list[dict[str, Any]], client: Any, batch_size: int = 6,
-                      progress: Callable[[str], None] | None = None,
-                      on_checkpoint: Callable[[dict[str, Any], dict[str, Any]], None] | None = None) -> dict[str, dict[str, Any]]:
-    results = {}
-    for candidate, result in iter_batched_judgments(
-            candidates, client, lambda candidate, judge: translate_query(judge, candidate), batch_size,
-            progress=progress, label="Literature query"):
-        results[candidate['candidate_id']] = result
-        if on_checkpoint:
-            on_checkpoint(candidate, result)
-    return results
 
 
 def evidence_query_plan(candidate: dict[str, Any], translated: dict[str, str]) -> dict[str, list[str]]:

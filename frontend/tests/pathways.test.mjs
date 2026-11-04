@@ -59,17 +59,17 @@ try {
   })
   await test('all three pathway views and original assembly controls remain available', () => {
     const nav = render(Navigation, {value: 'trust', trustCount: 6, assembledCount: 2, healthCount: 1})
-    for (const value of ['Trust network', 'Global pathway assembly', 'Corroborated health paths']) assert.ok(nav.includes(value))
+    for (const value of ['Pathway assessments', 'Historical trust network', 'Historical pathway assembly', 'Historical health paths']) assert.ok(nav.includes(value))
     assert.equal((nav.match(/aria-pressed="true"/g) || []).length, 1)
     const data = {view: 'provisional', graph: {nodes: [], edges: [first, second]}, paths: [[first, second]],
       max_hops: 6, has_more: true, stale: true}
     const network = render(Panel, {data})
     for (const value of ['Network claims', 'Connection assessments', 'Search pathways and claims',
-      'Filter pathway evidence state', 'Show more paths', 'Path length in edges', 'Show assembled graph',
+      'Filter pathway evidence state', 'Show more paths', 'Path length in edges', 'Hide assembled graph',
       'Resume the pipeline', 'Evidence balance', 'graph contribution']) assert.ok(network.includes(value), value)
-    assert.doesNotMatch(network, /Assemble validated claims/)
+    assert.doesNotMatch(network, /Assemble source-grounded chains/)
     assert.match(render(Panel, {data: {...data, view: 'validated'}, busy: true}), /disabled=""/)
-    assert.match(render(Panel, {data: {...data, view: 'validated'}, busy: false}), /Assemble validated claims/)
+    assert.match(render(Panel, {data: {...data, view: 'validated'}, busy: false}), /Assemble source-grounded chains/)
   })
   await test('loading, empty and interrupted states explain the next available action', () => {
     assert.match(render(Panel, {}), /Loading saved pathways/)
@@ -79,6 +79,14 @@ try {
     assert.match(health, /whole-chain causation/)
     assert.match(health, /Original claims and passages/)
     assert.match(render(CorroboratedPaths, {}), /No supported reasoning paths yet/)
+  })
+  await test('bounded identity retrieval remains visible without claiming exhaustive connections', () => {
+    const data = {view: 'provisional', paths: [], candidate_selection: {exhaustive: false}}
+    const html = render(Panel, {data, pathwayOnly: true})
+    assert.match(html, /Some registry entities were not compared/)
+    assert.match(html, /additional connections may remain undiscovered/)
+    assert.match(html, /Similarity does not establish identity or scientific support/)
+    assert.doesNotMatch(render(Panel, {data: {...data, candidate_selection: {exhaustive: true}}}), /Some registry entities were not compared/)
   })
 } finally {
   await server.close()

@@ -108,9 +108,9 @@ class InferenceHTTP:
         _, model, base = _route(selector)
         mode = self.settings.opencode_response_format
         if mode == 'model_default':
-            # Configuration probes: MiMo accepts json_schema; DeepSeek rejects
+            # Configuration probes: MiMo & Muse accept json_schema; DeepSeek rejects
             # it with HTTP 400. This selection is explicit, never a retry.
-            mode = 'json_schema' if model in {'mimo-v2.6-flash', 'mimo-v2.6-pro'} else 'json_object'
+            mode = 'json_schema' if any(model.startswith(p) for p in ('mimo-v2.6', 'muse-spark')) else 'json_object'
         response_format = {'type': 'json_object'}
         if mode == 'json_schema' and schema:
             response_format = {'type': 'json_schema', 'json_schema': {
@@ -119,7 +119,10 @@ class InferenceHTTP:
                                                {'role': 'user', 'content': user}],
                    'temperature': 0, 'max_tokens': output_limit, 'stream': False,
                    'response_format': response_format}
-        if self.thinking_enabled is not None:
+        effort = model_reasoning_effort(selector, self.thinking_enabled)
+        if effort is not None:
+            payload['reasoning_effort'] = effort
+        elif self.thinking_enabled is not None:
             payload['thinking'] = {'type': 'enabled' if self.thinking_enabled else 'disabled'}
         data = self._request('POST', base + '/openai/v1/chat/completions', json=payload)
         choices = data.get('choices')
@@ -153,3 +156,9 @@ def normalize_usage(usage):
             'reasoning_tokens': reasoning or 0, 'reasoning_usage_reported': reasoning is not None,
             'cache_read_tokens': cached or 0, 'cache_write_tokens': 0,
             'model_steps': 1 if reported else 0}
+
+
+def model_reasoning_effort(selector, thinking_enabled):
+    if selector and 'muse' in selector:
+        return 'high' if thinking_enabled else 'minimal'
+    return None

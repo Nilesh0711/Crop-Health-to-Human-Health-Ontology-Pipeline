@@ -1,9 +1,8 @@
-"""Document-bound evidence checks for joint entailment decisions."""
+"""Read-time evidence contracts for historical claim-validation records."""
 
 from __future__ import annotations
 
 import re
-from copy import deepcopy
 from typing import Any
 
 from backend.domain.claim_matching import entity_anchored, entity_terms
@@ -12,37 +11,11 @@ from backend.domain.alignment import (
     ENTITY_ALIGNMENTS_SCHEMA,
     grounded_alignment,
 )
-from backend.providers.nli import NLIValidator, claim_hypothesis
-from backend.stages.literature_retrieval.clients import normalize_text, scholarly_sentences
+from backend.stages.literature_retrieval.clients import normalize_text
 
 
 VALID_DECISIONS = {"supported", "contradicted", "insufficient", "needs_review"}
 MAX_EVIDENCE_WORDS = 180
-
-# A final deterministic safeguard after the evidence model's structured decision.  These are
-# lexical stems/phrases rather than semantic synonyms: they prevent a supported
-# result from being accepted when its derived source quote contains no relation
-# signal, while avoiding needless reviews for ordinary scientific wording such
-# as "detected in" or "enhanced".
-RELATION_CUES = {
-    "affects": ("affect", "impact", "influence", "alter", "change", "modulat", "regulat", "determin", "drive", "contribut", "reduce", "decrease", "increase", "enhanc", "promot", "improv", "suppress", "inhibit", "loss", "damage"),
-    "causes": ("cause", "induc", "trigger", "produce", "lead to", "led to", "result in", "resulted in"),
-    "reduces": ("reduce", "decreas", "lower", "suppress", "inhibit", "diminish", "attenuat", "impair", "mitigat", "alleviat", "protect against", "loss"),
-    "increases": ("increase", "elevat", "rais", "higher", "enhanc", "promot", "improv", "foster", "stimulat", "facilitat", "boost", "augment", "bolster"),
-    "leads_to": ("lead to", "led to", "result in", "resulted in", "produce", "trigger", "consequence"),
-    "associated_with": ("associate", "correlat", "linked", "relationship between", "related to"),
-    "deficiency_causes": ("deficiency", "deficient", "insufficiency", "deplet", "cause", "induc", "lead to", "result in"),
-    "has_nutrient": ("contain", "content", "composition", "rich in", "source of", "provide", "concentration", "level"),
-    # A contaminant can be stated either as material composition ("detected
-    # in grain") or as production/formation within that material.  The latter
-    # is common for fungal toxins, so it is an explicit lexical cue rather
-    # than a broad semantic relaxation.
-    "has_contaminant": ("contain", "contamin", "residue", "accumulat", "present in", "detected", "found in", "occur", "concentration", "content", "produc", "increase", "elevat"),
-    "contains": ("contain", "compris", "include", "content", "concentration", "presence"),
-    "has_trait": ("has", "have", "had", "with", "exhibit", "characteri", "show"),
-    "higher_than": ("higher", "greater", "more", "exceed"),
-    "lower_than": ("lower", "less", "fewer", "below"),
-}
 
 _DECISION_SCHEMA = {
     "type": "object",
@@ -88,7 +61,6 @@ _DECISION_SCHEMA = {
 }
 
 
-_SENTENCE_BOUNDARY_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'“(\[])")
 _GENERIC_ALIAS_TERMS = {
     "approach", "approaches", "method", "methods", "management", "practice", "practices",
     "technique", "techniques", "treatment", "treatments", "system", "systems", "stress",
@@ -121,101 +93,10 @@ def _concept_terms(value: object) -> set[str]:
     return normalized - _GENERIC_ALIAS_TERMS
 
 
-def _sentences(text: object) -> list[str]:
-    """Split an evidence chunk into stable source sentences for model selection."""
-    return scholarly_sentences(str(text or ""))
 
 
-def _numbered_chunks(document: dict[str, Any], candidate: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    """Expose sentence IDs, focusing exact claim-bearing sentences when present.
-
-    The focus step does not decide entailment.  It only prevents a small model
-    from citing a later, topically related sentence when the same retrieved
-    chunk contains a sentence that explicitly names both claim endpoints and a
-    compatible relation cue.  When no such lexical sentence exists, all
-    sentences remain available so semantic paraphrases can still be judged.
-    """
-    numbered: list[dict[str, Any]] = []
-    for chunk in document.get("evidence_chunks", []):
-        sentences = _sentences(chunk.get("text", ""))
-        if not sentences:
-            continue
-        sentence_rows = [{"number": index, "text": sentence}
-                         for index, sentence in enumerate(sentences, 1)]
-        if candidate:
-            subject_terms = _concept_terms(candidate.get("subject"))
-            object_terms = _concept_terms(candidate.get("object"))
-            exact_rows = []
-            for row in sentence_rows:
-                sentence_terms = _concept_terms(row["text"])
-                subject_named = bool(subject_terms) and subject_terms <= sentence_terms
-                object_named = bool(object_terms) and object_terms <= sentence_terms
-                relation_named = _quote_has_relation_cue(candidate.get("relation"), row["text"])
-                if subject_named and object_named and relation_named:
-                    exact_rows.append(row)
-            # Keep surrounding sentences available: isolated lexical hits can
-            # be methods statements or omit the antecedent of a result.
-            priorities = [row["number"] for row in exact_rows[:4]]
-        else:
-            priorities = []
-        numbered.append({
-            "chunk_id": chunk.get("chunk_id"),
-            **{key: chunk[key] for key in ('source_kind', 'table_id', 'row_number', 'figure_id', 'layout_verified') if key in chunk},
-            "sentences": sentence_rows,
-            "priority_sentence_numbers": priorities,
-            "section_heading": chunk.get("section_heading", ""),
-            'paragraph_references': chunk.get('paragraph_references', []),
-        })
-    return numbered
 
 
-def _derive_evidence_quotes(document: dict[str, Any], decision: dict[str, Any]) -> list[str]:
-    """Derive exact stored quotations from selected sentence IDs.
-
-    The model never gets to manufacture a quote.  A failed ID selection remains
-    a review state, preserving the same evidence-bound safety property without
-    inflating review counts due to harmless punctuation or copy errors.
-    """
-    errors: list[str] = []
-    by_id = {item.get("chunk_id"): _sentences(item.get("text", ""))
-             for item in document.get("evidence_chunks", [])}
-    evidence = decision.get("evidence", [])
-    if not isinstance(evidence, list):
-        return ["evidence must be a list"]
-    for item in evidence:
-        if not isinstance(item, dict):
-            errors.append("each evidence item must be an object")
-            continue
-        sentences = by_id.get(item.get("chunk_id"))
-        numbers = item.get("sentence_numbers")
-        if sentences is None:
-            errors.append("evidence chunk_id is not in the cited document")
-            continue
-        if not isinstance(numbers, list) or not 1 <= len(numbers) <= 3 or any(
-                isinstance(number, bool) or not isinstance(number, int) for number in numbers):
-            errors.append("evidence must select one to three sentence numbers")
-            continue
-        chosen = sorted(set(numbers))
-        if len(chosen) != len(numbers):
-            errors.append("selected evidence sentence numbers must be consecutive")
-            continue
-        if chosen[0] < 1 or chosen[-1] > len(sentences):
-            errors.append("selected evidence sentence number is outside the chunk")
-            continue
-        cover = list(range(chosen[0], chosen[-1] + 1))
-        if chosen != cover:
-            if len(cover) > 3:
-                errors.append("selected evidence sentence numbers must be consecutive")
-                continue
-            # The stored proof is the complete bounded interval, never a splice
-            # hiding intervening text. All normal quote/alignment/NLI checks run
-            # on that actual interval. Preserve the model's selection for audit.
-            item['selection_adjustment'] = {'original_sentence_numbers': list(numbers),
-                                            'basis': 'bounded_consecutive_cover'}
-            chosen = cover
-            item['sentence_numbers'] = cover
-        item["quoted_span"] = " ".join(sentences[number - 1] for number in chosen)
-    return errors
 
 
 def _mention_in_quote(value: object, quote: object) -> bool:
@@ -262,91 +143,10 @@ def _condition_anchored(value: object, quote: object) -> bool:
     return len(initialism) >= 2 and bool(re.search(rf"(?i)\b{re.escape(initialism)}\b", str(quote or "")))
 
 
-def _quote_has_relation_cue(relation: object, quote: object) -> bool:
-    """Lexical attention aid for sentence ranking and nonblocking review notes."""
-    text = str(quote or "").casefold()
-    relation_name = str(relation or "")
-    if relation_name == "deficiency_causes":
-        # Deficiency alone is merely a condition.  It must be coupled with an
-        # explicit causal/downstream expression before this special relation
-        # can enter the main graph.
-        deficiency_cues = ("deficien", "insufficiency", "deplet")
-        causal_cues = ("cause", "induc", "lead to", "led to", "result in", "resulted in")
-        return any(cue in text for cue in deficiency_cues) and any(cue in text for cue in causal_cues)
-    return any(cue in text for cue in RELATION_CUES.get(relation_name, ()))
 
 
-def _relation_review_hints(candidate: dict[str, Any], decision: dict[str, Any]) -> list[str]:
-    """Lexical concerns for inspection, never a second semantic verdict."""
-    errors: list[str] = []
-    for item in decision.get("evidence", []):
-        quote, trigger = str(item.get("quoted_span") or ""), str(item.get("relation_trigger") or "")
-        relation = candidate.get("relation")
-        # Models judge predicate meaning and anchor exact triggers. A small
-        # cue dictionary cannot cover the open scientific relation vocabulary.
-        if (not decision.get("entity_alignment") or relation == "deficiency_causes") and not _quote_has_relation_cue(relation, quote):
-            errors.append("review_unrecognized_relation_wording")
-        if relation in {"causes", "increases", "reduces", "leads_to", "deficiency_causes"} and re.search(
-                r"\b(?:associated with|association between|correlated with|linked to)\b", trigger, re.IGNORECASE):
-            errors.append("review_association_and_direction")
-        increasing = bool(re.search(r"\b(?:increas|enhanc|elevat|promot|higher)\w*\b", trigger, re.IGNORECASE))
-        decreasing = bool(re.search(r"\b(?:decreas|reduc|suppress|inhibit|lower)\w*\b", trigger, re.IGNORECASE))
-        if (relation == "increases" and decreasing and not increasing
-                or relation == "reduces" and increasing and not decreasing):
-            errors.append("review_relation_direction")
-    return errors
 
 
-def guard_document_decision(candidate: dict[str, Any], document: dict[str, Any],
-                            decision: dict[str, Any],
-                            nli_validator: NLIValidator | None = None) -> dict[str, Any]:
-    """Validate one paper's portion of the joint response without another call."""
-    decision = deepcopy(decision)
-    decision.setdefault("candidate_id", candidate["candidate_id"])
-    decision.setdefault("evidence_document_id", document["evidence_document_id"])
-    decision.setdefault("evidence", [])
-    quote_errors = _derive_evidence_quotes(document, decision)
-    packet = {"candidate": candidate, "evidence_documents": [document]}
-    errors = [*quote_errors, *decision_errors(packet, decision)]
-    relation_hints = _relation_review_hints(candidate, decision)
-    if relation_hints:
-        decision['review_hints'] = relation_hints
-    proposed = deepcopy(decision)
-    if errors:
-        decision.update(decision="needs_review", evidence=[], matches={},
-                        rationale="Invalid model decision: " + "; ".join(errors),
-                        rejected_model_decision=proposed, guardrail_reasons=errors)
-    decision["evidence_level"] = document.get("evidence_level", "independent_external")
-    decision["retrieval_route"] = document.get("retrieval_route", "broad_search")
-    decision["independence_group"] = document.get("independence_group")
-    if nli_validator is not None:
-        quote = " ".join(str(item.get("quoted_span") or "") for item in decision.get("evidence", []))
-        try:
-            if quote:
-                nli_scores = nli_validator.score(quote, claim_hypothesis(candidate))
-                decision["nli"] = {"model": nli_validator.settings.nli_model, "scores": nli_scores}
-                if (decision["decision"] in {"needs_review", "insufficient"}
-                        and getattr(nli_validator.settings, "enable_nli_promotion", False)
-                        and nli_scores.get("entailment", 0.0) >= 0.82):
-                    promoted = deepcopy(decision)
-                    promoted["decision"] = "supported"
-                    promotion_errors = decision_errors(packet, promoted)
-                    if not promotion_errors:
-                        decision["decision"] = "supported"
-                        decision["nli"]["promotion_applied"] = True
-                        decision["rationale"] = str(decision.get("rationale") or "") + " NLI-assisted promotion passed the full support evidence contract."
-                    else:
-                        decision["nli"]["promotion_blocked"] = promotion_errors
-                elif decision["decision"] == "supported" and nli_scores.get("contradiction", 0.0) >= 0.75:
-                    decision["decision"] = "needs_review"
-                    decision["rationale"] = (str(decision.get("rationale") or "")
-                                             + " Independent NLI strongly contradicts the proposed claim.").strip()
-            else:
-                decision["nli"] = {"model": nli_validator.settings.nli_model,
-                                   "skipped": "No admissible selected evidence span; scores cannot create evidence"}
-        except Exception as exc:
-            decision["nli"] = {"model": nli_validator.settings.nli_model, "error": str(exc)[:240]}
-    return decision
 
 
 def decision_errors(packet: dict[str, Any], decision: dict[str, Any]) -> list[str]:

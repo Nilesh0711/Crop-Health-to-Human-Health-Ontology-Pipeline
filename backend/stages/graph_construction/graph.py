@@ -9,12 +9,14 @@ from typing import Any
 
 import networkx as nx
 from backend.domain.ontology import external_project_scope
+from backend.stages.source_validation.scope import source_scope_decision, effective_project_scope
+from backend.stages.source_validation.review import source_fidelity_decision, source_review_state
 
 
 def _edge_status(candidate: dict[str, Any], result: dict[str, Any]) -> tuple[str, set[str], set[str], set[str]]:
     """Derive an auditable state without using model self-confidence."""
     if result.get('claim_input_signature'):
-        from backend.stages.trust_graph.ledger import scientific_signature
+        from backend.domain.claim_signatures import scientific_signature
         if result['claim_input_signature'] != scientific_signature(candidate):
             return 'external_needs_review', set(), set(), set()
     if candidate.get("schema_error"):
@@ -22,9 +24,12 @@ def _edge_status(candidate: dict[str, Any], result: dict[str, Any]) -> tuple[str
     semantic_decision = candidate.get("semantic_validation", {}).get("decision")
     if semantic_decision in {"rejected", "needs_review"}:
         return ("semantic_rejected" if semantic_decision == "rejected" else "semantic_needs_review"), set(), set(), set()
-    source_decision = candidate.get("source_validation", {}).get("decision")
+    source_decision = source_fidelity_decision(candidate)
     if source_decision in {"unsupported", "needs_review"}:
         return ("source_unsupported" if source_decision == "unsupported" else "source_needs_review"), set(), set(), set()
+    scope = source_scope_decision(candidate)
+    if scope in {'out_of_scope', 'needs_review'}:
+        return ('out_of_scope' if scope == 'out_of_scope' else 'scope_needs_review'), set(), set(), set()
     if external_project_scope(result) is False:
         return 'out_of_scope', set(), set(), set()
     decisions = [decision for attempt in result.get("attempts", []) for decision in attempt.get("decisions", [])]
@@ -70,11 +75,11 @@ def graph_from_candidates(candidates: list[dict[str, Any]], results: list[dict[s
         status, supporting_articles, contradicting_articles, reference_articles = _edge_status(candidate, result)
         externally_supported = status in {"single_source", "corroborated"}
         source_supported = (not candidate.get('schema_error')
-                            and candidate.get("semantic_validation", {}).get("decision") in {"accepted", "not_run"}
-                            and candidate.get("source_validation", {}).get("decision") == "entailed")
+                            and candidate.get("semantic_validation", {}).get("decision") in {None, "accepted", "not_run"}
+                            and source_fidelity_decision(candidate) == "entailed")
         if (view == "main" and not externally_supported) or (view == "source" and not source_supported) or (view == "audit" and externally_supported):
             continue
-        display_status = "source_supported" if view == "source" else status
+        display_status = (status if status in {'out_of_scope', 'scope_needs_review'} else 'source_supported') if view == 'source' else status
         source = f"{candidate['subject_type']}:{candidate['subject'].casefold()}"
         target = f"{candidate['object_type']}:{candidate['object'].casefold()}"
         nodes.setdefault(source, {"id": source, "label": candidate["subject"], "type": candidate["subject_type"]})
@@ -82,6 +87,8 @@ def graph_from_candidates(candidates: list[dict[str, Any]], results: list[dict[s
         edges.append({"id": candidate["candidate_id"], "source": source, "target": target,
                       **({'trust': result['trust']} if result.get('trust') else {}),
                       "relation": candidate["relation"], "status": display_status,
+                      'project_scope': effective_project_scope(candidate),
+                      **({'source_review': source_review_state(candidate)} if (candidate.get('source_validation') or {}).get('manual_reviews') else {}),
                       "claim_text": candidate.get("claim_text", ""),
                       "claim_text_source_verified": ((candidate.get("source_validation") or {}).get("decision") == "entailed"
                                                      and (candidate.get("source_validation") or {}).get("claim_text_match") is True),
@@ -130,16 +137,20 @@ def write_graphml(graph: dict[str, Any], path: Path) -> None:
     for edge in graph["edges"]:
         output.add_edge(edge["source"], edge["target"], key=edge["id"],
                         candidate_id=edge["id"], relation=edge["relation"], status=edge["status"],
-                        support_count=edge["support_count"], contradiction_count=edge["contradiction_count"],
+                        support_count=edge.get("support_count", 0), contradiction_count=edge.get("contradiction_count", 0),
                         claim_text=edge.get("claim_text") or "", certainty=edge.get("certainty") or "",
                         qualifiers=json.dumps(edge.get("qualifiers") or {}, ensure_ascii=False),
                         claim_text_source_verified=bool(edge.get("claim_text_source_verified")),
-                        trust_score=(edge.get('trust') or {}).get('score', 0),
-                        trust_status=(edge.get('trust') or {}).get('status', 'not_assessed'),
-                        trust_support_groups=(edge.get('trust') or {}).get('support_count', 0),
-                        trust_contradiction_groups=(edge.get('trust') or {}).get('contradiction_count', 0),
-                        trust_score_kind='evidence_balance_not_probability',
                         paper=edge.get("paper") or "", quote=edge.get("quote") or "")
+        attributes = output.edges[edge['source'],edge['target'],edge['id']]
+        if edge.get('trust'):
+            trust=edge['trust']
+            attributes.update(trust_score=trust.get('score',0),trust_status=trust.get('status','not_assessed'),
+                trust_support_groups=trust.get('support_count',0),trust_contradiction_groups=trust.get('contradiction_count',0),
+                trust_score_kind='historical_evidence_balance_not_probability')
+        if edge.get('supported_pathway_ids'):
+            attributes.update(supported_pathway_ids=json.dumps(edge['supported_pathway_ids']),
+                              individually_externally_validated=False, evidence_scoped_to_pathway=True)
     nx.write_graphml(output, path)
 
 

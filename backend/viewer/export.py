@@ -28,6 +28,26 @@ def clean(value):
     return value
 
 
+def prune_pathway_payload(payload):
+    if not isinstance(payload, dict):
+        return payload
+    for r in payload.get('records', []):
+        if not isinstance(r, dict):
+            continue
+        for round_item in r.get('retrieval_rounds', []):
+            if isinstance(round_item, dict):
+                round_item.pop('evidence_documents', None)
+        for doc in r.get('evidence_documents', []):
+            if isinstance(doc, dict):
+                doc.pop('evidence_chunks', None)
+                doc.pop('passage_selection', None)
+        for sc in r.get('target', {}).get('source_claims', []):
+            if isinstance(sc, dict) and isinstance(sc.get('claim'), dict):
+                sc['claim'].pop('source_context_packet', None)
+                sc['claim'].pop('source_evidence_records', None)
+    return payload
+
+
 def source_inventory(ontology, pdf_dir):
     paths = []
     for folder in ontology.iterdir():
@@ -96,9 +116,9 @@ def export_snapshot(ontology, pdf_dir, output, *, include_pdfs=False, replace=Fa
 
     try:
         with display_api(ontology, pdf_dir, registry) as api:
-            from backend.config.settings import Settings, SCHEMA_VERSION
+            from backend.config.settings import Settings, SCHEMA_VERSION, APPLICATION_VERSION
             settings = Settings()
-            manifest['pipeline'] = {'schema_version': SCHEMA_VERSION, 'task_models': settings.task_models,
+            manifest['pipeline'] = {'schema_version': SCHEMA_VERSION, 'version':APPLICATION_VERSION, 'task_models': settings.task_models,
                                     'external_phase_models': settings.external_phase_models,
                                     'knowledge_building_mode': settings.knowledge_building_mode}
             catalog = []
@@ -120,7 +140,8 @@ def export_snapshot(ontology, pdf_dir, output, *, include_pdfs=False, replace=Fa
                 base = f'documents/{identifier}'
                 for key, method in [('claims', api.pdf_claims), ('logs', api.pdf_logs),
                                     ('graph', api.pdf_graph), ('audit-graph', api.pdf_audit_graph),
-                                    ('source-graph', api.pdf_source_graph), ('paths', api.pdf_paths), ('trust', api.pdf_trust)]:
+                                    ('source-graph', api.pdf_source_graph), ('paths', api.pdf_paths), ('trust', api.pdf_trust),
+                                    ('pathway-assessments', api.pdf_pathway_assessments)]:
                     payload = method(identifier)
                     if key == 'claims':
                         for row in payload['claims']:
@@ -129,6 +150,8 @@ def export_snapshot(ontology, pdf_dir, output, *, include_pdfs=False, replace=Fa
                         for result in api.read_jsonl(folder / 'validation_runs.jsonl'):
                             if result.get('candidate_id') not in candidates:
                                 raise ValueError('Validation record refers to a missing candidate')
+                    if key == 'pathway-assessments':
+                        payload = prune_pathway_payload(payload)
                     entry[key] = write(f'{base}/{key}.json', payload)
                 for path in sorted((folder / 'jobs').glob('*.json')):
                     record = json.loads(path.read_text(encoding='utf-8'))
@@ -155,10 +178,11 @@ def export_snapshot(ontology, pdf_dir, output, *, include_pdfs=False, replace=Fa
                     entry['graphml'] = write(f'{base}/knowledge_graph.graphml', (folder / 'knowledge_graph.graphml').read_bytes(), True)
                 manifest['documents'][identifier] = entry
             manifest['catalog'] = write('catalog.json', catalog)
+            manifest['pathway_assessments'] = write('global/pathway-assessments.json', prune_pathway_payload(api.pathway_assessments()))
             for key, method in [('graph', api.master_graph), ('audit-graph', api.master_audit_graph), ('source-graph', api.master_source_graph)]:
                 manifest['graphs'][key] = write(f'global/{key}.json', method())
             for view in ('validated', 'provisional'):
-                payload = api.global_pathways(limit=1, max_hops=2, offset=0, view=view)
+                payload = api.global_pathways(limit=1, max_hops=12, offset=0, view=view)
                 for key in ('paths', 'has_more', 'offset', 'limit', 'max_hops'):
                     payload.pop(key, None)
                 manifest['pathways'][view] = write(f'global/pathways-{view}.json', payload)

@@ -11,10 +11,10 @@ import pytest
 
 from backend.pipelines.claim_repair import run_claim_action, refresh_saved_views
 from backend.shared.artifacts import save_rows
-from backend.config.settings import Settings
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
 from backend.providers.llm import LLMServiceError, OpenCodeClient
 from backend.shared.storage import file_hash, read_jsonl
-from backend.stages.external_validation.workflow import validate_candidate
+from archive.legacy_pipeline.research_historical.external_validation.workflow import validate_candidate
 
 
 class FakeClient:
@@ -27,7 +27,7 @@ class FakeClient:
 
 @pytest.fixture(autouse=True)
 def isolate_pathway_assembly(monkeypatch):
-    monkeypatch.setattr('backend.pipelines.claim_repair.assemble_pathways', lambda *args: {'counts':{}})
+    monkeypatch.setattr('backend.pipelines.claim_repair.assemble_pathways', lambda *args,**kwargs: {'counts':{},'graph':{'nodes':[],'edges':[]}})
 
 
 @pytest.fixture
@@ -67,21 +67,19 @@ def test_repair_rechecks_only_target_and_external_requires_source_success(saved_
     if saved_context:
         save_rows(output / 'extraction_contexts.jsonl', [packet])
     module = importlib.import_module('backend.pipelines.claim_repair')
-    settings = replace(Settings(), enable_nli=False)
+    settings = replace(Settings())
     with patch.object(module, 'Settings', return_value=settings), \
             patch.object(module, 'OpenCodeClient', FakeClient), \
             patch.object(module, 'iter_pdf_context_packets', return_value=iter([packet])) as parser, \
             patch.object(module, 'extract_claims', return_value=([proposed], {}, [])) as extract, \
             patch.object(module, 'validate_source_claim', return_value={'candidate_id': 'target', 'decision': source_decision}) as source, \
-            patch.object(module, 'SemanticReranker'), \
-            patch.object(module, 'translate_query', return_value={'query': 'neutral query'}) as query, \
-            patch.object(module, 'validate_candidate', return_value={'candidate_id': 'target', 'validation_status': 'external_evidence_not_found', 'attempts': []}) as external:
+            patch('backend.pipelines.neighbor_validation.run_pathway_assessment', wraps=importlib.import_module('backend.pipelines.neighbor_validation').run_pathway_assessment) as external:
         run_claim_action(pdf, output, 'target', 'repair', 3, lambda *_: None)
     assert extract.call_count == source.call_count == 1
     if saved_context:
         parser.assert_not_called()
     assert extract.call_args.kwargs['repair_target']['source_failure']['reasons'] == ['Wrong direction']
-    assert external.call_count == query.call_count == int(source_decision == 'entailed')
+    assert external.call_count == int(source_decision == 'entailed')
     candidates = read_jsonl(output / 'candidates.jsonl')
     assert candidates[1] == unrelated
     assert candidates[0]['candidate_id'] == 'target'
@@ -143,11 +141,11 @@ def test_removed_semantic_stage_does_not_run_during_repair(saved_claim):
             patch('backend.pipelines.claim_repair.iter_pdf_context_packets', return_value=iter([packet])), \
             patch('backend.pipelines.claim_repair.extract_claims', return_value=([proposed], {}, [])), \
             patch('backend.pipelines.claim_repair.validate_source_claim', return_value={'candidate_id': 'target', 'decision': 'unsupported'}) as source, \
-            patch('backend.pipelines.claim_repair.validate_candidate') as external:
+            patch('backend.pipelines.neighbor_validation.run_pathway_assessment') as external:
         run_claim_action(pdf, output, 'target', 'repair', 3, lambda *_: None)
     source.assert_called_once()
     external.assert_not_called()
-    assert read_jsonl(output / 'candidates.jsonl')[0]['semantic_validation']['decision'] == 'not_run'
+    assert 'semantic_validation' not in read_jsonl(output / 'candidates.jsonl')[0]
 
 
 def test_repair_archives_gold_for_changed_assertion_and_preserves_other_gold(saved_claim):
@@ -175,8 +173,8 @@ def test_joint_timeout_preserves_entire_packet_for_one_manual_retry():
                   'independence_group': i, 'evidence_chunks': [{'text': 'Evidence.'}]} for i in ['first', 'second']]
     client = SimpleNamespace(model=Settings().external_model)
     checkpoints = []
-    with patch('backend.stages.external_validation.workflow.retrieve_round', return_value={'evidence_documents': documents}), \
-            patch('backend.stages.external_validation.workflow.judge_evidence_pack', side_effect=LLMServiceError('timed out')):
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round', return_value={'evidence_documents': documents}), \
+            patch('archive.legacy_pipeline.research_historical.external_validation.workflow.judge_evidence_pack', side_effect=LLMServiceError('timed out')):
         with pytest.raises(LLMServiceError):
             validate_candidate(claim, client, None, Settings(external_judgement_mode='joint'), on_checkpoint=checkpoints.append)
     saved = checkpoints[-1]
@@ -184,8 +182,8 @@ def test_joint_timeout_preserves_entire_packet_for_one_manual_retry():
     assert saved['attempts'][0]['evidence_documents'] == documents
     assert saved['attempts'][0]['decisions'] == []
     decisions = [{'evidence_document_id': d['evidence_document_id'], 'decision': 'insufficient'} for d in documents]
-    with patch('backend.stages.external_validation.workflow.retrieve_round') as retrieve, \
-            patch('backend.stages.external_validation.workflow.judge_evidence_pack', return_value=(decisions, {})) as judge:
+    with patch('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round') as retrieve, \
+            patch('archive.legacy_pipeline.research_historical.external_validation.workflow.judge_evidence_pack', return_value=(decisions, {})) as judge:
         result = validate_candidate(claim, client, None, Settings(external_judgement_mode='joint'), resume_record=saved)
     retrieve.assert_not_called()
     judge.assert_called_once()
@@ -200,16 +198,17 @@ def test_external_timeout_is_separate_from_scope_and_extraction():
         assert client.settings.request_timeout_seconds == expected
 
 
-def test_claim_action_api_is_busy_safe_and_never_clears_saved_claims(saved_claim):
+@pytest.mark.parametrize('action', ['repair','reextract'])
+def test_claim_action_api_is_busy_safe_and_never_clears_saved_claims(saved_claim, action):
     pdf, output, original, unrelated = saved_claim
     module = importlib.import_module('backend.api.app')
     jobs = {}
     with patch.object(module, '_pdf_path', return_value=pdf), \
             patch.object(module, '_output_dir', return_value=output), \
             patch.object(module, '_jobs', jobs), patch.object(module.threading, 'Thread'):
-        result = module.start_claim_action('pdf', 'target', 'repair', module.RunOptions())
-        assert result['action'] == 'repair'
+        result = module.start_claim_action('pdf', 'target', action, module.RunOptions())
+        assert result['action'] == action
         assert read_jsonl(output / 'candidates.jsonl') == [original, unrelated]
         with pytest.raises(module.HTTPException) as error:
-            module.start_claim_action('pdf', 'target', 'repair', module.RunOptions())
+            module.start_claim_action('pdf', 'target', action, module.RunOptions())
         assert error.value.status_code == 409

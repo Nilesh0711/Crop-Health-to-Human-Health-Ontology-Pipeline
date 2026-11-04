@@ -43,6 +43,18 @@ def test_required_diagnostics_list_only_missing_fields():
     assert 'claim_id' in str(failure.value) and 'private response text' not in str(failure.value)
 
 
+def test_unknown_field_diagnostics_name_keys_without_dropping_fields_or_logging_values():
+    schema = {'type': 'object', 'properties': {'decision': {'type': 'string'}}, 'additionalProperties': False}
+    value = {'decision': 'needs_review', 'unexpected_note': 'private response text'}
+    original = deepcopy(value)
+    with pytest.raises(SchemaValidationError) as failure:
+        validate_schema(value, schema)
+    assert 'unexpected fields ["unexpected_note"]' in str(failure.value)
+    assert 'allowed fields ["decision"]' in str(failure.value)
+    assert 'private response text' not in str(failure.value)
+    assert value == original
+
+
 @pytest.mark.parametrize('repeat_error',[False,True])
 def test_schema_regeneration_is_bounded_and_receives_actionable_feedback(monkeypatch,repeat_error):
     metrics,progress,calls=[],[],[]

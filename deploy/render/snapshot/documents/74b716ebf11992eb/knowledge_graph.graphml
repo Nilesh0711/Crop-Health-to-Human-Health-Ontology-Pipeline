@@ -1,0 +1,409 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d15" for="edge" attr.name="evidence_scoped_to_pathway" attr.type="boolean" />
+  <key id="d14" for="edge" attr.name="individually_externally_validated" attr.type="boolean" />
+  <key id="d13" for="edge" attr.name="supported_pathway_ids" attr.type="string" />
+  <key id="d12" for="edge" attr.name="quote" attr.type="string" />
+  <key id="d11" for="edge" attr.name="paper" attr.type="string" />
+  <key id="d10" for="edge" attr.name="claim_text_source_verified" attr.type="boolean" />
+  <key id="d9" for="edge" attr.name="qualifiers" attr.type="string" />
+  <key id="d8" for="edge" attr.name="certainty" attr.type="string" />
+  <key id="d7" for="edge" attr.name="claim_text" attr.type="string" />
+  <key id="d6" for="edge" attr.name="contradiction_count" attr.type="long" />
+  <key id="d5" for="edge" attr.name="support_count" attr.type="long" />
+  <key id="d4" for="edge" attr.name="status" attr.type="string" />
+  <key id="d3" for="edge" attr.name="relation" attr.type="string" />
+  <key id="d2" for="edge" attr.name="candidate_id" attr.type="string" />
+  <key id="d1" for="node" attr.name="entity_type" attr.type="string" />
+  <key id="d0" for="node" attr.name="label" attr.type="string" />
+  <graph edgedefault="directed">
+    <node id="entity-aeec5c69f5f5c17fcdef67569c1c">
+      <data key="d0">waterlogging and hypoxia</data>
+      <data key="d1">SoilCondition</data>
+    </node>
+    <node id="entity-92ed6c5a0a14ea3942e09ebfccdf">
+      <data key="d0">sandy soils</data>
+      <data key="d1">SoilCondition</data>
+    </node>
+    <node id="entity-805419aa2d5091746f9138a80a05">
+      <data key="d0">soil acidification</data>
+      <data key="d1">SoilCondition</data>
+    </node>
+    <node id="entity-d45b5e3f5019b2d3d46b9337e8a4">
+      <data key="d0">drought</data>
+      <data key="d1">ClimateFactor</data>
+    </node>
+    <node id="entity-98d68ba2a60813a3f37ac0e0dffa">
+      <data key="d0">reduced stomatal opening</data>
+      <data key="d1">PlantProcess</data>
+    </node>
+    <node id="entity-34bf8e01e036736e4af16f19e223">
+      <data key="d0">auxins</data>
+      <data key="d1">Nutrient</data>
+    </node>
+    <node id="entity-9c617d6f11b032444076f0e2a3b2">
+      <data key="d0">plant-absorbable phosphate forms</data>
+      <data key="d1">Nutrient</data>
+    </node>
+    <node id="entity-86ea45a35ff75df773e69dcc4cba">
+      <data key="d0">soil aggregates</data>
+      <data key="d1">SoilCondition</data>
+    </node>
+    <node id="entity-618ac625c872c928b431553d46a9">
+      <data key="d0">microbial activity</data>
+      <data key="d1">SoilBiota</data>
+    </node>
+    <node id="entity-230991541f1c8111b7e572af4a4f">
+      <data key="d0">root exudates produced by various crops</data>
+      <data key="d1">PlantProcess</data>
+    </node>
+    <node id="entity-23a777a7faf1954db445cadf0d00">
+      <data key="d0">crop rotation and intercropping</data>
+      <data key="d1">AgriculturalPractice</data>
+    </node>
+    <node id="entity-b7fc31abc31c280dddff9f6a5256">
+      <data key="d0">multiple aspects of crop growth</data>
+      <data key="d1">PlantProcess</data>
+    </node>
+    <node id="entity-0371c3e8980ff07403f1e8a875a9">
+      <data key="d0">toxic metals such as aluminum</data>
+      <data key="d1">Contaminant</data>
+    </node>
+    <node id="entity-134991ef70c5cbd0c69f002556d0">
+      <data key="d0">root growth and function</data>
+      <data key="d1">PlantProcess</data>
+    </node>
+    <node id="entity-3415427df404937e606a0ad77914">
+      <data key="d0">soil microbial community / soil microorganisms</data>
+      <data key="d1">SoilBiota</data>
+    </node>
+    <node id="entity-4a93ec3a99fc98b135386253c701">
+      <data key="d0">crop growth and development</data>
+      <data key="d1">PlantProcess</data>
+    </node>
+    <node id="entity-0fc6ac1b7b28f3ff5a2d858e2dea">
+      <data key="d0">organic fertilization regimes</data>
+      <data key="d1">AgriculturalPractice</data>
+    </node>
+    <node id="entity-41db2fbc21006829c0831fd499d5">
+      <data key="d0">crop growth</data>
+      <data key="d1">PlantProcess</data>
+    </node>
+    <node id="entity-b31c464f97682a4e095413766934">
+      <data key="d0">soil-borne diseases</data>
+      <data key="d1">PlantDisease</data>
+    </node>
+    <node id="entity-760ca3355e45afbeed2a7a01da58">
+      <data key="d0">nutrient uptake by plants / nutrient uptake in crops</data>
+      <data key="d1">PlantProcess</data>
+    </node>
+    <node id="entity-51e5a7e7be1f9a89d48f72d8f70c">
+      <data key="d0">soil structural looseness/compactness (soil texture)</data>
+      <data key="d1">SoilCondition</data>
+    </node>
+    <edge source="entity-aeec5c69f5f5c17fcdef67569c1c" target="entity-134991ef70c5cbd0c69f002556d0" id="candidate-920beee290d31517199fe3503dbc894b">
+      <data key="d2">candidate-920beee290d31517199fe3503dbc894b</data>
+      <data key="d3">restricts</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Waterlogging and hypoxia in compacted soils severely restrict root growth and function.</data>
+      <data key="d8">causal</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Conversely, soils characterized by high compaction and poor permeability can result in waterlogging and hypoxia, which severely restrict root growth and function, ultimately impairing plant health and productivity (Manik et al., 2019).</data>
+      <data key="d13">["neighbor-7c5cc886733b793bf5872c5cbb83"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-92ed6c5a0a14ea3942e09ebfccdf" target="entity-d45b5e3f5019b2d3d46b9337e8a4" id="candidate-13ecb03e2cc098db9961af7dd9bf25b3">
+      <data key="d2">candidate-13ecb03e2cc098db9961af7dd9bf25b3</data>
+      <data key="d3">vulnerable_to</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Sandy soils are particularly vulnerable to drought due to their poor water retention.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Sandy soils are particularly vulnerable to drought due to their poor water retention, while acidic soils can limit the growth of certain crops (Naorem et al., 2023).</data>
+      <data key="d13">["neighbor-c6e0702570e30178c3a090430e64"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-805419aa2d5091746f9138a80a05" target="entity-0371c3e8980ff07403f1e8a875a9" id="candidate-f15931e0046acba17da885ed8b6a6699">
+      <data key="d2">candidate-f15931e0046acba17da885ed8b6a6699</data>
+      <data key="d3">mobilizes</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Soil acidification can mobilize toxic metals such as aluminum, which can inhibit root growth and function.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Furthermore, this acidification can mobilize toxic metals such as aluminum, which can inhibit root growth and function (Baloch et al., 2024).</data>
+      <data key="d13">["neighbor-ca327ef6ba05c1be4f2dcbd1eb57"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-d45b5e3f5019b2d3d46b9337e8a4" target="entity-98d68ba2a60813a3f37ac0e0dffa" id="candidate-01367c80c77dad54f73a93f9f83960a0">
+      <data key="d2">candidate-01367c80c77dad54f73a93f9f83960a0</data>
+      <data key="d3">causes</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Under drought stress, crops reduce stomatal opening to decrease water transpiration.</data>
+      <data key="d8">causal</data>
+      <data key="d9">{"crop_or_species": "crops", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Under drought stress, crops reduce stomatal opening to decrease water transpiration and increase root surface area, thereby enhancing their water absorption capacity (Seleiman et al., 2021).</data>
+      <data key="d13">["neighbor-c6e0702570e30178c3a090430e64"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-618ac625c872c928b431553d46a9" target="entity-86ea45a35ff75df773e69dcc4cba" id="candidate-5e91ae36a686fc9bdb2459cd007a718e">
+      <data key="d2">candidate-5e91ae36a686fc9bdb2459cd007a718e</data>
+      <data key="d3">contributes_to</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Microbial activity contributes to soil aggregate formation and stabilization by producing extracellular polymeric substances and binding soil particles.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">On a microstructural level, microbial activity contributes to the formation and stabilization of soil aggregates by producing extracellular polymeric substances and facilitating the binding of soil particles.</data>
+      <data key="d13">["neighbor-2e7e81b86313ecdc47c31a51b9a8"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-230991541f1c8111b7e572af4a4f" target="entity-3415427df404937e606a0ad77914" id="candidate-9597933612b7ceb78248044ddaf023bd">
+      <data key="d2">candidate-9597933612b7ceb78248044ddaf023bd</data>
+      <data key="d3">attracts</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Root exudates secreted by crop root systems can attract soil microorganisms.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Concurrently, root exudates secreted by crop root systems can attract soil microorganisms, fostering a symbiotic relationship that enhances microbial diversity and abundance.</data>
+      <data key="d13">["neighbor-617282b509440aa70484c9782329"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-230991541f1c8111b7e572af4a4f" target="entity-3415427df404937e606a0ad77914" id="candidate-f5f261a84116918cebd92a5fba0e1983">
+      <data key="d2">candidate-f5f261a84116918cebd92a5fba0e1983</data>
+      <data key="d3">provides_nutrients_for</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Organic substances released by crop roots provide energy and nutrients for soil microbes.</data>
+      <data key="d8">causal</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Organic substances released by crop roots provide energy and nutrients for soil microbes, promoting their growth and metabolic activity.</data>
+      <data key="d13">["neighbor-2e22dbf09668af069cefa5614933", "neighbor-78d0dd640de7d4bb9c29fca1d4f2", "neighbor-fc4cc7ff9c8d9487d7e049073343", "neighbor-0406b58788d33e18c4868bfcc7b7", "neighbor-ecb4766ab62cfe3aa03519c91846", "neighbor-e25dac0f7f8a47ac664a5747eb50"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-23a777a7faf1954db445cadf0d00" target="entity-3415427df404937e606a0ad77914" id="candidate-f46731005e38087ca322d78a48a9e532">
+      <data key="d2">candidate-f46731005e38087ca322d78a48a9e532</data>
+      <data key="d3">enhances</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">The implementation of crop rotation can enhance soil microbial diversity.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Furthermore, the implementation of cover crops and crop rotation can enhance soil microbial diversity while maintaining the balance of soil nutrients.</data>
+      <data key="d13">["neighbor-f1621cfbc65442d855e837e9acb9", "neighbor-a5fd95f3a7ccfaeb75a174abe93f", "neighbor-675c55ed7c063ecd3cf3323de5e1", "neighbor-6487956fa7a262a29bf39bdf55d2"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-0371c3e8980ff07403f1e8a875a9" target="entity-134991ef70c5cbd0c69f002556d0" id="candidate-fb57a084ba3b934002bce30cec35f424">
+      <data key="d2">candidate-fb57a084ba3b934002bce30cec35f424</data>
+      <data key="d3">inhibits</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Mobilized toxic metals such as aluminum can inhibit root growth and function.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Furthermore, this acidification can mobilize toxic metals such as aluminum, which can inhibit root growth and function (Baloch et al., 2024).</data>
+      <data key="d13">["neighbor-ca327ef6ba05c1be4f2dcbd1eb57"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-134991ef70c5cbd0c69f002556d0" target="entity-51e5a7e7be1f9a89d48f72d8f70c" id="candidate-d9e143396b3cf5761ec09494d6568bdc">
+      <data key="d2">candidate-d9e143396b3cf5761ec09494d6568bdc</data>
+      <data key="d3">is_linked_to</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">The development of crop root systems is intricately linked to the soil's structural looseness or compactness.</data>
+      <data key="d8">associative</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">The development of crop root systems is intricately linked to the soil’s structural looseness or compactness, with soil microorganisms playing a crucial regulatory role in root system growth (Sharma et al., 2021).</data>
+      <data key="d13">["neighbor-7c5cc886733b793bf5872c5cbb83", "neighbor-aca20020718e0390749f2f989b1f"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-3415427df404937e606a0ad77914" target="entity-4a93ec3a99fc98b135386253c701" id="candidate-790650449a136ea64ca703b30ff4cb7b">
+      <data key="d2">candidate-790650449a136ea64ca703b30ff4cb7b</data>
+      <data key="d3">contributes_to</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">The soil microbial community contributes to crop growth and development through the facilitation of nutrient cycling.</data>
+      <data key="d8">causal</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "through the facilitation of nutrient cycling", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">The soil microbial community contributes to crop growth and development through the decomposition of organic matter, nitrogen fixation, and the facilitation of nutrient cycling (Yadav et al., 2021).</data>
+      <data key="d13">["neighbor-ecb4766ab62cfe3aa03519c91846"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-3415427df404937e606a0ad77914" target="entity-b31c464f97682a4e095413766934" id="candidate-9edb61e734efb2bb83853dc19b8aa5b5">
+      <data key="d2">candidate-9edb61e734efb2bb83853dc19b8aa5b5</data>
+      <data key="d3">suppresses</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">A rich and diverse soil microbial community can suppress soil-borne diseases.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">A rich and diverse microbial community can enhance nutrient cycling efficiency, suppress soil-borne diseases, and promote plant growth and development (Niu et al., 2020).</data>
+      <data key="d13">["neighbor-fc4cc7ff9c8d9487d7e049073343", "neighbor-675c55ed7c063ecd3cf3323de5e1"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-3415427df404937e606a0ad77914" target="entity-34bf8e01e036736e4af16f19e223" id="candidate-4b569c4dfe45423e774249cdabe1753a">
+      <data key="d2">candidate-4b569c4dfe45423e774249cdabe1753a</data>
+      <data key="d3">produce</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Rhizosphere microorganisms produce auxins that promote plant growth and development.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Additionally, rhizosphere nitrogen-fixing bacteria can form symbiotic nodules with plants, converting nitrogen gas into nitrogen compounds that are absorbable by plants, thus providing essential nutrients for plant growth (Fahde et al., 2023 Furthermore, rhizosphere microorganisms can produce auxins, which Table 2 Microorganisms release organic acids and enzymes that promote the breakdown of organic matter, thereby improving the utilization of crop nutrients. Microorganism Released organic acids Released enzymes type Bacteria Acetic acid, Citric acid Cellulases, Proteases Fungi Oxalic acid, Gluconic Ligninases, Amylases acid Actinomycetes Lactic acid, Propionic Chitinases, Phosphatases acid Archaea Sulfuric acid Ammonia Oxidases Protozoa Acetic acid, Butyric Various Hydrolytic acidEnzymes Yeasts Malic Acid, Succinic Invertases, Lipases acid Ecotoxicology and Environmental Safety 289 (2025) 117703 promote plant growth and development.</data>
+      <data key="d13">["neighbor-78d0dd640de7d4bb9c29fca1d4f2", "neighbor-a5fd95f3a7ccfaeb75a174abe93f"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-3415427df404937e606a0ad77914" target="entity-9c617d6f11b032444076f0e2a3b2" id="candidate-a60d5f0b43cf964fecee3cb142c5466b">
+      <data key="d2">candidate-a60d5f0b43cf964fecee3cb142c5466b</data>
+      <data key="d3">decomposes_to</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Microorganisms decompose insoluble phosphates into forms that plants can readily absorb.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Microorganisms are also capable of decomposing insoluble phosphates, converting them into forms that plants can readily absorb.</data>
+      <data key="d13">["neighbor-6487956fa7a262a29bf39bdf55d2", "neighbor-617282b509440aa70484c9782329"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-3415427df404937e606a0ad77914" target="entity-760ca3355e45afbeed2a7a01da58" id="candidate-556e4fd45722c49ecdeae020d5599682">
+      <data key="d2">candidate-556e4fd45722c49ecdeae020d5599682</data>
+      <data key="d3">promotes</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Rhizosphere microorganisms promote nutrient absorption in crops through various mechanisms.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Rhizosphere microorganisms play an indispensable role in soil health by promoting nutrient absorption in crops through various mechanisms and enhancing the chemical and physical properties of the soil.</data>
+      <data key="d13">["neighbor-e25dac0f7f8a47ac664a5747eb50"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-3415427df404937e606a0ad77914" target="entity-41db2fbc21006829c0831fd499d5" id="candidate-d3f323ae6d9d2d2dafcc2d7e329c976b">
+      <data key="d2">candidate-d3f323ae6d9d2d2dafcc2d7e329c976b</data>
+      <data key="d3">facilitates</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Soil microbes facilitate crop growth through nitrogen fixation.</data>
+      <data key="d8">causal</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "via nitrogen fixation", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">In return, these microbes facilitate crop growth through vital processes such as nitrogen fixation and phosphorus solubilization, underscoring the importance of healthy crop-soil interactions.</data>
+      <data key="d13">["neighbor-2e22dbf09668af069cefa5614933", "neighbor-f1621cfbc65442d855e837e9acb9"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-3415427df404937e606a0ad77914" target="entity-b7fc31abc31c280dddff9f6a5256" id="candidate-88c5cc61d4833514bc4f7418db695bd2">
+      <data key="d2">candidate-88c5cc61d4833514bc4f7418db695bd2</data>
+      <data key="d3">influences</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Soil microorganisms can influence multiple aspects of crop growth.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">The synergies between crops and soil microorganisms represents a valuable area of research, as these microorganisms play a crucial role in the soil ecosystem and can influence multiple aspects of crop growth and disease resistance.</data>
+      <data key="d13">["neighbor-0406b58788d33e18c4868bfcc7b7"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-0fc6ac1b7b28f3ff5a2d858e2dea" target="entity-618ac625c872c928b431553d46a9" id="candidate-9b163c4abc218dfc91f3496e644cfbab">
+      <data key="d2">candidate-9b163c4abc218dfc91f3496e644cfbab</data>
+      <data key="d3">enhances</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Organic fertilizers can enhance soil microbial activity.</data>
+      <data key="d8">descriptive</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">Organic fertilizers are rich in organic matter and microorganisms, which can enhance microbial activity, improve soil structure, and increase overall soil fertility (Han et al., 2021).</data>
+      <data key="d13">["neighbor-2e7e81b86313ecdc47c31a51b9a8"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+    <edge source="entity-51e5a7e7be1f9a89d48f72d8f70c" target="entity-134991ef70c5cbd0c69f002556d0" id="candidate-a1d2eeeda735211508e4a3569f8fcd36">
+      <data key="d2">candidate-a1d2eeeda735211508e4a3569f8fcd36</data>
+      <data key="d3">impacts</data>
+      <data key="d4">local_connection_supported</data>
+      <data key="d5">0</data>
+      <data key="d6">0</data>
+      <data key="d7">Soil texture directly impacts root growth in crops.</data>
+      <data key="d8">causal</data>
+      <data key="d9">{"crop_or_species": "", "population": "", "condition": "", "comparator": "", "metric": ""}</data>
+      <data key="d10">False</data>
+      <data key="d11">Exploring the link between soil health and crop productivity</data>
+      <data key="d12">The review highlights how soil texture, nutrient Crop growth availability, and moisture levels directly impact on root growth, water uptake, and nutrient use efficiencies, Soil microorganisms while also exploring how diverse cropping systems enhance soil ecology and biodiversity.</data>
+      <data key="d13">["neighbor-aca20020718e0390749f2f989b1f"]</data>
+      <data key="d14">False</data>
+      <data key="d15">True</data>
+    </edge>
+  </graph>
+</graphml>

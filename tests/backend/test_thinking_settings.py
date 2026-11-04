@@ -6,12 +6,13 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 import pytest
 from pydantic import ValidationError
-from backend.config.settings import Settings, TASK_DEFAULT_MODELS
+from backend.config.settings import TASK_DEFAULT_MODELS
+from archive.legacy_pipeline.research_historical.settings import HistoricalSettings as Settings
 from backend.providers.inference import InferenceHTTP
 from backend.providers.llm import OpenCodeClient, request_log_level
 from backend.api.app import RunOptions
 from backend.pipelines.checkpoints import claim_stage_signature
-from backend.stages.external_validation.workflow import prepare_evidence, validation_signature
+from archive.legacy_pipeline.research_historical.external_validation.workflow import prepare_evidence, validation_signature
 
 
 @pytest.mark.parametrize('stage', list(TASK_DEFAULT_MODELS))
@@ -63,7 +64,7 @@ def test_off_invalidates_only_relevant_judge_cache_and_reuses_retained_papers(mo
     assert original == validation_signature(candidate,replace(configuration,thinking={**configuration.task_thinking,'pathway_assembly':False}))
     old={'validation_signature':original,'attempts':[{'evidence_documents':[{'evidence_document_id':'p1'}],'decisions':[{'old':True}]}]}
     retrieve=Mock(side_effect=AssertionError('Compatible papers must not be downloaded again'))
-    monkeypatch.setattr('backend.stages.external_validation.workflow.retrieve_round',retrieve)
+    monkeypatch.setattr('archive.legacy_pipeline.research_historical.external_validation.workflow.retrieve_round',retrieve)
     prepared=prepare_evidence(candidate,None,None,off,resume_record=old)
     assert prepared['evidence_documents']==old['attempts'][0]['evidence_documents']
     assert 'decisions' not in prepared

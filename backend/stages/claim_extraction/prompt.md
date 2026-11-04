@@ -1,45 +1,43 @@
-Extract direct scientific edges for a soil-to-human-health knowledge graph using only the supplied paper text. Return the supplied JSON schema without commentary or tools. Inspect all of the assigned extraction text. This is evidence extraction, not a paper summary. Zero eligible claims is valid. Follow any explicitly configured claim cap; otherwise return all eligible direct edges you find.
+# OBJECTIVE & DOMAIN BOUNDARY
+Extract direct scientific edges for a Soil Health → Crop Health → Human Health Knowledge Graph using ONLY the supplied text. Inspect all assigned text. Zero eligible claims is valid: if every statement is excluded or out-of-domain, return {"claims": []}.
 
-Research priorities, highest first:
-1. Soil/crop/food -> named nutrient or contaminant; exposure -> human biological/health outcome.
-2. Explicit agricultural, climate, soil, disease or pest mechanisms altering composition, contamination, nutrient availability, food quality or processing recovery.
-3. Other specific upstream biological mechanisms usable as pathway segments. Never invent a downstream human-health connection.
+Domain pathway:
+Agricultural/Climate factors → Soil properties/microbiome/contaminants → Crop growth/plant pathogens/traits → Food composition/nutrients/contaminants → Human dietary intake/biological processes/health outcomes.
 
-Use these priorities to organize eligible findings, not to discard their connected direct edges. For a mechanism, keep the actor actually named by the sentence, not its broader section topic.
+# CORE EXTRACTION PRIORITIES (HIGHEST FIRST)
+1. Soil/crop/food → named nutrient, mineral, toxin, or contaminant (e.g., infected Crop C material -> has_contaminant -> Compound T).
+2. Contaminant/nutrient dietary exposure → human biological process or health outcome.
+3. Explicit agricultural, climate, soil, pathogen, or pest mechanisms altering crop composition, contamination, nutrient availability, food quality, or processing recovery.
+4. Upstream biological mechanisms directly connecting soil health to crop traits/processes. Never invent a downstream human connection.
 
-Exclude economics, trade, infrastructure, generic food security, harvest tonnage/productivity alone, recommendations, research aims, figure/table captions and model-performance statistics. Food safety, composition, eating/cooking quality and milling/processing recovery are eligible. Do not infer nutrient loss or health effects from a quality change. Animal toxicity is not a HumanHealthOutcome.
+# STRICT NEGATIVE EXCLUSIONS (DO NOT EXTRACT)
+- EXCLUDE: Pharmaceutical commercialization, antibiotic market statistics, drug screening history, or patent counts (e.g., 'X% of antibiotics marketed between 1982-2019 were natural products').
+- EXCLUDE: Aggregate harvest tonnage, farm productivity/yield alone, market economics, exports, trade, or generic food security without a specific biological/composition mechanism.
+- EXCLUDE: Macroscopic planetary statistics (e.g., 'Soil degradation affects 15% of Earth's land surface') without an explicit biological or chemical mechanism.
+- EXCLUDE: Pure sediment/runoff transport into surface waterbodies unless explicitly connected to crop irrigation contamination or human drinking-water exposure.
+- EXCLUDE: Animal toxicity (Animal toxicity is not a HumanHealthOutcome).
+- EXCLUDE: Authorial commentary, research priorities, recommendations, figure/table captions, and model-fitting statistics.
+- For mixed sentences, extract ONLY the eligible biological/food-quality edge and omit harvest tonnage/productivity alone.
 
-Apply this domain boundary BEFORE returning an edge. The fact that a sentence occurs in an agricultural paper, has two entities, uses a causal verb, or names a crop is not sufficient. A numeric statistic is not a biological pathway. Do not output excluded claims for a later validator to discard. Inspect the whole target, but return an empty claims array when every statement is excluded. For a mixed sentence, extract its eligible biological/food-quality edge and omit its yield, price or trade edge. An eligible neighboring edge does not make a yield-only edge eligible.
+# ABSTRACT SCOPE EXAMPLES (Generic placeholders: Crop C, Disease D, Compound T, Practice P)
+- EXCLUDE: 'Annual production losses of Crop C total quantity Q.' This is aggregate harvest tonnage/productivity alone.
+- EXCLUDE: 'Disease D reduced field yield of Crop C and exports fell.' Yield and trade only.
+- EXCLUDE: 'Disease D threatens food security.' No specific biological or compositional mechanism.
+- INCLUDE: 'Disease D -> infects -> Crop C material' when the text establishes direct biological infection.
+- INCLUDE ONLY SAFETY EDGE: 'Disease D reduces yield of Crop C; material infected with Disease D may contain contaminant Compound T.' Extract infected Crop C material -> has_contaminant -> Compound T with infection qualifier; omit yield.
+- NEVER COLLAPSE CHAINS: Never collapse A -> B -> C into A -> C. Extract only direct edges explicitly stated in the source.
 
-Abstract scope examples (Crop C, Disease D, Compound T and Process P are placeholders, never facts or names to copy into output):
-- EXCLUDE: 'Annual production losses of Crop C total quantity Q.' This is aggregate harvest tonnage; do not make losses -> totals -> quantity.
-- EXCLUDE: 'Disease D reduced the field yield of Crop C and exports fell.' Both endpoints concern yield/trade alone, even though a disease is named.
-- INCLUDE ONLY THE SAFETY EDGE: 'Disease D reduces the field yield of Crop C; material infected with Disease D may contain contaminant Compound T.' Extract infected Crop C material -> has_contaminant -> Compound T with the infection condition; omit the yield-only edge.
-- INCLUDE: 'Disease D reduces Process P in Crop C.' Include when the supplied text identifies Process P as a specific biological process, rather than harvest productivity alone.
-- INCLUDE: 'Processing recovery of Crop C decreases as its damaged-material count increases.' Preserve the descriptive trend and measured predictor.
-- EXCLUDE: 'Disease D threatens food security.' No specific biological, composition or food-quality mechanism is stated.
-
-Evidence and atomicity:
-- Split independently measurable outcomes into separate claims even when they share a sentence, actor and citations. Preserve their common source IDs and essential restrictions. Do not bundle different outcome variables into one object or repeat a downstream consequence in claim_text. A numerical metric must describe this edge's measured outcome and denominator; a nearby field-yield percentage is not a grain-weight or process measurement. Keep excluded yield-only observations in the original source context rather than creating extra pathway edges.
-- One claim = one direct edge proved by 1-3 original numbered sentences, listed uniquely in ascending order. Non-adjacent IDs may identify fragments separated by a table or page break; gaps are retained explicitly for source review. Never skip conditions or opposing text to change meaning. The wider packet/local heading may resolve explicit references, not supply a missing mechanism. Never collapse A -> B -> C into A -> C.
-- Copy subject_source_mention, object_source_mention and relation_trigger as exact contiguous words from those sentences. Endpoint anchors are noun phrases, without the predicate. Include the measured property, not just its organism/chemical. No ellipses or slash-joined fragments.
-- Use specific canonical names. Resolve 'the pathogen', 'toxins' or abbreviations only from explicit local antecedents. Never substitute another crop, material, chemical, outcome or population. Split explicitly named contaminants into atomic edges; never invent class membership.
-- Spell out abbreviations and abbreviated organism genera in canonical subject/object names, qualifiers, source_context and claim_text whenever the supplied context defines them. Abstract naming example: source 'Disease D (DD)' -> canonical 'Disease D', while its exact source mention may remain 'DD'. Apply the same source-defined expansion rule to compound names. Do not append the abbreviation in parentheses to the full canonical name. Never guess an undefined expansion or alter literal evidence, sentence IDs, source mentions, units, chemical formulae or gene/strain identifiers. Leave uncertain identity for source review.
-- Capture each explicitly stated edge in a connected sequence, even when an endpoint is a pronoun or local reference. Abstract structure example: 'Disease D infects Crop C material. This infected material may contain contaminant Compound T.' yields Disease D -> infects -> Crop C material AND Crop C material -> has_contaminant -> Compound T. The second edge is conditional and retains condition='Disease D infection'. Use 'This infected material' as its exact source mention and resolve its canonical identity from the preceding sentence. Keep both original evidence spans; never replace these edges with Disease D -> Compound T.
-- Choose a relation that faithfully expresses this edge. The common relation names are suggestions, not a closed set. For example, 'Pathogen P produces compound T' can yield P -> produces -> T; do not force production into disease/container containment. Keep any separately stated material-contaminant edge as well.
-- Types are provisional labels, not eligibility rules. Distinguish disease conditions from pathogen organisms/strains, and crop traits from pathogen traits when the local evidence allows it. Use Unresolved rather than guessing a type. No subject/object type combination is automatically forbidden.
-- Preserve modality: hedged or conditional wording remains conditional; observed directional findings can be descriptive; use causal only for explicit causal wording. Extract associations as associations and comparisons as comparisons, preserving comparator, measured metric, population and conditions. Never upgrade correlation to causation. Both are eligible within the project scope.
-
-Restrictions versus provenance:
-- qualifiers holds actual restrictions: crop/species, cultivar, infection status, treatment, dose, essential exposed population, comparator and measured metric. Do not duplicate endpoints.
-- source_context holds the location, farming system or sampling site where an occurrence was reported. For descriptive has_contaminant occurrence edges, this is provenance, NOT a requirement that corroborating papers repeat that setting. The edge does not assert universal contamination.
-- Do not duplicate a setting in condition/population and source_context. Retain actual infection, treatment/processing, dose and subgroup restrictions; never remove them merely to broaden a claim.
-- Schema illustration, NOT a fact to extract: 'Crop R samples from farming sites in region S contained compound T' -> Crop R has_contaminant compound T, source_context='farming sites in region S', condition empty. 'Only treated Crop R samples contained compound T' retains condition='treated samples'.
-
-claim_text is one short sentence, preferably 20-45 words (maximum 80), restating ONLY this edge with essential restrictions and modality. Describe occurrence context as 'reported in samples from ...', not a universal farming-system property. Add no inferred mechanism, downstream consequence or unsupported health outcome.
-
-Represent the measured predictor, not the section topic: 'processing recovery decreases as infected-grain count increases' uses infected-grain count -> reduces -> processing recovery (PlantTrait -> PlantTrait, descriptive), not disease -> causes -> processing recovery.
-
-Write claim_text from the returned endpoints and relation. A material-contaminant containment edge must say that the material contains/may contain the contaminant, not that its disease produces the contaminant. No extra causal interpretation or consequences.
-
-Return all schema fields, including source_context (empty when absent). Check exact anchors, original sentence IDs, measured outcome and provenance/restriction separation once; then return JSON, without narrating the checks.
+# SCIENTIFIC ATOMICITY & DOMAIN ANCHORING
+- MANDATORY DOMAIN ANCHOR: Every returned edge must anchor to at least one entity in the Soil, Crop, or Human Health domain. Never extract an edge where both endpoints are generic science or Unresolved.
+- NO SELF-LOOPS: Subject and object must be distinctly different entities. Never output an entity causing itself.
+- ONE DIRECT ATOMIC EDGE PER CLAIM: Split conjoined causes, treatments, or multi-symptom lists into separate independent claims.
+  - Conjoined practices: 'Practice P1 and Practice P2 caused Disease D' yields two separate claims: Practice P1 -> causes -> Disease D, and Practice P2 -> causes -> Disease D.
+  - Conjoined outcomes: 'causes Outcome O1 and Outcome O2' yields two separate atomic claims.
+- EXACT WORDING ANCHORS: Copy subject_source_mention, object_source_mention, and relation_trigger as exact contiguous words from the evidence sentences.
+- CANONICAL ENTITY NAMES: Use precise canonical names; resolve 'the pathogen', 'the toxin' or abbreviations only when defined in context. Never guess an undefined expansion.
+- EVIDENCE SENTENCE IDs: 1 to 3 unique ascending sentence IDs from the extraction target proving this specific edge.
+- CLAIM TEXT: One concise active sentence (20-45 words, maximum 80) restating ONLY this atomic proposition with essential restrictions. Never repeat downstream consequences.
+- MODALITY & CERTAINTY: Map capability or disposition phrasing ('can produce', 'ability to', 'potential to') to certainty='descriptive'. Use 'causal' only for explicit active causal verbs ('causes', 'reduces', 'increases').
+- RESTRICTIONS VERSUS PROVENANCE:
+  - qualifiers holds actual restrictions: crop_or_species, cultivar, infection status, treatment, dose, comparator, and measured metric.
+  - source_context holds the documented location, farming system, or sampling site where an occurrence was reported.

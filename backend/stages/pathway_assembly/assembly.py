@@ -2,12 +2,13 @@
 from backend.shared.cancellation import check_cancelled, PipelineStopped
 import json
 
-from backend.providers.structured_output import IncompleteResponseError
 from backend.shared.artifacts import save_json
 from backend.shared.storage import stable_hash, utc_now
-from backend.stages.pathway_assembly.contract import SYSTEM, RESPONSE_SCHEMA
+from backend.stages.pathway_assembly.candidates import EndpointCandidateIndex, matching_settings, matching_signature, SMALL_CONTEXT_CHARACTERS
+from backend.stages.pathway_assembly.contract import SYSTEM
+from backend.stages.pathway_assembly.protocol import IdentityPacket, REQUEST_PROTOCOL, check_groups
 from backend.stages.pathway_assembly.corpus import (
-    collect_corpus, corpus_signature, ASSEMBLY_VERSION, ASSEMBLY_DIRECTORY, ASSEMBLY_ELIGIBILITY_POLICY,
+    collect_corpus, corpus_signature, ASSEMBLY_VERSION, ASSEMBLY_DIRECTORY, ASSEMBLY_ELIGIBILITY_POLICY, PROVISIONAL_ELIGIBILITY_POLICY,
 )
 
 
@@ -15,32 +16,13 @@ def _read(path):
     return json.loads(path.read_text(encoding='utf-8')) if path.exists() else None
 
 
-def check_groups(answer, endpoints, registry_ids, assignments=None):
-    expected = {row['endpoint_id'] for row in endpoints}
-    seen, used = set(), set()
-    for group in answer['groups']:
-        incoming, old = group['endpoint_ids'], group['existing_node_ids']
-        if (not incoming and not old) or not group['canonical_label'].strip():
-            raise IncompleteResponseError('An identity group is empty or unnamed')
-        if (len(set(incoming)) != len(incoming) or len(set(old)) != len(old)
-                or not set(incoming) <= expected or not set(old) <= registry_ids
-                or seen.intersection(incoming) or used.intersection(old)):
-            raise IncompleteResponseError('Invented, duplicated or mismatched pathway endpoint/node IDs')
-        seen.update(incoming)
-        used.update(old)
-        if assignments and any(assignments.get(identifier) not in (None, *old) for identifier in incoming):
-            raise IncompleteResponseError('Retain each incoming endpoint provisional node when merging registry shards')
-    if seen != expected:
-        raise IncompleteResponseError('Every supplied pathway endpoint must be assigned exactly once')
-
-
 def _profile(node, by_id, context_ids):
-    # Occurrence contexts are sharded, never silently discarded. Every frozen
-    # registry occurrence is visited when comparing a new batch globally.
+    # Preserve every occurrence context of selected nodes, including low-ranked
+    # contexts. Candidate retrieval never authorizes dropping selected proof.
     examples = []
     for identifier in context_ids:
         row = by_id[identifier]
-        example = {k:row[k] for k in ('name', 'source_mention', 'paper', 'section', 'evidence', 'qualifiers', 'local_context')}
+        example = {k:row.get(k, '') for k in ('name', 'source_mention', 'paper', 'section', 'evidence', 'qualifiers', 'local_context', 'claim_text')}
         if example not in examples:
             examples.append(example)
     return dict(node_id=node['id'], canonical_label=node['label'], aliases=node['aliases'],
@@ -86,111 +68,225 @@ def _resolve(node_id, redirects):
     return node_id
 
 
+def _unchanged_occurrences(previous, endpoints):
+    """Adding claim_text to model input must not hide unchanged historical views."""
+    current = {row['endpoint_id']: row for row in endpoints}
+    edges = {row['id']: row for row in previous.get('graph', {}).get('edges', [])}
+    unchanged = set()
+    for old in previous.get('endpoints', []):
+        new = current.get(old['endpoint_id'])
+        if new == old:
+            unchanged.add(old['endpoint_id'])
+        elif (new and 'claim_text' not in old
+              and {k: v for k, v in new.items() if k != 'claim_text'} == old
+              and edges.get(old['edge_id'], {}).get('claim_text', '') == new.get('claim_text', '')):
+            unchanged.add(old['endpoint_id'])
+    return unchanged
+
+
+def _registry_fragments(registry, selected, redirects):
+    ids = sorted({_resolve(identifier, redirects) for identifier in selected})
+    return [dict(node_id=node_id, context_ids=contexts[start:start + 8])
+            for node_id in ids for contexts in [registry[node_id]['endpoint_ids']]
+            for start in range(0, len(contexts), 8)]
+
+
+def _small_registry_fits(batch, registry, assignments, by_id, settings):
+    if len(registry) > settings.pathway_candidate_small_registry:
+        return False
+    profiles = {node_id: _profile(node, by_id, node['endpoint_ids']) for node_id, node in registry.items()}
+    # Avoid a second judgement/embedding warmup when the entire small registry is
+    # already cheap. A few entities with very long contexts still use retrieval.
+    return IdentityPacket(batch, profiles, assignments).input_characters(SYSTEM) <= min(
+        settings.pathway_assembly_input_characters, SMALL_CONTEXT_CHARACTERS)
+
+
+def _selection_coverage(state, settings):
+    history = state.get('selection_history', [])
+    inherited = state.get('inherited_candidate_coverage') or {}
+    return {**matching_settings(settings), 'index': state.get('candidate_index'),
+        'batches': len(history), 'exhaustive': inherited.get('exhaustive', True) and all(row['exhaustive'] for row in history),
+        'bounded_batches': sum(not row['exhaustive'] for row in history),
+        'registry_entities_considered': sum(row['registry_entities_available'] for row in history),
+        'registry_entities_selected': sum(row['registry_entities_selected'] for row in history),
+        'history': history, 'similarity_is_identity_proof': False,
+        'inherited_candidate_coverage': inherited or None,
+        'reused_endpoint_count': state.get('reused_endpoint_count', 0),
+        'candidate_recall_is_verified': False}
+
+
+def _scan_batch(batch, registry, assignments, redirects, by_id, state, state_path, client, settings, emit):
+    if state.get('scan_complete'):
+        return
+    frozen = state['shard_ids']
+    while True:
+        check_cancelled()
+        start = state['shard_cursor']
+        provisional_ids = {assignments[r['endpoint_id']] for r in batch if r['endpoint_id'] in assignments}
+        chosen = {node_id: _profile(registry[node_id], by_id,
+            [r['endpoint_id'] for r in batch if assignments.get(r['endpoint_id']) == node_id])
+            for node_id in sorted(provisional_ids)}
+        end = start
+        def packet():
+            return IdentityPacket(batch, chosen, assignments)
+        if packet().input_characters(SYSTEM) > settings.pathway_assembly_input_characters:
+            raise ValueError('Pathway Assembly incoming batch/provisional registry exceeds input budget; lower PATHWAY_ASSEMBLY_BATCH_SIZE')
+        while end < len(frozen):
+            fragment = frozen[end]
+            node_id = _resolve(fragment['node_id'], redirects)
+            previous_profile = chosen.get(node_id)
+            profile = _profile(registry[node_id], by_id, fragment['context_ids'])
+            if previous_profile:
+                profile['identity_context'] = previous_profile['identity_context'] + [
+                    example for example in profile['identity_context'] if example not in previous_profile['identity_context']]
+            chosen[node_id] = profile
+            if packet().input_characters(SYSTEM) > settings.pathway_assembly_input_characters:
+                if previous_profile:
+                    chosen[node_id] = previous_profile
+                else:
+                    chosen.pop(node_id)
+                break
+            end += 1
+        if end == start and end < len(frozen):
+            ids = frozen[end]['context_ids']
+            if len(ids) > 1:
+                middle = len(ids) // 2
+                frozen[end:end + 1] = [dict(node_id=frozen[end]['node_id'], context_ids=part)
+                                      for part in (ids[:middle], ids[middle:])]
+                continue
+            raise ValueError('One pathway registry profile exceeds the remaining input budget; reduce batch size or increase assembly input budget')
+        request = packet()
+        emit('info', f"Pathway Assembly new/changed endpoints {state['cursor'] + 1}-{state['cursor'] + len(batch)}; registry scan {start}-{end}/{len(frozen)}")
+        answer = client.chat_json(SYSTEM, request.user, max_tokens=6000, json_schema=request.schema,
+            request_label=f"global pathway assembly endpoints {state['cursor'] + 1}-{state['cursor'] + len(batch)}; registry {start}-{end}",
+            response_check=request.groups)
+        groups = request.groups(answer)
+        _apply(groups, batch, registry, assignments, redirects)
+        state.update(shard_cursor=end, scan_complete=end >= len(frozen), updated_at=utc_now())
+        save_json(state_path, state)
+        if end >= len(frozen):
+            return
+
+
 def assemble_pathways(root, client, settings, emit=lambda *args: None, *, provisional=False):
     """Read every saved document and align source/external-supported edges.
 
-    Each incoming batch scans all frozen registry shards, plus its provisional
-    assignments. There is no top-k alias filter or isolated per-paper assembly.
-    Checkpoints record batch/shard progress; an error never publishes a partial
-    registry as a completed global snapshot.
+    Indexed retrieval proposes context/name/lexical candidates; MiMo still decides
+    identity from full source context. Exhaustive scans remain a benchmark option.
+    Selected-node contexts are sharded losslessly. A failed/stopped scan never
+    publishes a partial graph; bounded candidate coverage is saved explicitly.
     """
     folder = root / ('.provisional_pathways' if provisional else ASSEMBLY_DIRECTORY)
-    eligibility = 'source-entailed-provisional-v1' if provisional else ASSEMBLY_ELIGIBILITY_POLICY
-    request_overhead = len(SYSTEM) + len(json.dumps(RESPONSE_SCHEMA, ensure_ascii=False))
+    eligibility = PROVISIONAL_ELIGIBILITY_POLICY if provisional else ASSEMBLY_ELIGIBILITY_POLICY
     folder.mkdir(parents=True, exist_ok=True)
     edges, endpoints = collect_corpus(root, provisional=provisional)
     signature = corpus_signature(edges, endpoints, settings.pathway_assembly_model, settings.task_thinking['pathway_assembly'], provisional=provisional)
     snapshot_path = folder / 'snapshot.json'
     previous = _read(snapshot_path)
-    if previous and previous.get('input_signature') == signature:
+    match_signature = matching_signature(settings)
+    if previous and previous.get('input_signature') == signature and previous.get('matching_signature') == match_signature:
         emit('info', 'Pathway Assembly: reusing the matching global snapshot')
         return previous
     state_path = folder / 'checkpoint.json'
     state = _read(state_path)
-    if not state or state.get('input_signature') != signature:
-        registry, assignments = {}, {}
-        by_id = {r['endpoint_id']: r for r in endpoints}
-        if previous and previous.get('version') == ASSEMBLY_VERSION and previous.get('model') == settings.pathway_assembly_model and previous.get('thinking', True) == settings.task_thinking['pathway_assembly']:
-            unchanged = {r['endpoint_id'] for r in previous.get('endpoints', []) if by_id.get(r['endpoint_id']) == r}
+    if not state or state.get('input_signature') != signature or state.get('matching_signature') != match_signature:
+        registry, assignments, inherited_coverage = {}, {}, None
+        if (previous and previous.get('version') == ASSEMBLY_VERSION
+                and previous.get('model') == settings.pathway_assembly_model
+                and previous.get('thinking', True) == settings.task_thinking['pathway_assembly']
+                and previous.get('matching_signature') in (None, match_signature)):
+            unchanged = _unchanged_occurrences(previous, endpoints)
             for node in previous['graph']['nodes']:
                 kept = [identifier for identifier in node['endpoint_ids'] if identifier in unchanged]
                 if kept:
                     registry[node['id']] = {**node, 'endpoint_ids': kept}
                     assignments.update({identifier:node['id'] for identifier in kept})
-        state = dict(input_signature=signature, thinking=settings.task_thinking['pathway_assembly'], registry=registry, assignments=assignments, redirects={}, cursor=0,
+            if assignments and previous.get('candidate_selection'):
+                inherited_coverage = {
+                    'input_signature': previous['input_signature'],
+                    'exhaustive': previous['candidate_selection'].get('exhaustive', True),
+                    'reused_endpoint_count': len(assignments),
+                }
+        state = dict(input_signature=signature, matching_signature=match_signature, selection_history=[],
+                     inherited_candidate_coverage=inherited_coverage,
+                     reused_endpoint_count=len(assignments), thinking=settings.task_thinking['pathway_assembly'], registry=registry, assignments=assignments, redirects={}, cursor=0,
                      pending_ids=[r['endpoint_id'] for r in endpoints if r['endpoint_id'] not in assignments],
                      shard_cursor=0, shard_ids=None, batch_size=settings.pathway_assembly_batch_size)
     by_id = {r['endpoint_id']: r for r in endpoints}
     registry, assignments, redirects = (state[k] for k in ('registry', 'assignments', 'redirects'))
     pending = [by_id[identifier] for identifier in state['pending_ids']]
-    state.update(status='running', error=None, updated_at=utc_now())
+    state.update(status='running', error=None, updated_at=utc_now(), request_protocol=REQUEST_PROTOCOL)
     save_json(state_path, state)
     emit('stage', f"Pathway Assembly: {len(edges)} {'provisional' if provisional else 'validated'} claims across {len({e['document_key'] for e in edges})} papers; MiMo Flash aligns endpoints globally")
     try:
+        candidate_index = None
         while state['cursor'] < len(pending):
             check_cancelled()
             batch = pending[state['cursor']:state['cursor'] + state['batch_size']]
-            if state.get('batch_scan_complete'):
-                state.update(cursor=state['cursor'] + len(batch), shard_cursor=0, shard_ids=None,
-                             batch_scan_complete=False)
+            if not state.get('selection_plan'):
+                use_index = (settings.pathway_candidate_strategy == 'indexed'
+                             and not _small_registry_fits(batch, registry, assignments, by_id, settings))
+                if use_index and candidate_index is None:
+                    candidate_index = EndpointCandidateIndex(endpoints, state['pending_ids'], settings, root)
+                    state['candidate_index'] = candidate_index.metadata
+                    save_json(folder / 'candidate_index.json', candidate_index.metadata)
+                selected, evidence = (candidate_index.select(batch, assignments, registry, settings.pathway_candidate_top_k)
+                                      if use_index else (set(registry), {}))
+                # Without an exact-name candidate already in the registry, widen
+                # retrieval before the first judgement. This avoids spending a
+                # second LLM call on nearly every genuinely new entity. An exact
+                # name is only a retrieval signal, never an identity acceptance.
+                broad = [row for row in batch if use_index and not any(
+                    hit['node_id'] in registry and any('exact_name' in signal for signal in hit['signals'])
+                    for hit in evidence[row['endpoint_id']])]
+                upfront_evidence = {}
+                if broad:
+                    wider, upfront_evidence = candidate_index.select(broad, assignments, registry, settings.pathway_candidate_expansion_k)
+                    selected |= wider
+                state['selection_plan'] = {'available_nodes': sorted(registry),
+                    'indexed': use_index,
+                    'upfront_expansion_endpoint_ids': [row['endpoint_id'] for row in broad],
+                    'upfront_expansion_candidates': upfront_evidence,
+                    'prior_endpoint_ids': sorted(assignments), 'selected_nodes': sorted(selected),
+                    'endpoint_ids': [row['endpoint_id'] for row in batch],
+                    'base_candidates': evidence, 'round': 0}
+                state['shard_ids'] = _registry_fragments(registry, selected, redirects)
+                state['shard_cursor'] = 0
+                state['scan_complete'] = False
                 save_json(state_path, state)
-                continue
-            if state['shard_ids'] is None:
-                fragments = []
-                for node_id in sorted(registry):
-                    ids = registry[node_id]['endpoint_ids']
-                    fragments.extend(dict(node_id=node_id, context_ids=ids[start:start + 8])
-                                     for start in range(0, len(ids), 8))
-                state.update(shard_ids=fragments, shard_cursor=0)
-            frozen = state['shard_ids']
-            while True:
-                start = state['shard_cursor']
-                provisional_ids = {assignments[r['endpoint_id']] for r in batch if r['endpoint_id'] in assignments}
-                chosen = {node_id:_profile(registry[node_id], by_id,
-                    [r['endpoint_id'] for r in batch if assignments.get(r['endpoint_id']) == node_id])
-                    for node_id in sorted(provisional_ids)}
-                end = start
-                def packet():
-                    return json.dumps(dict(incoming_endpoints=[{**r, 'provisional_node_id':assignments.get(r['endpoint_id'])}
-                                                               for r in batch], registry_nodes=list(chosen.values())), ensure_ascii=False)
-                if len(packet()) + request_overhead > settings.pathway_assembly_input_characters:
-                    raise ValueError('Pathway Assembly incoming batch/provisional registry exceeds input budget; lower PATHWAY_ASSEMBLY_BATCH_SIZE')
-                while end < len(frozen):
-                    fragment = frozen[end]
-                    node_id = _resolve(fragment['node_id'], redirects)
-                    previous_profile = chosen.get(node_id)
-                    profile = _profile(registry[node_id], by_id, fragment['context_ids'])
-                    if previous_profile:
-                        profile['identity_context'] = previous_profile['identity_context'] + [
-                            example for example in profile['identity_context'] if example not in previous_profile['identity_context']]
-                    chosen[node_id] = profile
-                    if len(packet()) + request_overhead > settings.pathway_assembly_input_characters:
-                        if previous_profile:
-                            chosen[node_id] = previous_profile
-                        else:
-                            chosen.pop(node_id)
-                        break
-                    end += 1
-                if end == start and end < len(frozen):
-                    ids = frozen[end]['context_ids']
-                    if len(ids) > 1:
-                        middle = len(ids) // 2
-                        frozen[end:end + 1] = [dict(node_id=frozen[end]['node_id'], context_ids=part)
-                                              for part in (ids[:middle], ids[middle:])]
-                        continue
-                    raise ValueError('One pathway registry profile exceeds the remaining input budget; reduce batch size or increase assembly input budget')
-                user = packet()
-                emit('info', f"Pathway Assembly new/changed endpoints {state['cursor'] + 1}-{state['cursor'] + len(batch)}/{len(pending)}; registry scan {start}-{end}/{len(frozen)}")
-                answer = client.chat_json(SYSTEM, user, max_tokens=6000, json_schema=RESPONSE_SCHEMA,
-                    request_label=f"global pathway assembly endpoints {state['cursor'] + 1}-{state['cursor'] + len(batch)}; registry {start}-{end}",
-                    response_check=lambda value:check_groups(value, batch, set(chosen), assignments))
-                check_groups(answer, batch, set(chosen), assignments)
-                _apply(answer['groups'], batch, registry, assignments, redirects)
-                state.update(shard_cursor=end, batch_scan_complete=end >= len(frozen), updated_at=utc_now())
-                save_json(state_path, state)
-                if end >= len(frozen):
-                    break
-            state.update(cursor=state['cursor'] + len(batch), shard_cursor=0, shard_ids=None, batch_scan_complete=False)
+            plan = state['selection_plan']
+            if plan['indexed'] and candidate_index is None:
+                candidate_index = EndpointCandidateIndex(endpoints, state['pending_ids'], settings, root)
+            active_batch = ([row for row in batch if row['endpoint_id'] in plan['expansion_endpoint_ids']]
+                            if plan['round'] else batch)
+            _scan_batch(active_batch, registry, assignments, redirects, by_id, state, state_path, client, settings, emit)
+            if plan['indexed'] and plan['round'] == 0:
+                prior_ids = set(plan['prior_endpoint_ids'])
+                unmatched = [row for row in batch if row['endpoint_id'] not in plan.get('upfront_expansion_endpoint_ids', [])
+                    if not (set(registry[assignments[row['endpoint_id']]]['endpoint_ids']) & prior_ids)]
+                extra, evidence = candidate_index.select(unmatched, assignments, registry, settings.pathway_candidate_expansion_k)
+                # Identify original registry nodes through any redirects created by the base scan.
+                expanded = {identifier for identifier in plan['available_nodes']
+                            if _resolve(identifier, redirects) in extra} - set(plan['selected_nodes'])
+                if expanded:
+                    plan.update(round=1, expansion_candidates=evidence,
+                                expansion_endpoint_ids=[row['endpoint_id'] for row in unmatched],
+                                selected_nodes=sorted(set(plan['selected_nodes']) | expanded))
+                    state.update(shard_ids=_registry_fragments(registry, expanded, redirects), shard_cursor=0, scan_complete=False)
+                    save_json(state_path, state)
+                    continue
+            unsearched = sorted(set(plan['available_nodes']) - set(plan['selected_nodes']))
+            state.setdefault('selection_history', []).append({
+                **{k: v for k, v in plan.items() if k not in {'available_nodes', 'prior_endpoint_ids'}},
+                'registry_entities_available': len(plan['available_nodes']),
+                'registry_entities_selected': len(plan['selected_nodes']),
+                'unsearched_registry_entities': len(unsearched), 'exhaustive': not unsearched,
+                'similarity_is_identity_proof': False})
+            if unsearched:
+                emit('warning', f"Pathway candidate search was bounded for {len(batch)} endpoints: "
+                     f"{len(unsearched)} registry entities were not compared by the model; missing links remain possible")
+            state.update(cursor=state['cursor'] + len(batch), shard_cursor=0, shard_ids=None,
+                         selection_plan=None, scan_complete=False)
             save_json(state_path, state)
         graph_edges = []
         for edge in edges:
@@ -198,6 +294,8 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None, *, provis
             graph_edges.append({**edge, 'source':source, 'target':target,
                                 'source_label':registry[source]['label'], 'target_label':registry[target]['label']})
         snapshot = dict(version=ASSEMBLY_VERSION, input_signature=signature, completed_at=utc_now(),
+                        request_protocol=REQUEST_PROTOCOL, matching_signature=match_signature,
+                        candidate_selection=_selection_coverage(state, settings),
                         eligibility_policy=eligibility,
                         model=settings.pathway_assembly_model, thinking=settings.task_thinking['pathway_assembly'], causal_chain_validated=False,
                         graph=dict(nodes=[{**n, 'type':n['types'][0]} for n in registry.values()], edges=graph_edges,
@@ -220,20 +318,50 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None, *, provis
         raise
 
 
+_assembly_cache = {}
+
+
+def _stat_sig(path):
+    if not path.exists():
+        return None
+    s = path.stat()
+    return (s.st_mtime_ns, s.st_size)
+
+
 def read_assembly(root, model, *, provisional=False):
+    from copy import deepcopy
     folder = root / ('.provisional_pathways' if provisional else ASSEMBLY_DIRECTORY)
+    cand_paths = sorted(root.glob('*/candidates.jsonl'))
+    val_paths = [] if provisional else sorted(root.glob('*/validation_runs.jsonl'))
+    stamp = (
+        _stat_sig(folder / 'snapshot.json'),
+        _stat_sig(folder / 'checkpoint.json'),
+        tuple((str(p), _stat_sig(p)) for p in cand_paths),
+        tuple((str(p), _stat_sig(p)) for p in val_paths),
+    )
+    cache_key = (str(root.resolve()), model, provisional)
+    cached = _assembly_cache.get(cache_key)
+    if cached and cached['stamp'] == stamp:
+        return deepcopy(cached['result'])
     snapshot = _read(folder / 'snapshot.json')
     state = _read(folder / 'checkpoint.json') or {}
     edges, endpoints = collect_corpus(root, provisional=provisional)
     current = corpus_signature(edges, endpoints, model, (snapshot or state).get('thinking', True), provisional=provisional)
     stale = bool(snapshot and snapshot.get('input_signature') != current)
+    if stale and not snapshot.get('matching_signature'):
+        # v44 stored claim_text on edges but not endpoint input objects. Compare
+        # the old representation too, without relaxing any actual source field.
+        old_ids = {r['endpoint_id'] for r in snapshot.get('endpoints', []) if 'claim_text' not in r}
+        compatible = _unchanged_occurrences(snapshot, endpoints)
+        legacy = [{k: v for k, v in row.items() if k != 'claim_text'}
+                  if row['endpoint_id'] in old_ids & compatible else row for row in endpoints]
+        stale = snapshot.get('input_signature') != corpus_signature(edges, legacy, model,
+            (snapshot or state).get('thinking', True), provisional=provisional)
     if snapshot:
         # Never display newly excluded edges through an older saved snapshot.
         # Rebuilding identity alignment remains an explicit assembly operation.
         allowed = {edge['id']: edge for edge in edges}
-        current_endpoints = {row['endpoint_id']: row for row in endpoints}
-        unchanged = {row['endpoint_id'] for row in snapshot.get('endpoints', [])
-                     if current_endpoints.get(row['endpoint_id']) == row}
+        unchanged = _unchanged_occurrences(snapshot, endpoints)
         graph = snapshot['graph']
         kept = [{**edge, **allowed[edge['id']]} for edge in graph['edges']
                 if edge['id'] in allowed and all(f"{edge['id']}:{role}" in unchanged
@@ -249,5 +377,8 @@ def read_assembly(root, model, *, provisional=False):
                                'entities': len(nodes), 'papers': len({edge['document_key'] for edge in kept})}}
     relevant = state if state.get('input_signature') == current else {}
     status = ('completed' if snapshot and not stale else relevant.get('status', 'outdated' if stale else 'not_run'))
-    return dict(status=status, error=relevant.get('error'), stale=stale,
-                snapshot=snapshot, current_signature=current)
+    result = dict(status=status, error=relevant.get('error'), stale=stale,
+                  snapshot=snapshot, current_signature=current,
+                  candidate_selection=(snapshot or {}).get('candidate_selection'))
+    _assembly_cache[cache_key] = {'stamp': stamp, 'result': deepcopy(result)}
+    return result

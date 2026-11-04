@@ -35,6 +35,18 @@ def validate_schema(value, schema):
             elif error.validator == 'required' and isinstance(error.instance, dict):
                 missing = [key for key in error.validator_value if key not in error.instance]
                 detail = ': missing fields ' + json.dumps(missing)[:400]
+            elif error.validator == 'additionalProperties' and isinstance(error.instance, dict):
+                allowed = error.schema.get('properties', {})
+                patterns = error.schema.get('patternProperties', {})
+                unexpected = sorted(key for key in error.instance if key not in allowed
+                                    and not any(re.search(pattern, key) for pattern in patterns))
+                detail = (': unexpected fields ' + json.dumps(unexpected)[:400]
+                          + '; allowed fields ' + json.dumps(sorted(allowed))[:700]
+                          + '; do not add undeclared properties, including empty or null annotations')
+            elif error.validator in {'minimum', 'maximum'}:
+                detail = f': value {error.instance}; allowed {error.validator} {error.validator_value}'
+            elif error.validator in {'minItems', 'maxItems'} and isinstance(error.instance, list):
+                detail = f': returned {len(error.instance)} items; allowed {error.validator} {error.validator_value}'
             raise SchemaValidationError(f'Model response violates schema at {path}{detail} ({error.validator})')
 
 

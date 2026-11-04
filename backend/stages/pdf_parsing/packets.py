@@ -24,6 +24,7 @@ from backend.stages.pdf_parsing.constants import (
     HEADING_INITIAL_LIST_VERBS,
     HEADING_TRAILING_FRAGMENTS,
     JOURNAL_HEADER_RE,
+    RUNNING_HEADER_RE,
     PARENTHETICAL_BLOCK_RE,
     PARENTHETICAL_SINGLE_AUTHOR_YEAR_RE,
     PMCID_RE,
@@ -209,6 +210,7 @@ def author_year_citation_keys(text: str) -> list[str]:
     """Return stable first-author/year keys from local author-year citations."""
     keys: set[str] = set()
     value = str(text or "")
+    value = re.sub(r"([A-Za-z]+)-\s+([A-Za-z]+)", r"\1-\2", value)
     matches = [*AUTHOR_YEAR_CITATION_RE.finditer(value), *BARE_AUTHOR_YEAR_CITATION_RE.finditer(value)]
     for block in PARENTHETICAL_BLOCK_RE.finditer(value):
         matches.extend(PARENTHETICAL_SINGLE_AUTHOR_YEAR_RE.finditer(block.group("content")))
@@ -388,7 +390,7 @@ def iter_pdf_context_packets(pdf_path: Path, max_pages: int = 0,
             continue
         page_texts.append((page_index + 1, text))
         layout_headings = layout_heading_candidates(reader.pages[page_index], text)
-        cleaned_lines = [line.strip() for line in text.splitlines() if not JOURNAL_HEADER_RE.match(line)]
+        cleaned_lines = [line.strip() for line in text.splitlines() if not RUNNING_HEADER_RE.match(line)]
         for paragraph in re.split(r"\n\s*\n", "\n".join(cleaned_lines)):
             lines = [SPACE_RE.sub(" ", line).strip() for line in paragraph.splitlines() if line.strip()]
             body_lines: list[str] = []

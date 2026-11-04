@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
-from backend.viewer.snapshot import Snapshot
+from backend.viewer.snapshot import Snapshot, safe_path
 from backend.stages.pathway_assembly.paths import assembled_paths
 
 
@@ -32,6 +32,8 @@ def create_app(snapshot_dir=None, frontend_dist=None):
             return JSONResponse({'detail': 'This published results viewer is read-only.'}, status_code=403)
         response = await call_next(request)
         response.headers['X-Content-Type-Options'] = 'nosniff'
+        if request.url.path.startswith('/api/'):
+            response.headers['Cache-Control'] = 'public, max-age=86400, stale-while-revalidate=604800'
         return response
 
     @app.exception_handler(ValueError)
@@ -46,16 +48,16 @@ def create_app(snapshot_dir=None, frontend_dist=None):
 
     @app.get('/api/health')
     def health():
-        m = snapshot.manifest
+        m = snapshot.manifest or {}
         return {'status': 'ok', 'mode': 'viewer',
                 'capabilities': {'read_only': True, 'execute': False, 'upload': False},
-                'snapshot': {'id': m['snapshot_id'], 'created_at': m['created_at'],
-                             'documents': len(m['documents']), 'warnings': m.get('warnings', [])},
-                'pipeline': m['pipeline']}
+                'snapshot': {'id': m.get('snapshot_id'), 'created_at': m.get('created_at'),
+                             'documents': len(m.get('documents', {})), 'warnings': m.get('warnings', [])},
+                'pipeline': m.get('pipeline', {})}
 
     @app.get('/api/pdfs')
     def pdfs():
-        return snapshot.read(snapshot.manifest['catalog'])
+        return Response(snapshot.bytes(snapshot.manifest['catalog']), media_type='application/json')
 
     @app.get('/api/pdfs/{identifier}/file')
     def pdf_file(identifier: str):
@@ -98,27 +100,56 @@ def create_app(snapshot_dir=None, frontend_dist=None):
             raise HTTPException(404, 'Result view not found')
         entry = document(identifier)
         if kind == 'pathway-assessments' and kind not in entry:
-            return {'records': [], 'counts': {}, 'historical_snapshot': True}
-        return snapshot.read(entry[kind])
+            return JSONResponse({'records': [], 'counts': {}, 'historical_snapshot': True})
+        return Response(snapshot.bytes(entry[kind]), media_type='application/json')
 
     @app.get('/api/pathway-assessments')
     def assessments():
         relative = snapshot.manifest.get('pathway_assessments')
-        return snapshot.read(relative) if relative else {'records': [], 'counts': {}, 'historical_snapshot': True}
+        if not relative:
+            return JSONResponse({'records': [], 'counts': {}, 'historical_snapshot': True})
+        return Response(snapshot.bytes(relative), media_type='application/json')
 
     @app.get('/api/graph')
     @app.get('/api/audit-graph')
     @app.get('/api/source-graph')
     def global_graph(request: Request):
-        return snapshot.read(snapshot.manifest['graphs'][request.url.path.rsplit('/', 1)[-1]])
+        kind = request.url.path.rsplit('/', 1)[-1]
+        relative = snapshot.manifest['graphs'].get(kind)
+        if not relative:
+            raise HTTPException(404, 'Graph not found')
+        return Response(snapshot.bytes(relative), media_type='application/json')
+
+    _validated_cache = None
+
+    def get_validated_records():
+        nonlocal _validated_cache
+        if _validated_cache is None:
+            relative = snapshot.manifest.get('pathway_assessments')
+            if not relative:
+                return []
+            raw = snapshot.read(relative)
+            _validated_cache = [
+                {
+                    'pathway_id': r['pathway_id'],
+                    'eligible': r.get('eligible', False),
+                    'historical_eligible': r.get('historical_eligible', False),
+                    'stale': r.get('stale', False),
+                    'target': {'edges': r['target']['edges']},
+                    'verdict': r.get('verdict'),
+                    'scientific_verdict': r.get('scientific_verdict'),
+                    'paper_assessments': r.get('paper_assessments', []),
+                }
+                for r in raw.get('records', [])
+            ]
+        return _validated_cache
 
     @app.get('/api/pathways')
     def pathways(limit: int = Query(100, ge=1, le=500), max_hops: int = Query(6, ge=2, le=12),
                  offset: int = Query(0, ge=0), view: Literal['validated', 'provisional'] = 'validated'):
         data = snapshot.read(snapshot.manifest['pathways'][view])
         if view == 'validated' and data.get('policy') in {'whole-pathway-v1','neighbor-pair-v1'}:
-            saved = assessments()
-            records = saved.get('historical_records', saved['records']) if data.get('policy')=='whole-pathway-v1' else saved['records']
+            records = get_validated_records()
             rows = sorted((r for r in records if (r.get('eligible') or r.get('historical_eligible')) and not r.get('stale')
                            and len(r['target']['edges']) <= max_hops), key=lambda r:r['pathway_id'])
             page = rows[offset:offset+limit]

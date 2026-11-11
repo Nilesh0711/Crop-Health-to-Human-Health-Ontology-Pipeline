@@ -106,10 +106,13 @@ class IdentityPacket:
             raise IncompleteResponseError(f'Group metadata must match assigned groups; missing={sorted(missing)}')
         # Prune unused group metadata definitions so harmless extra groups do not abort execution
         metadata = {group_id: group for group_id, group in metadata.items() if group_id in used}
+        for group_id, group in metadata.items():
+            actually_joins = any(value == group_id for value in answer['registry_assignments'].values())
+            if group['joins_existing_registry_node'] != actually_joins:
+                raise IncompleteResponseError('joins_existing_registry_node conflicts with registry_assignments')
         groups = [{**group,
             'endpoint_ids': [alias for alias, value in answer['endpoint_assignments'].items() if value == group_id],
-            'existing_node_ids': [alias for alias, value in answer['registry_assignments'].items() if value == group_id],
-            'joins_existing_registry_node': bool([alias for alias, value in answer['registry_assignments'].items() if value == group_id])}
+            'existing_node_ids': [alias for alias, value in answer['registry_assignments'].items() if value == group_id]}
             for group_id, group in metadata.items()]
         check_groups({'groups': groups}, [{'endpoint_id': alias} for alias in self.endpoint_ids],
                      set(self.node_ids), self.assignments)

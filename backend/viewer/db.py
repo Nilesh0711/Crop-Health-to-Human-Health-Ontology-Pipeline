@@ -413,3 +413,4 @@ class PublicationDB:
         with self.connect() as conn:
             row = conn.execute("SELECT data_json FROM jobs WHERE id = ?", (job_id,)).fetchone()
             return row[0] if row else None
+

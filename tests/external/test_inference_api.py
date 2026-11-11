@@ -43,6 +43,36 @@ def client_with_responses(monkeypatch, replies, tmp_path=None, **settings):
     return client, requests, metrics
 
 
+def test_extraction_extra_qualifier_regeneration_preserves_detail_in_allowed_field(monkeypatch):
+    from backend.stages.claim_extraction.contract import EXTRACTION_RESPONSE_SCHEMA
+    from backend.stages.claim_extraction.prompt import build_extraction_prompt
+    claim = {'subject': 'Treatment T', 'relation': 'increases', 'object': 'nutrient transport',
+             'qualifiers': {'condition': 'low nutrient supply', 'condition_detail': 'particularly to young leaves'},
+             'evidence_sentence_ids': [1]}
+    corrected = {**claim, 'qualifiers': {'condition': 'low nutrient supply; particularly to young leaves'}}
+    client, calls, metrics = client_with_responses(monkeypatch, [
+        response(json.dumps({'claims': [claim]})), response(json.dumps({'claims': [corrected]}))])
+    client.task = 'extraction'
+    answer = client.chat_json(build_extraction_prompt(0, 'target_context'), 'Original numbered source',
+                              json_schema=EXTRACTION_RESPONSE_SCHEMA)
+    assert answer['claims'][0]['qualifiers']['condition'].endswith('particularly to young leaves')
+    assert len(calls) == 2
+    assert 'rather than adding keys' in calls[1][1]
+    assert 'do not silently discard them' in calls[1][1]
+    assert [m['purpose'] for m in metrics] == ['judgement', 'response_regeneration']
+
+
+def test_extraction_repeated_extra_qualifier_is_not_silently_removed(monkeypatch):
+    from backend.stages.claim_extraction.contract import EXTRACTION_RESPONSE_SCHEMA
+    invalid = json.dumps({'claims': [{'subject': 'Treatment T', 'relation': 'increases', 'object': 'root growth',
+        'qualifiers': {'condition_detail': 'under restricted supply'}, 'evidence_sentence_ids': [1]}]})
+    client, calls, _ = client_with_responses(monkeypatch, [response(invalid), response(invalid)])
+    client.task = 'extraction'
+    with pytest.raises(LLMServiceError, match='condition_detail'):
+        client.chat_json('Extract source-grounded claims', 'Source text', json_schema=EXTRACTION_RESPONSE_SCHEMA)
+    assert len(calls) == 2
+
+
 def test_one_bounded_same_model_repair_preserves_values_and_archives_attempts(monkeypatch, tmp_path):
     client, calls, metrics = client_with_responses(monkeypatch,
         [response(BROKEN), response(json.dumps(PATCH))], tmp_path)
@@ -325,8 +355,35 @@ def test_direct_request_uses_documented_go_route_and_backend_only_auth(monkeypat
     assert request.headers['Authorization'] == 'Bearer test-only-key'
     assert request.headers['x-opencode-session'] == transport.session_id
     assert payload['model'] == model and payload['response_format']['type'] == mode
+    if mode == 'json_schema':
+        assert payload['response_format']['json_schema']['strict'] is True
+        assert payload['response_format']['json_schema']['schema'] == SCHEMA
     assert 'test-only-key' not in request.content.decode()
     assert result['content'] == VALID
+
+
+@pytest.mark.parametrize('requested,expected', [('model_default', 'json_object'),
+                                             ('json_object', 'json_object'), ('json_schema', 'json_schema')])
+def test_deepseek_defaults_to_json_mode_and_honors_explicit_format(monkeypatch, requested, expected):
+    captured = []
+    def handler(request):
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, json={'id': 'test', 'choices': [
+            {'finish_reason': 'stop', 'message': {'content': VALID}}]})
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr('backend.providers.inference.httpx.Client', lambda **kwargs: http_client)
+    InferenceHTTP(Settings(opencode_response_format=requested)).chat(
+        'opencode-go/deepseek-v4.1-flash', 'JSON only', 'Synthetic test', SCHEMA, 128)
+    assert captured[0]['response_format']['type'] == expected
+    assert len(captured) == 1
+
+
+def test_activity_metrics_make_the_actual_response_format_visible(monkeypatch):
+    answer = response(VALID)
+    answer['response_format'] = 'json_schema'
+    client, _, metrics = client_with_responses(monkeypatch, [answer])
+    client.chat_json('JSON only', 'Synthetic test', json_schema=SCHEMA)
+    assert 'response_format=json_schema' in format_request_metrics(metrics[0])
 
 
 @pytest.mark.parametrize('http_status', [400, 401, 403, 429, 503])
@@ -372,7 +429,7 @@ def test_muse_privacy_rejection_remains_visible_without_retry_or_fallback(monkey
     transport=httpx.Client(transport=httpx.MockTransport(reject))
     monkeypatch.setattr('backend.providers.inference.httpx.Client',lambda **kwargs:transport)
     metrics=[]
-    client=OpenCodeClient(Settings(),task='external',on_request=metrics.append)
+    client=OpenCodeClient(Settings(external_model='opencode-go/muse-spark-1.3-contributor'),task='external',on_request=metrics.append)
     with pytest.raises(LLMServiceError,match='Privacy settings'):
         client.chat_json('JSON only','Synthetic test',json_schema=SCHEMA)
     assert len(calls)==1 and calls[0]['model']=='muse-spark-1.3-contributor'
@@ -391,7 +448,7 @@ def test_muse_maps_stage_switch_to_supported_effort_and_logs_required_reasoning(
     transport=httpx.Client(transport=httpx.MockTransport(answer))
     monkeypatch.setattr('backend.providers.inference.httpx.Client',lambda **kwargs:transport)
     metrics=[]
-    client=OpenCodeClient(replace(Settings(),thinking={'external':enabled}),task='external',on_request=metrics.append)
+    client=OpenCodeClient(replace(Settings(external_model='opencode-go/muse-spark-1.3-contributor'),thinking={'external':enabled}),task='external',on_request=metrics.append)
     assert client.chat_json('JSON only','Synthetic proof',json_schema=SCHEMA)==ANSWER
     assert calls[0]['reasoning_effort']==effort and 'thinking' not in calls[0]
     assert calls[0]['response_format']['type']=='json_schema'

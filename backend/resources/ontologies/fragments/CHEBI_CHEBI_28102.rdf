@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:ns5="https://w3id.org/chemrof/"
+     xmlns:chebi="http://purl.obolibrary.org/obo/chebi/3"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_key_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/wurcs_representation"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/smiles_string"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/charge"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/generalized_empirical_formula"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/mass"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/monoisotopic_mass"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0000087 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000087">
+        <rdfs:label>has role</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_28102 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_28102">
+        <rdfs:label>amylose</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_37163"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_76971"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_76924"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_75771"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns5:charge rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">0</ns5:charge>
+        <ns5:monoisotopic_mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">180.06339</ns5:monoisotopic_mass>
+        <ns5:mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">180.156</ns5:mass>
+        <oboInOwl:hasDbXref>pubmed:24505384</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:24491702</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>1,4-alpha-D-Glucan</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>kegg.glycan:G10495</oboInOwl:hasDbXref>
+        <ns5:generalized_empirical_formula>(C6H10O5)n.H2O</ns5:generalized_empirical_formula>
+        <oboInOwl:hasOBONamespace>chebi_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasDbXref>kegg.drug:D02329</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Amylose</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>reaxys:8194785</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>kegg.compound:C00718</oboInOwl:hasDbXref>
+        <ns5:smiles_string>[H]O[C@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O</ns5:smiles_string>
+        <oboInOwl:hasDbXref>cas:9005-82-7</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>hmdb:HMDB0003403</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>(1-&gt;4)-alpha-D-glucopyranan</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:2694</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>Amylose chain</oboInOwl:hasRelatedSynonym>
+        <ns5:inchi_string>InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6+/m1/s1</ns5:inchi_string>
+        <oboInOwl:hasRelatedSynonym>(1,4-alpha-D-Glucosyl)n+1</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>(1,4-alpha-D-Glucosyl)n-1</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>(1,4-alpha-D-Glucosyl)n</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:id>CHEBI:28102</oboInOwl:id>
+        <oboInOwl:hasDbXref>pubmed:24162153</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:24299760</oboInOwl:hasDbXref>
+        <ns4:IAO_0000115>A glucan composed of unbranched chains of &lt;small&gt;D&lt;/small&gt;-glucopyranose residues in α(1→4) glycosidic linkage. The number of repeated glucose subunits (n) is usually in the range of 300 to 3000, but can be many thousands. One of the two components of starch (the other, 70-80%, being amylopectin). Cf. linear maltodextrin, in which the chain length is typically between 3 and 17 glucose units.</ns4:IAO_0000115>
+        <oboInOwl:hasExactSynonym>(1-&gt;4)-alpha-D-glucopyranan</oboInOwl:hasExactSynonym>
+        <ns5:wurcs_representation>WURCS=2.0/1,1,0/[a2122h-1a_1-5]/1/</ns5:wurcs_representation>
+        <oboInOwl:hasRelatedSynonym>4-{(1,4)-alpha-D-Glucosyl}(n-1)-D-glucose</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:22539</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>wikipedia.en:Amylose</oboInOwl:hasDbXref>
+        <ns5:inchi_key_string>WQZGKKKJIJFFOK-DVKNGEFBSA-N</ns5:inchi_key_string>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_37163 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_37163">
+        <rdfs:label>glucan</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_75771 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_75771">
+        <rdfs:label>mouse metabolite</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_76924 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_76924">
+        <rdfs:label>plant metabolite</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_76971 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_76971">
+        <rdfs:label>Escherichia coli metabolite</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

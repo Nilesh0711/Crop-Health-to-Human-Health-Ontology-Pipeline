@@ -1,0 +1,134 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:po="http://purl.obolibrary.org/obo/po#">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#Angiosperm"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#Poaceae"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#Maize"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#Tomato"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#Arabidopsis"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#Rice"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#Potato"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#Gymnosperms"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0002202 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0002202">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>develops_from</rdfs:label>
+        <rdfs:label xml:lang="en">develops from</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0000016 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0000016">
+        <rdfs:label>lateral root primordium</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0009005 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0009005">
+        <rdfs:label>root</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0020121 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0020121">
+        <rdfs:label>lateral root</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/PO_0009005"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0002202"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PO_0000016"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns4:IAO_0000115>A root (PO:0009005) that develops from a lateral root primordium (PO:0000016) that is part of another root on the same plant.</ns4:IAO_0000115>
+        <oboInOwl:hasExactSynonym>ra&amp;#237z lateral (Spanish, exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:id>PO:0020121</oboInOwl:id>
+        <oboInOwl:hasOBONamespace>plant_anatomy</oboInOwl:hasOBONamespace>
+        <rdfs:comment>A lateral root primordium may develops on any root, including a primary root (PO:0020127), on an existing lateral root (PO:0020121), or a shoot-borne root (PO:0000042). In seed plants, a lateral root primordium generally develops from pericycle cells (PO:0025261), but cells of an endodermis (PO:0000252) may also participate in its formation in some species. In ferns, lateral root primordia develop from the endodermis.</rdfs:comment>
+        <oboInOwl:hasExactSynonym>側根 (Japanese, exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>PO_GIT:473</oboInOwl:hasDbXref>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#Angiosperm"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#Arabidopsis"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#Gymnosperms"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#Maize"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#Poaceae"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#Potato"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#Rice"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#Tomato"/>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

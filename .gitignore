@@ -10,7 +10,13 @@ docs/
 
 # Python caches and temporary test directories
 .pytest_cache/
-.pytest_tmp/
+.pytest_tmp*/
+.pytest_temp/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
 tmp_pytest/
 __pycache__/
 *.py[cod]
@@ -37,9 +43,20 @@ reports/*
 
 # Local comparison snapshots include PDFs, results and model-response archives.
 archive/backup/
+archive/paused_validation/
+archive/pdfs/
+
+# Local experiments, model responses and run audits (preserved on disk)
+analysis/*
+!analysis/grounding_pilot/
+analysis/grounding_pilot/*
+!analysis/grounding_pilot/README.md
 
 # Thesis sources and build artifacts kept local
 MTP_Thesis/
 
-# Export staging and previous publications stay local. The checked snapshot is deployable source.
+# Export staging and local Render snapshots stay untracked; deploy/pages/data/ holds the lightweight static site source.
+deploy/render/snapshot/
 deploy/render/.snapshot-*/
+deploy/pages/.snapshot-*/
+deploy/pages/.static-building-*/

@@ -15,7 +15,8 @@ from dataclasses import replace
 from typing import Any, Callable
 
 from backend.config.settings import ALLOWED_PIPELINE_MODELS, TASK_DEFAULT_MODELS, Settings
-from backend.providers.structured_output import parse_json_object, StructuredOutputError, IncompleteResponseError, SchemaValidationError, ResponseStructureError, EvidenceSelectionError
+from backend.providers.structured_output import parse_json_object, StructuredOutputError, IncompleteResponseError, SchemaValidationError, ResponseStructureError, EvidenceSelectionError, NullAnnotationError
+from backend.providers import schema_annotations
 from backend.providers.inference import InferenceHTTP, InferenceError, normalize_usage, model_reasoning_effort
 from backend.shared.activity import input_token_label
 from backend.shared.cancellation import PipelineStopped, check_cancelled
@@ -47,6 +48,9 @@ class _AssignedModelClient:
 
     def chat_json(self, system, user, **options):
         return self._client.chat_json(system, user, model=self.model, **options)
+
+    def chat_text(self, system, user, **options):
+        return self._client.chat_text(system, user, model=self.model, **options)
 
     def set_request_context(self, context):
         self._client.set_request_context(context)
@@ -110,6 +114,8 @@ def format_request_metrics(metrics: dict[str, Any]) -> str:
         prefix += '; recovery completed successfully'
     if metrics.get('transport'):
         prefix += f"; transport={metrics['transport']}"
+    if metrics.get('response_format'):
+        prefix += f"; response_format={metrics['response_format']}"
     resolved = metrics.get("resolved_model")
     if isinstance(resolved, dict) and resolved.get("variant"):
         prefix += f"; resolved variant={resolved['variant']}"
@@ -137,7 +143,7 @@ def format_request_metrics(metrics: dict[str, Any]) -> str:
 
 
 class OpenCodeClient:
-    """Primary-model JSON client using the direct OpenCode inference API.
+    """Primary-model JSON and validated text client using direct OpenCode inference.
 
     Direct inference reads a backend-only credential from the environment or
     Windows vault. Neither keys nor reasoning are written to response artifacts.
@@ -150,6 +156,7 @@ class OpenCodeClient:
                  response_dir: Path | None = None):
         timeout = (settings.external_timeout_seconds if task == 'external'
                    else settings.extraction_timeout_seconds if task == 'extraction'
+                   else settings.ontology_grounding_timeout_seconds if task == 'pathway_assembly'
                    else settings.request_timeout_seconds)
         self.settings = replace(settings, request_timeout_seconds=timeout)
         self.model = model or settings.task_models.get(task, settings.extraction_model)
@@ -230,23 +237,64 @@ class OpenCodeClient:
             return self._chat_api_once(system, user, max_tokens, json_schema, request_label, selector, response_check,
                                        answer_token_hint=answer_token_hint)
         except (LLMError, OSError, ValueError) as exc:
-            fallback = getattr(self.settings, 'fallback_models', {}).get(self.task)
-            err_str = str(exc).lower()
-            is_infra_or_loop = any(term in err_str for term in (
-                'rate or usage limit', '429', 'endpoint is unavailable', 'ratelimitexhausted',
-                'provider request failed', 'truncated at its token limit', 'connection failed', 'timed out',
-                'upstream request failed', 'model_coming_soon', 'did not finish a complete final answer'
-            ))
-            if fallback and fallback != selector and is_infra_or_loop:
-                self._progress({'status': 'warning',
-                                'message': f"Model {selector} failed ({exc}); substituting fallback {fallback} for remaining targets"})
-                self.model = fallback
-                return self._chat_api_once(system, user, max_tokens, json_schema, request_label, fallback, response_check,
-                                           answer_token_hint=answer_token_hint)
-            message = f"{self.task or 'LLM'} model {selector} failed: {exc}"
+            stage = (getattr(self._thread_request, 'metrics', None) or {}).get('stage')
+            name = 'ontology grounding' if stage == 'ontology_grounding' else self.task or 'LLM'
+            message = f"{name} model {selector} failed: {exc}"
             with self._metrics_lock:
                 self._service_error = message
             raise LLMServiceError(message) from exc
+
+    def chat_text(self, system: str, user: str, *, max_tokens: int = 160,
+                  request_label: str | None = None, response_check=None,
+                  model: str | None = None, answer_token_hint: int | None = None) -> str:
+        """Plain model output with strict caller-owned checks; no JSON coercion.
+
+        Malformed records may use one fresh response from the original input.
+        There is no JSON formatting repair or automatic switch to a JSON route.
+        """
+        check_cancelled()
+        selector = model or self.model
+        if selector not in ALLOWED_PIPELINE_MODELS:
+            raise ValueError('Select an approved OpenCode Go model')
+        with self._metrics_lock:
+            if self._service_error:
+                raise LLMServiceError(self._service_error)
+        def parse_text(content):
+            try:
+                if not isinstance(content, str) or not content.strip():
+                    raise IncompleteResponseError('Model returned an empty text answer')
+                if response_check:
+                    response_check(content)
+            except StructuredOutputError as exc:
+                raise _ResponseRecoveryFailure(content, exc, 'response_regeneration') from exc
+            return content, []
+        hint = answer_token_hint if answer_token_hint is not None else max_tokens
+        instructions = system + (f'\nKeep the answer concise, preferably below approximately {hint} answer tokens. '
+                                 'Do not omit required records or evidence-based reasons to meet this guide.')
+        limit = max(8192, max_tokens + 4096)
+        try:
+            try:
+                return self._api_attempt(instructions, user, None, limit, request_label, selector, 1,
+                                         'judgement', parse_text, output_format='text')
+            except _ResponseRecoveryFailure as failure:
+                if not self.settings.json_regeneration_attempts:
+                    raise
+                retry = instructions + (
+                    '\nThe previous text response failed validation: ' + str(failure)
+                    + '. Return the complete required records afresh from the ORIGINAL supplied input. '
+                    'Keep its scientific context, identifiers and uncertainty. Do not guess missing facts. '
+                    'Use only the specified plain-text format; no JSON or Markdown.')
+                return self._api_attempt(retry, user, None, limit, request_label, selector, 2,
+                                         'response_regeneration', parse_text, output_format='text')
+        except (LLMError, OSError, ValueError) as exc:
+            stage = (getattr(self._thread_request, 'metrics', None) or {}).get('stage')
+            name = 'ontology grounding' if stage == 'ontology_grounding' else self.task or 'LLM'
+            message = f'{name} model {selector} failed: {exc}'
+            with self._metrics_lock:
+                self._service_error = message
+            raise LLMServiceError(message) from exc
+        finally:
+            self._thread_request.context = {}
 
 
     def _archive_api_response(self, record):
@@ -307,7 +355,8 @@ class OpenCodeClient:
                 if response_check:
                     response_check(parsed)
             except StructuredOutputError as exc:
-                raise _ResponseRecoveryFailure(content, exc, 'response_regeneration') from exc
+                kind = 'null_annotation_repair' if isinstance(exc, NullAnnotationError) else 'response_regeneration'
+                raise _ResponseRecoveryFailure(content, exc, kind) from exc
             return parsed, adjustments
 
         instructions = (system + '\nReturn exactly one JSON object. No Markdown or commentary. '
@@ -327,8 +376,34 @@ class OpenCodeClient:
             return self._api_attempt(instructions, user, schema, output_limit, label, selector, 1,
                                      'judgement', parse_answer)
         except _ResponseRecoveryFailure as failure:
-            # One recovery action in total: edit syntax OR regenerate missing
-            # response content. A failed recovery never starts the other path.
+            # One recovery action: a model-proposed formatting patch OR complete
+            # regeneration. A failed recovery never starts another path.
+            if failure.kind == 'null_annotation_repair':
+                if not self.settings.json_repair_attempts:
+                    raise
+                original, _ = parse_json_object(failure.content)
+                paths = failure.parse_error.paths
+                origin = self.last_request_metrics or {}
+                patch_schema = schema_annotations.patch_schema(paths)
+                def accept_annotation_patch(content):
+                    patch, _ = parse_json_object(content)
+                    validate_schema(patch, patch_schema)
+                    answer = schema_annotations.apply_model_removals(original, patch, paths)
+                    validate_schema(answer, schema)
+                    adjustments = [{'kind': 'model_null_annotation_patch', 'removed_paths': patch['remove_paths'],
+                                    'source_response_artifact': origin.get('response_artifact'),
+                                    'source_provider_request_id': origin.get('provider_request_id')}]
+                    try:
+                        if response_check:
+                            response_check(answer)
+                    except EvidenceSelectionError as exc:
+                        raise _ResponseRecoveryFailure(json.dumps(answer, ensure_ascii=False), exc, 'response_regeneration',
+                            response_schema=schema, response_adjustments=adjustments) from exc
+                    return answer, adjustments
+                return self._api_attempt(schema_annotations.SYSTEM + '\nSchema:\n' + json.dumps(patch_schema),
+                    json.dumps({'response': original, 'eligible_paths': paths}, ensure_ascii=False),
+                    patch_schema, 4096, f'{label or self.task or "request"}: null-annotation formatting repair 1/1',
+                    selector, 2, 'format_repair', accept_annotation_patch)
             if failure.kind == 'response_regeneration':
                 if not self.settings.json_regeneration_attempts:
                     raise
@@ -373,10 +448,13 @@ class OpenCodeClient:
                     'and return complete JSON. Do not seek a more favorable verdict.')
                 if self.task == 'extraction' and isinstance(failure.parse_error, SchemaValidationError):
                     retry_instructions += (
-                        '\nPreserve the actual scientific entity identities. Do not relabel a disease as a crop '
-                        'to satisfy a type label. Select a precise relation that faithfully '
-                        'represents the supplied statement. Relation names are open; use a precise predicate '
-                        'and Unresolved for an uncertain entity type instead of dropping scientific content. '
+                        '\nThe extraction qualifier keys are exhaustive: crop_or_species, population, condition, comparator, metric. '
+                        'Combine multiple applicable details in the corresponding string, rather than adding keys. '
+                        'Preserve source-stated restrictions in an appropriate declared field or endpoint; do not silently discard them. '
+                        '\nPreserve the actual scientific entity identities, source wording, modality and conditions. '
+                        'Select a precise relation that faithfully represents the supplied statement. '
+                        'Relation names are open; retain relevant unmapped meanings rather than substituting a different concept. '
+                        'Do not add entity-type or certainty classifications absent from the extraction schema. '
                         'Keep the other eligible direct edges. This is regeneration, not a local label correction.')
                 regeneration_limit = (output_limit if isinstance(failure.parse_error, (SchemaValidationError, ResponseStructureError, EvidenceSelectionError))
                                       else max(output_limit, min(
@@ -406,7 +484,7 @@ class OpenCodeClient:
         finally:
             self._thread_request.context = {}
 
-    def _api_attempt(self, system, user, schema, output_limit, label, model, attempt, purpose, parser):
+    def _api_attempt(self, system, user, schema, output_limit, label, model, attempt, purpose, parser, *, output_format='json'):
         with self._metrics_lock:
             self._request_count += 1
             request_id = self._request_count
@@ -426,7 +504,10 @@ class OpenCodeClient:
         self._progress({**progress, 'status': starting_status,
                         'provider_status': 'Awaiting direct OpenCode inference response'})
         try:
-            response = self._inference.chat(model, system, user, schema, output_limit)
+            response = (self._inference.chat_text(model, system, user, output_limit) if output_format == 'text'
+                        else self._inference.chat(model, system, user, schema, output_limit))
+            if response['finish_reason'] == 'content_filter':
+                raise InferenceError('The selected model filtered this request; no response regeneration or model substitution')
             if response['finish_reason'] == 'length':
                 raise _ResponseRecoveryFailure(response.get('content', ''),
                     IncompleteResponseError('Model output was truncated at its token limit'), 'response_regeneration')
@@ -454,7 +535,7 @@ class OpenCodeClient:
                        else self.settings.json_repair_attempts)
             recovery_pending = purpose == 'judgement' and bool(enabled)
             recovery_action = exc.kind if recovery_pending else None
-            if isinstance(exc.parse_error, EvidenceSelectionError) and not recovery_pending:
+            if output_format == 'json' and isinstance(exc.parse_error, EvidenceSelectionError) and not recovery_pending:
                 # The schema-valid proposal is returned unchanged to the
                 # evidence guard, which excludes invalid proof from support.
                 # Never soften malformed JSON, truncation or provider errors.
@@ -478,11 +559,12 @@ class OpenCodeClient:
                     'content': response.get('content'), 'finish_reason': response.get('finish_reason'),
                     'provider_request_id': response.get('provider_request_id'),
                     'accepted_response': parsed if status == 'ok' else None,
+                    'extraction_contract_version': getattr(self._thread_request, 'context', {}).get('extraction_contract_version'),
                     'review_response': parsed if status == 'evidence_needs_review' else None,
                     'format_adjustments': adjustments})
             usage = normalize_usage(response.get('usage', {}))
             metrics = {'request_id': request_id, 'model': model, 'primary_model': model,
-                       'stage': self.task, 'task': label, 'purpose': purpose, 'transport': 'api',
+                       'stage': progress['stage'], 'task': label, 'purpose': purpose, 'transport': 'api',
                        'response_format': response.get('response_format'),
                        'response_artifact': archive, 'provider_request_id': response.get('provider_request_id'),
                        'timeout_seconds': self.settings.request_timeout_seconds,

@@ -10,8 +10,10 @@ from pathlib import Path
 from typing import Any, Callable
 from pypdf import PdfReader
 from backend.config.settings import ONTOLOGY_DIR, SCHEMA_VERSION, APPLICATION_VERSION, Settings
-from backend.shared.batching import iter_parallel_judgments
-from backend.pipelines.neighbor_validation import run_pathway_assessment
+from backend.config.pipeline import PIPELINE_MODE, PAUSED_MESSAGE, POST_GROUNDING_STAGES_PAUSED, active_task_models
+from backend.config.pipeline import ONTOLOGY_GROUNDING_PAUSED, GROUNDING_PAUSED_MESSAGE
+from backend.pipelines.unvalidated import publish_unvalidated_views, paused_metadata
+from backend.pipelines.checkpoints import resume_metadata, save_checkpoint
 from backend.shared.cancellation import check_cancelled
 from backend.shared.activity import TaggedMessage
 from backend.providers.llm import (
@@ -22,92 +24,21 @@ from backend.providers.llm import (
 )
 from backend.shared.storage import file_hash, utc_now, read_jsonl
 from backend.shared.artifacts import save_rows
-from backend.pipelines.checkpoints import claim_stage_signature, resume_metadata, save_checkpoint
 from backend.stages.claim_extraction.deduplication import deduplicate_source_claims
-from backend.domain.claim_context import apply_source_provenance
 from backend.stages.evaluation.metrics import write_evaluation_sample
 from backend.stages.pdf_parsing.quality import assess_text_quality
-from backend.stages.source_validation.checker import validate_source_claim
-from backend.stages.source_validation.review import source_fidelity_decision, source_review_state
-from backend.stages.source_validation.abbreviations import SOURCE_VALIDATION_POLICY
-from backend.stages.source_validation.scope import source_scope_decision, source_pathway_eligible, source_scope_counts
-from backend.stages.source_validation.summary import source_assessment_counts
-from backend.stages.source_validation.context import section_context
-from backend.domain.vocabulary import normalize_entity
 from backend.stages.pdf_parsing.structure import inspect_pdf
 from backend.stages.pdf_parsing.layout import PARSING_POLICY, LEGACY_PARSING_POLICY
 from backend.stages.claim_extraction.extractor import extract_claims, refresh_candidate_citations
 from backend.stages.claim_extraction.targeting import TARGETING_VERSION
-from backend.stages.pathway_assembly.assembly import assemble_pathways
+from backend.stages.claim_extraction.contract import EXTRACTION_CONTRACT_VERSION
+from backend.pipelines.ontology import run_grounding
+from backend.ontology.catalog import catalog as load_catalog
 from backend.stages.pdf_parsing.packets import (
     iter_pdf_context_packets,
     pdf_bibliography,
     source_article_identifiers,
 )
-
-
-def _validate_sources(candidates, structurally_valid, packets, output_dir, settings, client, emit, resume):
-    """Reuse compatible readings and persist each new source/scope assessment."""
-    saved_source = {row['candidate_id']: row for row in read_jsonl(output_dir / 'source_validation.jsonl')} if resume else {}
-    source_results = []
-    pending_source = []
-    prior_source = {}
-    packets_by_number = {packet['packet_number']: packet for packet in packets if 'packet_number' in packet}
-    for candidate in structurally_valid:
-        if candidate.get('superseded_by'):
-            if previous := saved_source.get(candidate['candidate_id']) or candidate.get('source_validation'):
-                candidate['source_validation'] = previous
-                source_results.append(previous)
-            continue  # Historical parent reading; children carry current atomic decisions.
-        context = section_context(candidate, packets_by_number.get(candidate.get('source_packet_number'), {}))
-        if context:
-            candidate['source_section_context'] = context
-        previous = saved_source.get(candidate['candidate_id'], {})
-        cached_candidate = {**candidate, 'source_validation': previous}
-        manual = source_review_state(cached_candidate)['active_reviews'] if previous.get('manual_reviews') else {}
-        manually_rejected = any(r['decision'] == 'reject' for r in manual.values())
-        if (previous.get('input_signature') == claim_stage_signature(candidate, settings.source_model, settings.task_thinking['source'])
-                and (manually_rejected or ((previous.get('validation_policy') == SOURCE_VALIDATION_POLICY or manual)
-                and source_scope_decision(cached_candidate) != 'not_assessed' and not previous.get('batch_error')))
-                and previous.get('decision') in {'entailed', 'unsupported', 'needs_review'}):
-            candidate['source_validation'] = previous
-            source_results.append(previous)
-        else:
-            if previous:
-                prior_source[candidate['candidate_id']] = previous
-            candidate.pop('source_validation', None)
-            pending_source.append(candidate)
-    save_rows(output_dir / 'source_validation.jsonl', source_results)
-    if resume:
-        emit('info', f'Reusing {len(source_results)} completed source judgements; {len(pending_source)} claims remain')
-    for candidate, source_result in iter_parallel_judgments(
-            pending_source, client, validate_source_claim, settings.validation_batch_size,
-            progress=lambda message: emit("info", message), label="Source", keyed=True, workers=settings.source_workers):
-        candidate["source_validation"] = source_result
-        if candidate['candidate_id'] in prior_source:
-            source_result['previous_assessment'] = prior_source[candidate['candidate_id']]
-        if source_result.get('applied_name_corrections'):
-            emit('info', f"Expanded source-defined names for {candidate['candidate_id']}: "
-                 + '; '.join(f"{edit['field']}: {edit['before']} -> {edit['after']}"
-                             for edit in source_result['applied_name_corrections']))
-        provenance_changes = apply_source_provenance(candidate, source_result)
-        if provenance_changes:
-            emit('info', f"Moved source occurrence context to provenance for {candidate['candidate_id']}: "
-                 + ', '.join(change['field'] for change in provenance_changes))
-        source_result['input_signature'] = claim_stage_signature(candidate, settings.source_model, settings.task_thinking['source'])
-        source_results.append(source_result)
-        save_rows(output_dir / "source_validation.jsonl", source_results)
-        save_rows(output_dir / "candidates.jsonl", candidates)
-        emit("success" if source_pathway_eligible(candidate) else "warning",
-             TaggedMessage(f"Source: {source_result['decision']}; project scope: {source_scope_decision(candidate)} | {candidate['subject']} -> {candidate['relation']} -> {candidate['object']}",
-                           'source_validation', candidate['candidate_id']))
-    scope_summary = source_scope_counts(candidates)
-    scope_counts = scope_summary['source_project_scope']
-    emit('info', TaggedMessage(
-        f"Source checks complete: {scope_counts['in_scope']} in scope, {scope_counts['out_of_scope']} outside scope, "
-        f"{scope_counts['needs_review']} scope review, {scope_counts['not_assessed']} scope unassessed; "
-        f"{scope_summary['pathway_eligible_claims']} PDF-supported, in-scope claims eligible for assembly",
-        'source_validation'))
 
 
 def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
@@ -133,7 +64,8 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
         emit("info", f"{name.replace('_', ' ').capitalize()} elapsed: {stage_timings[name]:.1f}s")
 
     settings = Settings()
-    mode = 'pathway_only'
+    reference = load_catalog()
+    mode = PIPELINE_MODE
     settings = replace(settings,
                        external_top_k=articles_per_pathway,
                        neighbor_max_pairs=settings.neighbor_max_pairs if neighbor_max_pairs is None else neighbor_max_pairs)
@@ -156,22 +88,24 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
         'extraction_mode': settings.extraction_mode, 'extraction_target_words': settings.extraction_target_words,
         'extraction_generation_budget': settings.extraction_min_output_budget, 'targeting_version': TARGETING_VERSION,
         'parsing_policy':PARSING_POLICY}
+    scope_signature = reference.profile['id'] + '|' + reference.profile['research_question']
+    if resume and checkpoint.get('extraction_scope') not in (None, scope_signature):
+        raise ValueError('The crop/research question changed; start a fresh extraction for the new scope')
+    checkpoint.setdefault('extraction_scope', scope_signature if not resume else None)
+    checkpoint['ontology_reference_signature'] = reference.signature
+    checkpoint['extraction_contract_version'] = EXTRACTION_CONTRACT_VERSION if not resume else checkpoint.get('extraction_contract_version')
     checkpoint['thinking'] = settings.task_thinking
+    checkpoint.update(paused_metadata())
     checkpoint['knowledge_building_mode'] = mode
     checkpoint['neighbor_max_pairs'] = settings.neighbor_max_pairs
-    if external_assessment_id is not None and not resume:
-        raise ValueError('External reassessment requires saved extraction')
-    external_assessment_id = external_assessment_id or checkpoint.get('external_assessment_id')
-    if external_assessment_id:
-        checkpoint['external_assessment_id'] = external_assessment_id
-        save_checkpoint(output_dir, checkpoint)
-        emit('stage', TaggedMessage('External reassessment: using separate query, retrieval and judgement checkpoints; saved extraction and compatible source checks are reused', 'external_validation'))
+    if external_assessment_id is not None:
+        raise ValueError('External validation is temporarily archived; resume extraction and assembly instead')
+    active_models = active_task_models(settings)
+    emit('info', TaggedMessage(PAUSED_MESSAGE, 'system'))
     available_models = OpenCodeClient(settings).health_check().get("models", [])
-    for task, model in settings.task_models.items():
+    for task, model in active_models.items():
         if model.split('#', 1)[0] not in available_models:
             raise RuntimeError(f"No configured OpenCode model is available for {task}: {model}")
-    if settings.external_paper_model not in available_models:
-        raise RuntimeError(f'Configured per-paper primary is unavailable: {settings.external_paper_model}')
     def log_model_request(metrics: dict[str, Any]) -> None:
         with request_log_lock:
             model_requests.append({"at": utc_now(), **metrics})
@@ -181,13 +115,14 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
     task_clients = {task: OpenCodeClient(
         replace(settings, request_timeout_seconds=settings.extraction_timeout_seconds) if task == 'extraction' else settings,
         model, task=task, on_request=log_model_request, on_progress=lambda event: emit("progress", json.dumps(event)),
-        response_dir=output_dir / 'model_responses') for task, model in settings.task_models.items()}
+        response_dir=output_dir / 'model_responses') for task, model in active_models.items()}
     extractor = task_clients['extraction']
     def llm_call_summary() -> dict[str, Any]:
         counters = {task: task_client.request_metrics for task, task_client in task_clients.items()}
-        return {**counters, 'validation': counters['external'], 'helper': counters['query'],
+        return {**counters, 'validation': {'requests': 0, 'elapsed_seconds': 0},
+                'helper': {'requests': 0, 'elapsed_seconds': 0},
                 'total_requests': sum(item['requests'] for item in counters.values())}
-    for task, model in settings.task_models.items():
+    for task, model in active_models.items():
         emit('info', f"LLM {task}: {model}; Thinking {'on' if settings.task_thinking[task] else 'off'}")
     emit('info', f"Extraction mode: {settings.extraction_mode}; claim limit per extraction region: {claims_per_packet}; "
          f"initial generation budget (reasoning + answer): {settings.extraction_min_output_budget} tokens")
@@ -210,7 +145,8 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
     quality = assess_text_quality(quality_text)
     document_scope = {'scope': 'not_screened', 'text_quality': quality['detected_quality'],
                       'quality_signals': quality, 'pdf_quality': pdf_quality, 'sampling_policy': 'all_selected_body_text_without_packet_overlap',
-                      'rationale': 'No keyword sampling or document-scope model gate; pathway relevance is assessed with external evidence.'}
+                      'rationale': ('No document-scope model gate. Extraction is guided by the potato-nutrition profile. Ontology grounding and later assessments are paused.'
+                                    if ONTOLOGY_GROUNDING_PAUSED else 'No document-scope model gate. Source fidelity and external validation are paused. Potato-nutrition application scope is assessed during ontology grounding.')}
     (output_dir / "document_scope.json").write_text(json.dumps(document_scope, ensure_ascii=False, indent=2), encoding="utf-8")
     emit("info", f"Document scope: {document_scope['scope']}; text quality: {document_scope['text_quality']}")
     if document_scope["text_quality"] == "unusable":
@@ -221,16 +157,14 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
             "pdf_sha256": file_hash(pdf_path),
             "model": settings.extraction_model,
             "extraction_model": settings.extraction_model,
-            "validation_model": settings.external_model,
-            "external_phase_models": settings.external_phase_models,
-            "helper_model": settings.query_model,
+            **paused_metadata(),
             "completed_at": utc_now(),
             "run_status": "blocked_text_quality",
             "schema_version": SCHEMA_VERSION,
             "application_version": APPLICATION_VERSION,
             "claims_per_packet": claims_per_packet,
             "llm_calls": llm_call_summary(),
-            "task_models": settings.task_models,
+            "task_models": active_models,
             "document_scope": document_scope,
             "extracted": 0,
             "schema_valid": 0,
@@ -267,6 +201,7 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
                 pdf_path, extractor, max_pages, emit, packets=packets, document_scope=document_scope,
                 source_identifiers=source_identifiers, claims_per_packet=claims_per_packet, packet_results=packet_results,
                 bibliography=pdf_bibliography(pdf_path, inspection=pdf_inspection),
+                scope_instructions=reference.extraction_instructions(),
                 extraction_mode=settings.extraction_mode, target_words=settings.extraction_target_words,
                 resume_cache_dir=output_dir if resume else None,
             )
@@ -288,7 +223,7 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
                       rejection_counts=extraction_rejection_counts, canonical_duplicates=canonical_duplicates)
     save_checkpoint(output_dir, checkpoint)
     tuples = "\n".join(
-        f"<{item['subject']}, {item['relation']}, {item['object']}, {item['subject_type']}, {item['object_type']}>\n"
+        f"<{item['subject']}, {item['relation']}, {item['object']}>\n"
         f"# evidence: \"{item['source_evidence_span']}\""
         for item in candidates
     )
@@ -297,109 +232,70 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
     save_rows(output_dir / "schema_valid_candidates.jsonl",
                 [{"candidate_id": item["candidate_id"]} for item in structurally_valid])
     emit("info", f"Structural checks accepted {len(structurally_valid)}/{len(candidates)} candidates; "
-         "relations are open and entity labels are provisional")
+         + ("ontology grounding is paused and classifications are not assessed" if ONTOLOGY_GROUNDING_PAUSED
+            else "ontology classification is deferred to grounding"))
 
-    for candidate in structurally_valid:
-        candidate.pop('semantic_validation', None)
-        for role in ('subject', 'object'):
-            candidate[f'{role}_normalization'] = normalize_entity(candidate[role], candidate[f'{role}_type'])
-    save_rows(output_dir / 'candidates.jsonl', candidates)
-    emit("stage", f"Checking source fidelity and project scope for {len(structurally_valid)} claims")
-    _validate_sources(candidates, structurally_valid, packets, output_dir, settings,
-                      task_clients['source'], emit, resume)
-    finish_stage("source_validation")
-    emit('stage', 'Assembling provisional pathways from PDF-supported, in-scope claims before external evidence assessment')
-    provisional = assemble_pathways(ONTOLOGY_DIR, task_clients['pathway_assembly'], settings, emit, provisional=True)
-    finish_stage('provisional_assembly')
-    source_entailed = [candidate for candidate in structurally_valid
-                       if source_fidelity_decision(candidate) == "entailed"]
-    save_rows(output_dir / "source_entailed_candidates.jsonl",
-                [{"candidate_id": item["candidate_id"]} for item in source_entailed])
-    # Historical per-claim results remain on disk for audit only. No new
-    # individual external assessments or trust-score updates are performed.
-    results = []
-    emit('stage', 'Assessing neighboring claims and their local connections against external research')
-    pathway_stats = run_pathway_assessment(ONTOLOGY_DIR, output_dir, provisional, task_clients, settings, emit,
-        **({'assessment_id': external_assessment_id} if external_assessment_id else {}))
-    finish_stage('neighbor_external_validation')
-    graph = json.loads((output_dir / 'graph.json').read_text(encoding='utf-8'))
-    source_graph = json.loads((output_dir / 'source_graph.json').read_text(encoding='utf-8'))
-    audit_graph = json.loads((output_dir / 'audit_graph.json').read_text(encoding='utf-8'))
-    paths = []
-    assembly = provisional
-    evaluation_path = write_evaluation_sample(output_dir, candidates, [], preserve_existing_labels=resume)
-    finish_stage('graph_building')
-    summary = {"pdf": pdf_path.name, "pdf_sha256": file_hash(pdf_path), "model": settings.extraction_model,
-               "extraction_model": settings.extraction_model, "validation_model": settings.external_model, "completed_at": utc_now(),
-               "external_phase_models": settings.external_phase_models,
-               "run_status": "completed_with_warnings" if failed_packets or pathway_stats['outcomes'].get('assessment_incomplete') or not pathway_stats['coverage']['complete_pair_coverage'] else "completed",
-               "retrieval_pending": pathway_stats['outcomes'].get('assessment_incomplete',0),
-               "external_incomplete": pathway_stats['outcomes'].get('assessment_incomplete',0),
-               "evidence_index": pathway_stats["evidence_index"],
-               "extraction_coverage": {"complete": not failed_packets, "total_packets": len(packet_results),
-                                       "completed_packets": completed_packets, 'failed_packets': failed_packets,
-                                       'unit': 'targets' if settings.extraction_mode == 'target_context' else 'packets',
-                                       'exhaustive_claim_recall': False,
-                                       'claim_limit_reached_regions': sum(row.get('claim_limit_reached', False) for row in packet_results)},
-               "schema_version": SCHEMA_VERSION,
-               "application_version": APPLICATION_VERSION,
-               "resumed": resume,
-               "llm_transport": 'api',
-               "json_repair_attempts": settings.json_repair_attempts,
-               "json_regeneration_attempts": settings.json_regeneration_attempts,
-               "response_recovery_policy": "model_edit_or_original_input_regeneration; no_local_corrections",
-               "llm_reasoning_policy": {task: model_reasoning_policy(model, settings.task_thinking[task]) for task, model in settings.task_models.items()},
-               "claims_per_packet": claims_per_packet,
-               "extraction_mode": checkpoint.get('extraction_mode', 'whole_packet'),
-               "extraction_target_words": checkpoint.get('extraction_target_words', settings.extraction_target_words),
-               "thinking": settings.task_thinking,
-               "extraction_generation_budget": checkpoint.get('extraction_generation_budget', settings.extraction_min_output_budget),
-               "targeting_version": checkpoint.get('targeting_version'),
-               "external_judgement_policy": settings.external_judgement_mode,
-               "knowledge_building_mode": mode, "external_validation_target": "neighboring_claims",
-               **({'external_assessment_id': external_assessment_id} if external_assessment_id else {}),
-               "pathway_validation": pathway_stats, "neighbor_max_pairs": settings.neighbor_max_pairs,
-               "external_top_k": articles_per_pathway,
-               "external_top_chunks": settings.external_top_chunks,
-               "external_input_max_characters": settings.external_input_max_characters,
-               "helper_model": settings.query_model,
-               "model_policy": "primary_only",
-               "task_models": settings.task_models,
-               "models_used": sorted({item['model'] for item in model_requests}),
-               "validation_batch_size": settings.validation_batch_size,
-               "retrieval_workers": settings.retrieval_workers,
-               "wall_elapsed_seconds": round(time.monotonic() - run_started, 3),
-               "stage_timings_seconds": stage_timings,
-               "retrieval_cache": pathway_stats["retrieval_cache"],
-               "embedding_cache_hits": pathway_stats["embedding_cache_hits"],
-               "canonical_duplicates_removed": canonical_duplicates,
-               "llm_calls": llm_call_summary(),
-               "embedding_model": settings.embedding_model,
-               "cross_encoder_model": settings.cross_encoder_model,
-
-               "extracted": len(candidates), "schema_valid": len(structurally_valid),
-               "semantic_accepted": 0, "semantic_stage": "removed",
-               "semantic_type_normalized": 0, "semantic_needs_review": 0, "semantic_rejected": 0,
-               **source_assessment_counts(candidates),
-               "externally_evaluated": sum(r.get('validation_status') not in
-                   {None, 'pipeline_error', 'external_in_progress', 'retrieval_pending'} for r in results),
-               "extraction_rejections": sum(value for key, value in extraction_rejection_counts.items()
-                                            if key != "overlap_occurrence_deduplicated"),
-               "extraction_overlap_duplicates_removed": extraction_rejection_counts.get("overlap_occurrence_deduplicated", 0),
-               "extraction_rejection_counts": extraction_rejection_counts,
-               "document_scope": document_scope,
-               "graph": graph["counts"],
-               "source_graph": source_graph["counts"],
-               "audit_graph": audit_graph["counts"],
-               "evaluation_sample": evaluation_path.name,
-               "reasoning_paths": len(paths)}
-    summary['pathway_assembly'] = {'scope':'global', **assembly['counts'],
-                                   'model':settings.pathway_assembly_model, 'causal_chain_validated':False}
-    (output_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    (output_dir / "reasoning_paths.json").write_text(json.dumps(paths, ensure_ascii=False, indent=2), encoding="utf-8")
-    emit(
-        "success",
-        f"Finished: {len(candidates)} source claims; {pathway_stats['assessed_pairs']} neighboring pairs assessed; "
-        f"{pathway_stats['outcomes'].get('connection_supported', 0)} locally supported connections",
-    )
+    if ONTOLOGY_GROUNDING_PAUSED:
+        emit('info', GROUNDING_PAUSED_MESSAGE)
+        provisional = {'counts': {'grounded_mentions': 0, 'mapped_claims': 0}}
+        grounding_summary = {'status': 'not_run', 'assessed': False, 'claims': 0,
+            'mapped_claims': 0, 'not_assessed': len(candidates)}
+    else:
+        provisional, grounding_summary = run_grounding(ONTOLOGY_DIR, output_dir, structurally_valid,
+            task_clients['pathway_assembly'], settings, emit, reference=reference)
+        finish_stage('ontology_grounding' if POST_GROUNDING_STAGES_PAUSED else 'ontology_grounding_and_reasoning')
+    graph = publish_unvalidated_views(output_dir, provisional)
+    evaluation_path = None
+    if not POST_GROUNDING_STAGES_PAUSED:
+        evaluation_path = write_evaluation_sample(output_dir, candidates, [], preserve_existing_labels=resume,
+                                                  validation_paused=True)
+        finish_stage('graph_building')
+    summary = {
+        'pdf': pdf_path.name, 'pdf_sha256': file_hash(pdf_path),
+        'completed_at': utc_now(), 'schema_version': SCHEMA_VERSION,
+        'application_version': APPLICATION_VERSION,
+        'extraction_contract_version': EXTRACTION_CONTRACT_VERSION,
+        'run_status': 'completed_with_warnings' if failed_packets else 'completed',
+        **paused_metadata(), 'resumed': resume,
+        'extracted': len(candidates), 'schema_valid': len(structurally_valid),
+        'source_entailed': 0, 'source_unsupported': 0, 'source_needs_review': 0,
+        'source_not_assessed': len(candidates),
+        'source_project_scope': {'in_scope': 0, 'out_of_scope': 0,
+                                 'needs_review': 0, 'not_assessed': len(candidates)},
+        'pathway_eligible_claims': grounding_summary['mapped_claims'],
+        'ontology_grounding': grounding_summary,
+        'semantic_stage': 'removed', 'semantic_accepted': 0,
+        'extraction_model': settings.extraction_model, 'model': settings.extraction_model,
+        'task_models': active_models, 'model_policy': 'primary_only',
+        'models_used': sorted({item['model'] for item in model_requests}),
+        'llm_calls': llm_call_summary(), 'thinking': {task: settings.task_thinking[task] for task in active_models},
+        'llm_reasoning_policy': {task: model_reasoning_policy(model, settings.task_thinking[task])
+                                 for task, model in active_models.items()},
+        'llm_transport': 'api', 'claims_per_packet': claims_per_packet,
+        'extraction_mode': settings.extraction_mode,
+        'extraction_target_words': settings.extraction_target_words,
+        'extraction_generation_budget': settings.extraction_min_output_budget,
+        'targeting_version': checkpoint.get('targeting_version'),
+        'extraction_coverage': {'complete': not failed_packets, 'total_packets': len(packet_results),
+                                'completed_packets': completed_packets, 'failed_packets': failed_packets,
+                                'unit': 'targets' if settings.extraction_mode == 'target_context' else 'packets',
+                                'exhaustive_claim_recall': False,
+                                'claim_limit_reached_regions': sum(row.get('claim_limit_reached', False) for row in packet_results)},
+        'extraction_rejections': sum(value for key, value in extraction_rejection_counts.items()
+                                    if key != 'overlap_occurrence_deduplicated'),
+        'extraction_rejection_counts': extraction_rejection_counts,
+        'extraction_overlap_duplicates_removed': extraction_rejection_counts.get('overlap_occurrence_deduplicated', 0),
+        'canonical_duplicates_removed': canonical_duplicates,
+        'document_scope': document_scope, 'graph': graph['counts'],
+        'pathway_assembly': {'scope': 'global', **provisional['counts'],
+                             'model': settings.pathway_assembly_model, 'causal_chain_validated': False,
+                             'validation_status': 'not_assessed',
+                             'status': 'paused' if POST_GROUNDING_STAGES_PAUSED else 'completed'},
+        'stage_timings_seconds': stage_timings,
+        'wall_elapsed_seconds': round(time.monotonic() - run_started, 3),
+        'evaluation_sample': evaluation_path.name if evaluation_path else None, 'reasoning_paths': 0,
+    }
+    (output_dir / 'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
+    emit('success', (f"Finished: {len(candidates)} extracted claims. Use Run grounded claims for manual ontology grounding. Later stages remain paused."
+        if ONTOLOGY_GROUNDING_PAUSED else f"Finished: {len(candidates)} extracted claims; {provisional['counts']['grounded_mentions']} grounded endpoint mentions. Scientific validation was not run."))
     return summary

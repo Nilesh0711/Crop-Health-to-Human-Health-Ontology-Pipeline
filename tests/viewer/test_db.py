@@ -160,3 +160,4 @@ def test_build_publication_db_and_read(mock_snapshot):
     assert len(jobs) == 1
     assert jobs[0]['id'] == 'job-1'
     assert jobs[0]['status'] == 'completed'
+

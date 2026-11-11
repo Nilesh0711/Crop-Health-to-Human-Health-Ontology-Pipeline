@@ -1,135 +1,67 @@
-# Direct extraction modes
+# Direct evidence-linked extraction
 
-New document runs default to **Target / context**. Run settings also offer
-**Whole packet**, the previous extraction algorithm with its priority evidence
-index. Both use the assigned primary model and the existing schema, exact PDF
-anchors, duplicate handling and downstream validation. Relations are open:
-common names are suggestions, not a whitelist. JSON/schema validation checks
-structure and provisional label names, not biological type compatibility.
-`Unresolved` keeps uncertain classifications for evidence assessment.
-`PlantPathogen` and `PathogenTrait` distinguish organisms/strains and their
-measured characteristics from crop diseases and crop traits.
+## Current contract and defaults
 
-Heuristic concerns about generic entity labels, comparisons, modality, captions
-or association are stored as `extraction_review_hints`, not rejections. The
-extractor no longer rewrites disease/container identities, removes restrictions
-or changes certainty locally. Source fidelity remains a model decision; the
-source model also judges project scope, while neighboring-pair external assessment
-judges contextual entity roles and research support. Original source anchors,
-sentence IDs and target ownership still gate
-admission. Scientific assessment can retain a claim for review or exclude it.
+Contract v10 requires subject, object, relation, qualifiers and evidence_sentence_ids.
+Optional subject_context/object_context retain endpoint restrictions; optional type
+hints are provisional, not ontology identity. No claim_text, certainty labels or
+copied passages are requested. Code retains exact original evidence and provenance.
 
-Runtime examples use abstract Crop C / Disease D / Compound T entities. Real
-paper claims belong in test fixtures and audit data, not reusable instructions.
-There is no list of previously seen endpoint phrases or editorial sentences
-that marks claims for special scope review or suppresses their priority index.
-Whole-packet attention retains general pathway classes and relation cues;
-target/context still assigns every parsed source sentence independently of
-keywords. Scope and scientific meaning remain evidence-model decisions.
+DeepSeek Flash remains the primary model without fallback. Extraction Thinking is
+Off, targets default to 200 words, two workers and a 50,000-token generation allowance.
+Zero claims_per_packet means no numeric claim-count cap; generation remains finite.
+Whole-packet mode remains available, alongside default target/context extraction.
 
-In target mode, `targeting.py` divides each original reading packet into smaller
-regions of about 800 words. Paragraphs stay together when they fit; oversized
-paragraphs split at sentence boundaries. Targets stay within chapters; nearby
-sections may share a target while retaining each sentence's heading. Each
-distinct parsed sentence occurrence belongs to one target,
-including sentences with no domain keywords. Overlapping reading packets do
-not cause the same sentence to be assigned twice. Targets cannot repair text
-or paragraph boundaries already lost by the PDF parser.
+## Target findings and supporting context
 
-One model call receives a marked `extraction_target` and a separate
-`reading_context_only` block containing the rest of the original packet.
-Original sentence numbers, page numbers and headings are retained. The model
-may use the context to interpret referents, crop identity and restrictions;
-all direct evidence sentence IDs must be unique, ascending and inside the target
-(1-3 IDs). Non-adjacent fragments retain their original pages and IDs, explicit
-gap markers and every intervening sentence for source validation. They are not
-represented as one continuous source quotation.
-There is no preliminary LLM relevance/discovery pass. Context-only findings
-are rejected, including after response regeneration or syntax repair.
+Targeting v5 uses policy bounded-sentence-supporting-evidence-v3. Each parsed
+occurrence has one owning extraction target. Nearby context uses complete
+sentences, a shared hard allowance of 250 words, and at most two neighboring
+paragraphs per side within the same chapter. Closest sentences are selected
+first, with antecedent-side priority on ties. A sentence that cannot fit blocks
+that side; remote text is not substituted. A paragraph may be partially selected,
+but a source sentence is never cut. Missing antecedents must not be guessed.
 
-The default is **all eligible claims**, with no numeric claim-count cap. The
-optional run limit means **maximum claims per extraction call**: per
-target in target mode or per reading packet in whole-packet mode. Target mode
-can therefore produce more calls and more candidates. An empty eligible-claim
-array is valid. All targets being processed does not prove exhaustive claim
-recall; the ledger records when the claim cap is reached.
+Prompts distinguish target finding IDs from support-only IDs. A claim must cite
+at least one target sentence stating its finding; supplied context can support
+antecedents and restrictions, not a separate finding. Never append an unrelated
+target ID to satisfy ownership. An offline full-context comparison mode remains
+available for research; it is not the active pipeline policy.
 
-## Runtime configuration
+Response validation enforces valid JSON, required types/keys and unique ascending
+supplied IDs. Unknown IDs remain structural errors eligible for bounded recovery.
+Context-only findings are quarantined individually in extraction_rejections.jsonl,
+with their original proposed claim and source IDs. They do not regenerate valid
+siblings or abort a completed response. Coverage records expose the quarantine
+count; processing completion is not exhaustive claim recall or scientific validation.
 
-Frontend: **Run details → Run settings → Claim extraction**.
+## Qualifiers and source anchoring
 
-| API run option | Default | Allowed values |
-| --- | --- | --- |
-| `extraction_mode` | `target_context` | `target_context`, `whole_packet` |
-| `extraction_target_words` | 800 | 200–2,000 |
-| `extraction_generation_budget` | 24,576 | 8,192–32,768 |
-| `claims_per_packet` | 0 | 0 = all eligible claims; 1–8 = optional maximum per call |
+Only crop_or_species, population, condition, comparator and metric are allowed.
+Use source-stated strings, preferably omitting unused keys. Explicit null in an
+optional qualifier is accepted as absence and omitted from the stored qualifier
+projection, never converted to the text "None". Numeric, object and list values
+remain invalid. Raw model responses are preserved without edits or JSON repair.
 
-Backend environment defaults are `EXTRACTION_MODE`, `EXTRACTION_TARGET_WORDS`
-and `EXTRACTION_MIN_OUTPUT_BUDGET`. The generation allowance is shared by
-reasoning and final answer tokens; it is not an answer reservation or a promise
-of provider context capacity. Thinking defaults to Off and can be enabled in
-the assigned model's runtime settings.
-The default initial allowance is 24,576 tokens. Existing single-action
-structured-response recovery can raise it to the configured regeneration cap
-(32,768 by default). There are no model substitutions or unbounded retries.
-Uncapped extraction requests a larger final-answer allowance based on target
-size; it removes the JSON array `maxItems` limit. Physical generation limits
-still apply, and truncation fails visibly after bounded recovery. No claim of
-exhaustive scientific recall follows from removing the cap.
+Endpoint anchors must occur within a selected source sentence. Existing bounded
+coordination and prepositional locators preserve literal source spans. Document-
+defined abbreviation equivalents may also anchor, with definition provenance;
+ambiguous/guessed expansions remain rejected. Matching can tolerate PDF line-wrap
+hyphenation while retaining original offsets. No scientific synonym dictionary,
+unrestricted fuzzy matching or deterministic scientific rewriting is used.
 
-Each result retains original sentence numbers, exact source passage, surface
-mentions, source page and heading, surrounding context, qualifiers and a short
-claim restatement. The restatement is not substituted for source evidence.
-Connected direct edges and explicit local references are extracted separately;
-the [Pathway Assembly stage](../pathway_assembly/README.md) aligns shared entities
-globally before neighboring-pair external validation. Only source-entailed, explicitly
-in-scope claims enter that provisional graph.
+Atomicity must preserve joint causes, restrictive quantities, chemical/state
+identity, modality, comparisons and numerical applicability. General clause-bound
+review warnings can hold suspected omissions. They do not establish scientific
+truth or restore a source-fidelity model stage. Grounding still runs on held claims,
+but holds prevent automatic concept sharing and downstream eligibility.
 
-## Persistence and compatibility
+## Saved runs and audit
 
-- Coverage records retain target progress and original packet identity. Activity
-  keeps researcher milestones and warnings/errors; model diagnostics retain
-  provider-reported input tokens and generation usage, not character estimates.
-- `extraction_packets.jsonl` stores target IDs, assigned original sentence IDs,
-  completion/failed/not-started status and claim-limit flags. It is also saved
-  when extraction stops on a primary-provider error.
-- `extraction_contexts.jsonl` preserves original reading packets for claim
-  repair. Candidate provenance retains the original packet/evidence numbers
-  plus its target ID. Claim repair remains one explicitly targeted claim action.
-- Checkpoints and summaries record the mode and target size. Resume preserves
-  that policy and rejects explicit changes; use a new run to change it. Runs
-  predating these fields are treated as whole-packet extractions. They are not
-  relabelled as target/context work.
-- Failed extraction is not resumable as a completed extraction. The v36 policy
-  requires a fresh run for older checkpoints, since previously omitted claims
-  cannot be restored by resuming validation alone. Historical artifacts remain.
-
-Offline tests cover sentence ownership, context preservation, PDF anchors and
-conditions, out-of-target rejection, bounded same-model regeneration, whole-
-packet compatibility, persisted failure coverage, runtime API options and
-historical resume behavior. These are contract checks, not evidence of improved
-scientific accuracy; compare real-document results before drawing that conclusion.
-
-## Code ownership
-
-`extract_claims` coordinates focused helpers for packet requests/coverage,
-proposed fields, exact evidence binding, citation linking, overlap merging and
-candidate materialization. `targeting.py` owns sentence assignment,
-`contract.py` owns the response schema, and `deduplication.py` removes genuine
-same-source duplicates. This refactor preserves prompts, schemas, budgets,
-identifiers, provenance and scientific decisions. New runs no longer create a
-standalone semantic vote or empty semantic ledgers.
-
-## Compact model output
-
-Claim_text remains required and source-verified. All evidence anchors, sentence
-IDs, modality, provisional types and actual restrictions remain. The response can
-omit absent source_context and empty qualifier entries; qualifiers={} is valid.
-Code fills empty internal defaults without guessing scientific content. Missing
-claim_text/proof or unknown qualifier keys are still invalid. Existing compatible
-saved extraction can resume; these changes apply to newly required model calls.
-
-## Atomic re-extraction and explicit referents (v49)
-
-Extraction instructions distinguish explicit same-section coreference from invented bridges. For a repairable claim, the deliberate Re-extract atomic claims action extracts independent propositions from only its selected evidence sentences, source-checks the children and retains the parent/history. Superseded parents stay auditable and leave provisional assembly. New IDs and a durable journal protect interrupted checkpoint publication. Saved extraction is not silently rewritten. See [v49](../../../docs/protocols/proof_audit_atomic_reextraction_and_layout.md).
+Raw model artifacts, selected target/context IDs, exact fragments, citations,
+anchor adjustments and review warnings remain inspectable. Contract and targeting
+changes invalidate incompatible cached responses. Start a fresh extraction for
+the new context policy; older completed artifacts remain preserved for audit.
+The normal pipeline extracts then grounds. Manual Run grounded claims reuses a
+completed extraction without fixing its scientific framing. All post-grounding
+stages remain paused.

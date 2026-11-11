@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:po="http://purl.obolibrary.org/obo/po#">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#created_by"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#creation_date"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#TraitNet"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000051 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000051">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>has part</rdfs:label>
+        <rdfs:label xml:lang="en">has part</rdfs:label>
+        <rdfs:label>has_part</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0009008 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0009008">
+        <rdfs:label>plant organ</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025007 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025007">
+        <rdfs:label>collective plant organ structure</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/PO_0025497"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PO_0009008"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <oboInOwl:hasExactSynonym>集合植物器官構造 (Japanese, exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:created_by>rwalls</oboInOwl:created_by>
+        <ns4:IAO_0000115>A collective plant structure (PO:0025497) that is a proper part of a whole plant (PO:0000003), and is composed of two or more adjacent plant organs (PO:0009008) and the associated portions of plant tissue (PO:0009007).</ns4:IAO_0000115>
+        <rdfs:comment>Organs can be of the same type or different types. Examples include flower (PO:0009046), perianth (PO:0009058), and inflorescence (PO:0009049). See also collective organ part structure (PO:0025269), for plant structures composed of parts of multiple organs, but no complete plant organs. This was formerly named collective plant structure.</rdfs:comment>
+        <oboInOwl:id>PO:0025007</oboInOwl:id>
+        <oboInOwl:creation_date>2010-02-09T04:12:11Z</oboInOwl:creation_date>
+        <oboInOwl:hasDbXref>PO_GIT:63</oboInOwl:hasDbXref>
+        <oboInOwl:hasOBONamespace>plant_anatomy</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasExactSynonym>estructura vegetal colectiva de &amp;#243rgano (Spanish, exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#TraitNet"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025497 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025497">
+        <rdfs:label>collective plant structure</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

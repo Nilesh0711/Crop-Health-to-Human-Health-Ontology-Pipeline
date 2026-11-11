@@ -1,20 +1,51 @@
 # Model requests and recovery
 
-The transport is direct OpenCode inference. Stage selectors
-use DeepSeek Flash for extraction/source/per-paper external judgement, MiMo Flash
-for queries and pathway assembly, and Muse Spark 1.3 Contributor for cross-paper synthesis. `opencode-go/<model>` selects
+The transport is direct OpenCode inference. The active ontology-grounded pipeline
+uses DeepSeek Flash for extraction and ontology grounding. Source fidelity and
+external scientific validation are paused. `opencode-go/<model>` selects
 `https://opencode.ai/inference/go/openai/v1/chat/completions`. The request body uses the bare model
 ID. Authorization stays in the backend, using an environment key or the current
 Windows user's Credential Manager. There is no automatic transport fallback.
 
 The implementation follows [OpenCode inference](https://opencode.ai/v2/docs/console/api/inference/)
 and [Go endpoints](https://opencode.ai/v2/docs/console/go/#endpoints).
-Small authenticated configuration probes found that MiMo Flash/Pro and Muse accept
-`json_schema`, while DeepSeek rejects it and accepts `json_object`. Native
-format requests supplement local validation; gateway acceptance alone does not
-prove every schema keyword is enforced upstream.
+DeepSeek accepted native `json_schema` on 7 November 2026. On 8 November the
+same route rejected that format as unavailable. A live probe verified
+`json_object`, which is now DeepSeek's explicit default. Every answer still
+passes the full application schema, duplicate-ID and evidence-reference checks;
+the schema is included in its instructions. Other known schema-capable models
+retain their defaults, and explicit format overrides remain honored. Requests
+never automatically retry with another format or model. Native format requests
+supplement local validation; gateway acceptance alone does not prove every
+schema keyword is enforced upstream.
+
+The DeepSeek generation schema omits the observed unsupported `uniqueItems`
+grammar keyword. Full application-side validation still rejects duplicate IDs;
+the original schema is never mutated. This is provider constraint compatibility,
+not response repair, a model fallback or a relaxed evidence check.
+
+Ontology grounding defaults to its existing JSON contract through `chat_json`,
+with every approved application class supplied to each endpoint. Explicit TSV
+comparison mode uses five-column records through `chat_text` and omits JSON
+response mode. Both retain the same model, provenance, structural checks and
+request accounting. Extraction and JSON grounding use the native schema behavior
+described above. See the
+[grounding protocol](../stages/ontology_grounding/README.md).
 
 ## Bounded recovery
+
+Compatible schemas, concise stage instructions and adequate first-call budgets
+are the primary safeguards. Recovery is exceptional, not a required pipeline
+pass. Flat grounding requires every supplied record ID exactly once, with five
+tab-separated fields. The default JSON route keeps its reason-first
+binding layout.
+Unresolved mappings are valid answers and do not themselves trigger recovery.
+
+Invalid plain rows may use one fresh same-model response from the original input
+as the last fallback. They never go through JSON syntax repair or automatically
+switch output formats. Both recovery mechanisms are disabled by `compare-formats`
+when measuring first-pass compliance. The detailed JSON repair rules below apply
+to JSON-output calls only.
 
 External neighboring-pair requests reserve at least **28,192 generation tokens** on the
 first attempt (`EXTERNAL_MIN_OUTPUT_BUDGET`). This is shared headroom for the
@@ -41,6 +72,9 @@ claim about the provider's maximum limit and does not guarantee completion.
    not the malformed response. Structure errors do not increase the generation
    budget merely to correct nesting. Extra terminal closing delimiters alone
    remain eligible for the formatting path.
+   An unescaped control character inside a quoted string also requires a fresh
+   response: the separator-only patcher cannot safely reinterpret string
+   contents. Escaped controls and whitespace outside strings remain valid.
 4. For syntax errors, ask the same model ONCE to propose up to eight unique
    before/after edits. Code applies only the model's proposed text. It validates
    preservation of keys, scientific values, quotations and item binding. Permitted
@@ -99,6 +133,12 @@ this historical wording for display and shows the recorded request model when
 available. Original log records and saved findings remain unchanged.
 
 ## What current responses describe
+
+Active extraction returns compact evidence-linked claims. Ontology grounding
+assesses application scope and maps subject, object and relation to supplied
+definitions; it retains unresolved choices and does not establish scientific
+truth. The following source/paper/synthesis contracts describe paused scientific
+validation, not extra calls in the active grounding run.
 
 Each source result assesses one fixed atomic claim, with three claims batched
 per request by default. A paper request assesses two neighboring claims and their

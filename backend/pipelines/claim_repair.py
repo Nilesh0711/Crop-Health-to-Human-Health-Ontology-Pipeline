@@ -1,6 +1,7 @@
 """Coordinate deliberate source repair or atomic re-extraction, preserving unrelated claims."""
 
 from __future__ import annotations
+from backend.config.pipeline import VALIDATION_STAGES_PAUSED, PAUSED_MESSAGE
 from dataclasses import replace
 
 import json
@@ -60,7 +61,13 @@ def _atomic_children(original, proposed, candidates, packet, clients, settings, 
 
 
 def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
-    """Rebuild views from saved rows, preserving unrelated claims and gold labels."""
+    """Preserve paused results; historical rebuilding requires restored validation."""
+    if VALIDATION_STAGES_PAUSED:
+        from backend.pipelines.unvalidated import paused_metadata
+        path = output / 'summary.json'
+        summary = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+        return {**summary, **paused_metadata(), 'source_entailed': 0,
+                'source_unsupported': 0, 'source_needs_review': 0, 'pathway_validation': None}
     candidates = read_jsonl(output / 'candidates.jsonl')
     if not candidates:
         return None
@@ -147,7 +154,9 @@ def refresh_saved_views(pdf: Path, output: Path) -> dict[str, Any] | None:
 
 def run_claim_action(pdf, output, candidate_id, action, articles_per_pathway, emit, thinking=None,
                      neighbor_max_pairs=None):
-    """Repair PDF fidelity, then reassess affected whole routes; never judge one edge externally."""
+    """Archived source correction and revalidation entry point."""
+    if VALIDATION_STAGES_PAUSED:
+        raise RuntimeError(PAUSED_MESSAGE)
     if action not in {'repair','reextract'}:
         raise ValueError('Individual-claim external validation is retired; resume pathway validation')
     candidates = read_jsonl(output / 'candidates.jsonl')

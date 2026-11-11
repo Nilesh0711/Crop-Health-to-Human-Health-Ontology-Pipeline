@@ -21,6 +21,7 @@ export default function ResearchNetwork({ assembly, assessments, graph, dataMode
   onViewClaims, onAssemble, busy, readOnly, pathwayOnly, onDepthChange, onLoadMore, onOpenSettings,
   focusedPathwayId, onClearFocus, historicalAssembly, historicalPaths, onHistoricalDepthChange, onHistoricalLoadMore, api }) {
   const local = assessments?.policy === 'neighbor-pair-v1'
+  const paused = assembly?.validation_stages_paused === true
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState('all')
   const [outcome, setOutcome] = useState('all')
@@ -61,7 +62,7 @@ export default function ResearchNetwork({ assembly, assessments, graph, dataMode
   const selectedPairs = assessments?.coverage?.selected_pairs ?? assessments?.coverage?.selected_pathways ?? 0
   const reusedPairs = assessments?.coverage?.reused_pair_ids?.length ?? 0
   const crossPaperContext = displayedGraph.edges.some(edge => paperKey && edge.document_key && edge.document_key !== paperKey)
-  const layerLabels = { assembled: 'Aligned candidate network', main: local ? 'Locally supported connection graph' : 'Saved supported graph', source: 'Source PDF relations', audit: 'All extracted relations · audit' }
+  const layerLabels = { assembled: 'Aligned candidate network', main: paused ? 'Saved graph · inspect evidence states' : local ? 'Locally supported connection graph' : 'Saved supported graph', source: paused ? 'Historical source-supported graph' : 'Source PDF relations', audit: 'All extracted relations · audit' }
 
   function choose(row, openEvidence = false) {
     setActiveKey(row.key)
@@ -111,6 +112,7 @@ export default function ResearchNetwork({ assembly, assessments, graph, dataMode
 
   if (!assembly && !assessments) return <div className="network-loading-loop" role="status"><LoaderCircle size={26} className="spin" /><p>Loading saved network and pathway findings…</p></div>
   return <section className="research-network" aria-label="Research network and pathways">
+    {paused && <p className="soft-note" role="note">Validation is paused. This graph contains unvalidated extracted claims and candidate connections. Earlier assessments are shown only as historical findings.</p>}
     <div className="network-heading">
       <div><h3>Explore connections. Review the evidence.</h3><p>{local ? 'Select a chain or neighboring pair to highlight its claims and inspect the evidence.' : 'Select a pathway to highlight its route, then open its evidence.'}</p></div>
       <div className="network-heading-controls">
@@ -127,7 +129,7 @@ export default function ResearchNetwork({ assembly, assessments, graph, dataMode
       </div>
     </div>
     <dl className="network-metrics" aria-label="Network overview">
-      {[[scopedGraph.edges.length, 'Source-grounded claims'], [scopedGraph.nodes.length, 'Aligned entities'], [scopedRows.length, local ? 'Chains and local pairs' : 'Loaded pathways'], [counts.supported, local ? 'Locally supported pairs' : 'Currently fully supported']].map(([value, label]) =>
+      {[[scopedGraph.edges.length, paused ? 'Unvalidated claims' : 'Source-grounded claims'], [scopedGraph.nodes.length, 'Aligned entities'], [scopedRows.length, local ? 'Chains and local pairs' : 'Loaded pathways'], [counts.supported, local ? 'Locally supported pairs' : 'Currently fully supported']].map(([value, label]) =>
         <div key={label}><dd>{value}</dd><dt>{label}</dt></div>)}
     </dl>
     {staleCount > 0 && <div className="network-alert" role="status"><CircleAlert size={17} /><p><strong>{staleCount} saved assessment{staleCount === 1 ? ' needs' : 's need'} refresh.</strong> The network changed after assessment. Earlier findings remain available, but are not counted as currently supported.</p></div>}

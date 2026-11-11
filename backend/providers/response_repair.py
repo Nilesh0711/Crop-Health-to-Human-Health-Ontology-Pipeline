@@ -4,7 +4,8 @@ import re
 
 from jsonschema import Draft202012Validator
 
-from backend.providers.structured_output import StructuredOutputError, SchemaValidationError, parse_json_object
+from backend.providers.structured_output import StructuredOutputError, SchemaValidationError, NullAnnotationError, parse_json_object
+from backend.providers.schema_annotations import eligible_null_paths
 
 
 PATCH_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['edits'],
@@ -47,7 +48,11 @@ def validate_schema(value, schema):
                 detail = f': value {error.instance}; allowed {error.validator} {error.validator_value}'
             elif error.validator in {'minItems', 'maxItems'} and isinstance(error.instance, list):
                 detail = f': returned {len(error.instance)} items; allowed {error.validator} {error.validator_value}'
-            raise SchemaValidationError(f'Model response violates schema at {path}{detail} ({error.validator})')
+            message = f'Model response violates schema at {path}{detail} ({error.validator})'
+            removable = eligible_null_paths(errors)
+            if removable:
+                raise NullAnnotationError(message, removable)
+            raise SchemaValidationError(message)
 
 
 _TOKEN = re.compile(r'"(?:[^"\\\x00-\x1f]|\\["\\/bfnrt]|\\u[0-9a-fA-F]{4})*"'
@@ -158,7 +163,9 @@ Never reorganize objects/arrays, change evidence strings or complete a missing s
 Preserve every enclosing object and array; removing multiple braces can change field ownership.
 If the proposed edits cannot produce complete JSON without restructuring, return {"edits":[]}.
 Do not interpret or reassess evidence. If no safe repair exists, return {\"edits\":[]}.
-Each before substring must occur exactly once; include neighboring text to disambiguate it."""
+Each before substring must occur exactly once; include neighboring text to disambiguate it.
+Every after substring must differ from before. Never repeat an edit or submit an unchanged replacement;
+return {"edits":[]} when no permitted correction can be proposed."""
 
 
 def repair_input(content, schema, error):

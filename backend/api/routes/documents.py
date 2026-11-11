@@ -9,6 +9,7 @@ from fastapi import File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from backend.shared.storage import stable_hash
 from backend.shared.jobs import ACTIVE_STATUSES
+from backend.config.pipeline import VALIDATION_STAGES_PAUSED
 
 
 class DocumentsRoutes:
@@ -40,7 +41,7 @@ class DocumentsRoutes:
                                "summary": summary, "document_scope": document_scope,
                                "can_resume": (saved_status in {'failed', 'stopped'} or bool((summary or {}).get('retrieval_pending'))
                                               or bool(((summary or {}).get('pathway_validation') or {}).get('coverage',{}).get('has_more'))) and self.workspace.resume_available(output),
-                               "can_redo_external_validation": self.workspace.resume_available(output),
+                               "can_redo_external_validation": not VALIDATION_STAGES_PAUSED and self.workspace.resume_available(output),
                                "latest_job_id": state.get('id'),
                                "active_job_id": active["id"] if active else None})
         return items

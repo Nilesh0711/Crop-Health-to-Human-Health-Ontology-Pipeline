@@ -1,0 +1,70 @@
+@prefix app: <urn:soil-crop-health:> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+app:certainty a owl:DatatypeProperty ;
+    rdfs:label "source certainty" ;
+    obo:IAO_0000115 "Reported modality or epistemic certainty of the assertion in the source text." ;
+    rdfs:domain app:ScientificAssertion ;
+    rdfs:range xsd:string .
+
+app:citationText a owl:DatatypeProperty ;
+    rdfs:label "citation text" ;
+    obo:IAO_0000115 "Bibliographic citation string associated with the assertion." ;
+    rdfs:domain app:ScientificAssertion ;
+    rdfs:range xsd:string .
+
+app:numericValue a owl:DatatypeProperty ;
+    rdfs:label "numeric value" ;
+    obo:IAO_0000115 "A numeric value reported for a measurement, treatment level or effect size in the cited assertion." ;
+    rdfs:domain app:ScientificAssertion ;
+    rdfs:range xsd:decimal .
+
+app:ontology a owl:Ontology ;
+    rdfs:label "Soil-to-Crop Application Schema (Potato Nutrition Profile)" ;
+    rdfs:comment "Application bookkeeping and evidence provenance only; scientific vocabulary comes from upstream ontologies." .
+
+app:originalRelation a owl:DatatypeProperty ;
+    rdfs:label "original relation phrase" ;
+    obo:IAO_0000115 "Surface predicate phrase extracted from the source sentence prior to ontology property mapping." ;
+    rdfs:domain app:ScientificAssertion ;
+    rdfs:range xsd:string .
+
+app:qualifiers a owl:DatatypeProperty ;
+    rdfs:label "assertion qualifiers" ;
+    obo:IAO_0000115 "Structured experimental, anatomical, temporal, or cultivar qualifiers bounding an assertion." ;
+    rdfs:domain app:ScientificAssertion ;
+    rdfs:range xsd:string .
+
+app:sourceDocument a owl:DatatypeProperty ;
+    rdfs:label "source document" ;
+    obo:IAO_0000115 "Document key or DOI identifying the source paper." ;
+    rdfs:domain app:ScientificAssertion ;
+    rdfs:range xsd:string .
+
+app:sourcePage a owl:DatatypeProperty ;
+    rdfs:label "source page" ;
+    obo:IAO_0000115 "Page number in the source document where the assertion appears." ;
+    rdfs:domain app:ScientificAssertion ;
+    rdfs:range xsd:integer .
+
+app:sourceText a owl:DatatypeProperty ;
+    rdfs:label "source evidence text" ;
+    obo:IAO_0000115 "Verbatim text span from the source document supporting the assertion." ;
+    rdfs:domain app:ScientificAssertion ;
+    rdfs:range xsd:string .
+
+app:unitText a owl:DatatypeProperty ;
+    rdfs:label "unit text" ;
+    obo:IAO_0000115 "Literal unit string reported with a measurement or treatment level." ;
+    rdfs:domain app:ScientificAssertion ;
+    rdfs:range xsd:string .
+
+app:ScientificAssertion a owl:Class ;
+    rdfs:label "scientific assertion" ;
+    obo:IAO_0000115 "A source-bounded, evidence-linked assertion extracted from a scientific document; not a context-free universal fact." ;
+    rdfs:subClassOf rdf:Statement .
+

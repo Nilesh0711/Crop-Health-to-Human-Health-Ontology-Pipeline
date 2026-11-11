@@ -1,0 +1,147 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#narrowMatch"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000233"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000051 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000051">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>has part</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0015112 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0015112">
+        <rdfs:label>nitrate transmembrane transporter activity</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0042126 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0042126">
+        <rdfs:label>nitrate metabolic process</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0042128 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0042128">
+        <rdfs:label>nitrate assimilation</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0042126"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0071941"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/GO_0098809"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/GO_0015112"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns4:IAO_0000233 rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://github.com/geneontology/go-ontology/issues/27216</ns4:IAO_0000233>
+        <ns4:IAO_0000233 rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://github.com/geneontology/go-ontology/issues/30537</ns4:IAO_0000233>
+        <ns4:IAO_0000233 rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://github.com/geneontology/go-ontology/issues/31634</ns4:IAO_0000233>
+        <ns4:IAO_0000115>The nitrogen metabolic process that encompasses the uptake of nitrate from the environment and reduction to ammonia, and results in the incorporation of nitrogen derived from nitrate into cellular substances.</ns4:IAO_0000115>
+        <oboInOwl:hasOBONamespace>biological_process</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasDbXref>MetaCyc:PWY-381</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>MetaCyc:PWY-5675</oboInOwl:hasDbXref>
+        <oboInOwl:hasNarrowSynonym>assimilatory nitrate reduction</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasDbXref>MetaCyc:PWY490-3</oboInOwl:hasDbXref>
+        <oboInOwl:id>GO:0042128</oboInOwl:id>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/PWY-381"/>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/PWY-5675"/>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/PWY490-3"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0071941 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0071941">
+        <rdfs:label>nitrogen cycle metabolic process</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0098809 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0098809">
+        <rdfs:label>nitrite reductase activity</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

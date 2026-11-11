@@ -20,5 +20,5 @@ if [[ ! -d node_modules ]]; then
   "$NPM" install
 fi
 
-echo "Starting React/Vite at http://127.0.0.1:5173"
-exec "$NPM" run dev
+echo "Starting React/Vite at http://127.0.0.1:5173 (proxying /api to http://127.0.0.1:8000)"
+exec "$NPM" run dev -- --port 5173 --strictPort

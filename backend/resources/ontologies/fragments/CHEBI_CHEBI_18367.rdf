@@ -1,0 +1,163 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:ns5="https://w3id.org/chemrof/"
+     xmlns:chebi="http://purl.obolibrary.org/obo/chebi/3"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_key_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/smiles_string"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/charge"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/generalized_empirical_formula"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/mass"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/monoisotopic_mass"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0018033 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0018033">
+        <rdfs:label>is conjugate base of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_18367 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_18367">
+        <rdfs:label>phosphate(3-)</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_35780"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_79387"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0018033"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_43474"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns5:charge rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">-3</ns5:charge>
+        <ns5:monoisotopic_mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">94.95507</ns5:monoisotopic_mass>
+        <ns5:mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">94.97</ns5:mass>
+        <oboInOwl:hasAlternativeId>CHEBI:45024</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>CHEBI:7793</oboInOwl:hasAlternativeId>
+        <ns5:inchi_string>InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)/p-3</ns5:inchi_string>
+        <oboInOwl:hasDbXref>pdb-ccd:PO4</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>tetraoxophosphate(3-)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>tetraoxophosphate(V)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasExactSynonym>tetraoxophosphate(3-)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>tetraoxophosphate(V)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:14791</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>wikipedia.en:Phosphate</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>gmelin:1997</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Phosphate</oboInOwl:hasRelatedSynonym>
+        <ns5:smiles_string>O=P([O-])([O-])[O-]</ns5:smiles_string>
+        <oboInOwl:hasRelatedSynonym>Orthophosphate</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>cas:14265-44-2</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>kegg.compound:C00009</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>phosphate</oboInOwl:hasExactSynonym>
+        <ns5:inchi_key_string>NBIIXXVUZAFLBC-UHFFFAOYSA-K</ns5:inchi_key_string>
+        <oboInOwl:hasRelatedSynonym>PO4(3-)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>PHOSPHATE ION</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>tetraoxidophosphate(3-)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>phosphate</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>[PO4](3-)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>reaxys:3903772</oboInOwl:hasDbXref>
+        <oboInOwl:id>CHEBI:18367</oboInOwl:id>
+        <oboInOwl:hasExactSynonym>Phosphate</oboInOwl:hasExactSynonym>
+        <ns4:IAO_0000115>A phosphate ion that is the conjugate base of hydrogenphosphate.</ns4:IAO_0000115>
+        <oboInOwl:hasOBONamespace>chebi_ontology</oboInOwl:hasOBONamespace>
+        <ns5:generalized_empirical_formula>O4P</ns5:generalized_empirical_formula>
+        <oboInOwl:hasExactSynonym>tetraoxidophosphate(3-)</oboInOwl:hasExactSynonym>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_35780 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_35780">
+        <rdfs:label>phosphate ion</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_43474 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_43474">
+        <rdfs:label>hydrogenphosphate</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_79387 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_79387">
+        <rdfs:label>trivalent inorganic anion</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

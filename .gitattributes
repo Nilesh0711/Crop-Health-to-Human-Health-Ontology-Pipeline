@@ -1,2 +1,3 @@
 # Published files are integrity-checked by their exact bytes on every platform.
 deploy/render/snapshot/** -text
+deploy/pages/data/** -text

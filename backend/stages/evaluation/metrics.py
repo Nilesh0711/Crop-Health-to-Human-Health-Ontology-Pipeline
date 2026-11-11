@@ -74,11 +74,16 @@ def evaluation_sample(candidates: list[dict[str, Any]], validations: list[dict[s
 
 def write_evaluation_sample(output_dir: Path, candidates: list[dict[str, Any]],
                             validations: list[dict[str, Any]], limit: int = 80,
-                            preserve_existing_labels: bool = False) -> Path:
+                            preserve_existing_labels: bool = False,
+                            validation_paused: bool = False) -> Path:
     path = output_dir / "evaluation_sample.jsonl"
     previous = {row['candidate_id']: row for row in read_jsonl(path)} if preserve_existing_labels and path.exists() else {}
     rows = evaluation_sample(candidates, validations, max(limit, len(previous)))
     for row in rows:
+        if validation_paused:
+            row['prediction'].update(status='validation_paused', semantic=None,
+                                     source_entailment=None, external=None,
+                                     retrieved_document_ids=[])
         old = previous.get(row['candidate_id'])
         if (old and old.get('claim') == row.get('claim')
                 and old.get('source_evidence_span') == row.get('source_evidence_span')):

@@ -1,0 +1,49 @@
+{
+  "format": "static-pages-viewer-v1",
+  "created_at": "2026-11-11T17:12:03.938241+00:00",
+  "documents": {
+    "4310b7ae2d54eecc": {
+      "claims": "pdfs/4310b7ae2d54eecc/claims.json",
+      "logs": "pdfs/4310b7ae2d54eecc/logs.json"
+    }
+  },
+  "files": {
+    "pdfs/4310b7ae2d54eecc/claims.json": {
+      "size": 395266,
+      "sha256": "b65150d8ee2ffb4a35bd7cd80a3729c0450955361786a533933e83f8a5414127"
+    },
+    "pdfs/4310b7ae2d54eecc/logs.json": {
+      "size": 58628,
+      "sha256": "fc4c9437354f291c301d44a4335998822e5e1ea7586547921cfd57a9ebfff001"
+    },
+    "pdfs.json": {
+      "size": 17340,
+      "sha256": "952bcc9980e6d989434012e64f29cad8af21cd5173002bc836d58611a39a4c61"
+    },
+    "ontology-status.json": {
+      "size": 46347,
+      "sha256": "34a63592fa6ac53b83c083d309a03e2a7be1e1efacc2cbcb16909c9c7ee84f27"
+    },
+    "ontology-catalog.json": {
+      "size": 458882,
+      "sha256": "7fe4a3dd4ca70c987bc4ac2348aa5575fa35c712241ed8dafe3058d736a40b9a"
+    },
+    "ontology-assertions.json": {
+      "size": 686707,
+      "sha256": "d5f063213797f1d9f1cae2e2bffe9071583e377b5af9b3de5199a88dcdbb70e1"
+    },
+    "ontology-entities.json": {
+      "size": 333740,
+      "sha256": "f3a670b85adf24f1b471a28c26f7af07b69fd42b8f671710ef03f969b32babeb"
+    },
+    "ontology-reasoning.json": {
+      "size": 316,
+      "sha256": "ae06090b0ea79b4ecf8681c3767ea994543d6a2aa62b8257b181c07a8d2bfef4"
+    },
+    "health.json": {
+      "size": 1012,
+      "sha256": "24dd6d32997f2e3e331cdac6a3f2358c51a4b2b61763ca54601dd71a74182584"
+    }
+  },
+  "snapshot_id": "3ea97d8200b46b07c7e68ea1"
+}

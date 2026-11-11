@@ -21,6 +21,8 @@ def activity_stage(entry, default='system'):
         return STAGE_ALIASES.get(explicit, explicit)
     text = str(entry.get('message') or '').casefold()
     patterns = (
+        ('ontology_grounding', ('ontology grounding', 'grounding potato', 'grounding complete')),
+        ('ontology_reasoning', ('reasoning over imported', 'traceable inference', 'ontology reasoning')),
         ('pathway_assembly', ('pathway assembly', 'assembling path', 'registry')),
         ('chunk_preparation', ('ranked ', 'passage preparation', 'chunk preparation')),
         ('article_fetch', ('fetching paper', 'paper fetched')),

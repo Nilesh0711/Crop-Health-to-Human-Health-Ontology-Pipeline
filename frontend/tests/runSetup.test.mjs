@@ -39,7 +39,7 @@ try {
   assert.match(stopButton({active:true, stopping:true}), /Stopping/)
   const { RunSetup } = await server.ssrLoadModule('/src/components/workspace/WorkbenchPanels.jsx')
   const options = { max_pages: 0, neighbor_max_pairs: 100, articles_per_pathway: 8, claims_per_packet: 4,
-    extraction_mode: 'target_context', extraction_target_words: 800, extraction_generation_budget: 24576 }
+    extraction_mode: 'target_context', extraction_target_words: 800, extraction_generation_budget: 50000 }
   const taskModels = { extraction: 'opencode-go/deepseek-v4.1-flash', source: 'opencode-go/deepseek-v4.1-flash',
     query: 'opencode-go/mimo-v2.6-flash', external: 'opencode-go/muse-spark-1.3-contributor', pathway_assembly: 'opencode-go/mimo-v2.6-flash' }
   const render = current => renderToStaticMarkup(React.createElement(RunSetup, {
@@ -47,15 +47,15 @@ try {
     options: current, onOptions: () => {}, open: true, onToggle: () => {},
   }))
   const { defaultThinking, resumeWithThinking } = await server.ssrLoadModule('/src/lib/thinking.js')
-  assert.ok(Object.values(defaultThinking()).every(value => value === false))
+  assert.ok(Object.entries(defaultThinking()).every(([key, value]) => value === (key === 'pathway_assembly')))
   const resumed = resumeWithThinking({max_pages:2, extraction_mode:'whole_packet', thinking:defaultThinking()}, {thinking:{external:false}})
   assert.equal(resumed.max_pages, 2)
   assert.equal(resumed.thinking.external, false)
   assert.equal(resumed.thinking.extraction, false)
   const target = render(options)
   assert.equal((target.match(/role="switch"/g) || []).length, 5)
-  assert.equal((target.match(/aria-checked="false"/g) || []).length, 5)
-  assert.match(target, /Thinking defaults to Off for every stage/)
+  assert.equal((target.match(/aria-checked="false"/g) || []).length, 4)
+  assert.match(target, /Thinking defaults to Off for extraction and On for ontology grounding/)
   assert.match(target, /Per-paper judgement model/)
   assert.match(target, /Cross-paper synthesis model/)
   assert.match(target, /DeepSeek Flash judges each paper/)
@@ -70,17 +70,18 @@ try {
     const group = target.match(new RegExp(`<div class="assigned-model" role="group" aria-label="${label} model settings">(.*?)</div>`))?.[1]
     assert.ok(group, `Missing combined model/thinking group for ${label}`)
     assert.ok(group.includes(taskModels[key]))
-    assert.ok(group.includes(`aria-label="${label} thinking" aria-checked="false"`))
+    assert.ok(group.includes(`aria-label="${label} thinking" aria-checked="${key === 'pathway_assembly'}"`))
   }
   const onMarkup = render({...options, thinking:{external:true}})
   assert.match(onMarkup, /aria-label="External judgement thinking" aria-checked="true"/)
-  assert.equal((onMarkup.match(/aria-checked="false"/g) || []).length, 4)
+  assert.equal((onMarkup.match(/aria-checked="false"/g) || []).length, 3)
 
   assert.match(target, /<option(?=[^>]*value="target_context")(?=[^>]*selected)[^>]*>/)
   assert.match(target, /Target size \(words\)/)
   assert.match(target, /value="800"/)
   assert.match(target, /Generation budget \(tokens\)/)
-  assert.match(target, /value="24576"/)
+  assert.match(target, /value="50000"/)
+  assert.match(target, /max="50000"/)
   assert.match(target, /Claims per extraction call/)
   assert.match(target, /More calls may be needed/)
   const whole = render({ ...options, extraction_mode: 'whole_packet' })

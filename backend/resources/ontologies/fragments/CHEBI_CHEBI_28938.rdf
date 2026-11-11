@@ -1,0 +1,253 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:ns5="https://w3id.org/chemrof/"
+     xmlns:chebi="http://purl.obolibrary.org/obo/chebi/3"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_key_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/smiles_string"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/charge"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/generalized_empirical_formula"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/mass"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/monoisotopic_mass"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0000087 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000087">
+        <rdfs:label>has role</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0018034 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0018034">
+        <rdfs:label>is conjugate acid of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_16134 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_16134">
+        <rdfs:label>ammonia</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_23357 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_23357">
+        <rdfs:label>cofactor</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_28938 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_28938">
+        <rdfs:label>ammonium</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_35106"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_50313"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_60242"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_77746"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0018034"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_16134"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_76971"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_23357"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_75772"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns5:charge rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</ns5:charge>
+        <ns5:monoisotopic_mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">18.03383</ns5:monoisotopic_mass>
+        <ns5:mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">18.039</ns5:mass>
+        <oboInOwl:hasExactSynonym>azanium</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>reaxys:16093784</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:22562341</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>NH4(+)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:7435</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>pubmed:17392693</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>[NH4](+)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:19716251</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:22524020</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:19682559</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>kegg.compound:C01342</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>ammonium</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:12096804</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>cas:14798-03-9</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>azanium</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>ammonium cation</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>ammonium ion</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:14879753</oboInOwl:hasDbXref>
+        <ns5:inchi_string>InChI=1S/H3N/h1H3/p+1</ns5:inchi_string>
+        <oboInOwl:hasRelatedSynonym>Ammonium(1+)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:id>CHEBI:28938</oboInOwl:id>
+        <oboInOwl:hasDbXref>pubmed:16903292</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:22631217</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:11319011</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:19596600</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>gmelin:84</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pdb-ccd:NH4</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>ammonium</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>pubmed:22265469</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:14512268</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:19199063</oboInOwl:hasDbXref>
+        <oboInOwl:hasOBONamespace>chebi_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasDbXref>molbase:929</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>CHEBI:49783</oboInOwl:hasAlternativeId>
+        <ns5:generalized_empirical_formula>H4N</ns5:generalized_empirical_formula>
+        <oboInOwl:hasDbXref>pubmed:21993530</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>wikipedia.en:Ammonium</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:11341317</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>metacyc.compound:AMMONIUM</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:18515490</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>NH(4)(+)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:16345391</oboInOwl:hasDbXref>
+        <ns5:smiles_string>[H][N+]([H])([H])[H]</ns5:smiles_string>
+        <ns4:IAO_0000115>An onium cation obtained by protonation of ammonia.</ns4:IAO_0000115>
+        <oboInOwl:hasAlternativeId>CHEBI:22534</oboInOwl:hasAlternativeId>
+        <ns5:inchi_key_string>QGZKDVFQNNGYKY-UHFFFAOYSA-O</ns5:inchi_key_string>
+        <oboInOwl:hasRelatedSynonym>NH4+</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_35106 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_35106">
+        <rdfs:label>nitrogen hydride</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_50313 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_50313">
+        <rdfs:label>onium cation</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_60242 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_60242">
+        <rdfs:label>monovalent inorganic cation</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_75772 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_75772">
+        <rdfs:label>Saccharomyces cerevisiae metabolite</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_76971 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_76971">
+        <rdfs:label>Escherichia coli metabolite</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_77746 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_77746">
+        <rdfs:label>human metabolite</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

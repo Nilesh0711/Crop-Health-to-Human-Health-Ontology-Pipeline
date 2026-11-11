@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:chebi="http://purl.obolibrary.org/obo/chebi/3"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:ns3="http://purl.obolibrary.org/obo/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_16646 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_16646">
+        <rdfs:label>carbohydrate</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_78616"/>
+        <oboInOwl:hasRelatedSynonym>carbohidrato</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasOBONamespace>chebi_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasExactSynonym>carbohydrates</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasRelatedSynonym>saccharidum</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>glucidos</oboInOwl:hasRelatedSynonym>
+        <ns3:IAO_0000115>Any member of the class of organooxygen compounds that is a polyhydroxy-aldehyde or -ketone or a lactol resulting from their intramolecular condensation (monosaccharides); substances derived from these by reduction of the carbonyl group (alditols), by oxidation of one or more hydroxy groups to afford the corresponding aldehydes, ketones, or carboxylic acids, or by replacement of one or more hydroxy group(s) by a hydrogen atom; and polymeric products arising by intermolecular acetal formation between two or more such molecules (disaccharides, polysaccharides and oligosaccharides). Carbohydrates contain only carbon, hydrogen and oxygen atoms; prior to any oxidation or reduction, most have the empirical formula C&lt;small&gt;&lt;sub&gt;&lt;em&gt;m&lt;/em&gt;&lt;/sub&gt;&lt;/small&gt;(H&lt;small&gt;&lt;sub&gt;2&lt;/sub&gt;&lt;/small&gt;O)&lt;small&gt;&lt;sub&gt;&lt;em&gt;n&lt;/em&gt;&lt;/sub&gt;&lt;/small&gt;. Compounds obtained from carbohydrates by substitution, etc., are known as carbohydrate derivatives and may contain other elements. Cyclitols are generally not regarded as carbohydrates.</ns3:IAO_0000115>
+        <oboInOwl:hasRelatedSynonym>a carbohydrate</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>Kohlenhydrat</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>saccharide</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>glucido</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:9318</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasExactSynonym>carbohydrate</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasRelatedSynonym>saccharides</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:23008</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>carbohydrates</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>hydrates de carbone</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>carbohidratos</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>glucide</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:id>CHEBI:16646</oboInOwl:id>
+        <oboInOwl:hasDbXref>wikipedia.en:Carbohydrate</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Kohlenhydrate</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:15131</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>carbohydrate</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>glucides</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_78616 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_78616">
+        <rdfs:label>carbohydrates and carbohydrate derivatives</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

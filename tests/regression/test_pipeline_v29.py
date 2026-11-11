@@ -16,7 +16,7 @@ from backend.providers.inference import InferenceError
 def test_each_stage_has_only_its_assigned_primary():
     settings = Settings()
     assert set(settings.task_models) == {'extraction', 'source', 'query', 'external', 'pathway_assembly'}
-    assert len(set(settings.task_models.values())) == 3
+    assert set(settings.task_models.values()) == {'opencode-go/deepseek-v4.1-flash'}
     with pytest.raises(ValueError, match='Unknown LLM task'):
         OpenCodeClient(settings, settings.source_model, task='invented')
 

@@ -27,7 +27,9 @@ def deduplicate_source_claims(candidates: list[dict[str, Any]]) -> tuple[list[di
                candidate.get("source_page"), normalized_phrase(candidate.get("source_evidence_span")),
                _endpoint(candidate.get("subject")), candidate.get("relation"), _endpoint(candidate.get("object")),
                candidate.get("subject_type"), candidate.get("object_type"), certainty,
+               normalized_phrase(candidate.get('claim_text')),
                json.dumps(candidate.get("qualifiers") or {}, sort_keys=True),
+               normalized_phrase(candidate.get('subject_context')), normalized_phrase(candidate.get('object_context')),
                normalized_phrase(candidate.get("source_context")))
         # Missing evidence can never establish duplicate identity.
         if not key[3] or key not in seen:
@@ -37,9 +39,10 @@ def deduplicate_source_claims(candidates: list[dict[str, Any]]) -> tuple[list[di
         existing = seen[key]
         duplicates += 1
         existing.setdefault("deduplicated_candidate_ids", []).append(candidate["candidate_id"])
-        variants = existing.setdefault("extraction_certainty_variants", [existing.get("certainty")])
-        if certainty not in variants:
-            variants.append(certainty)
+        if 'certainty' in existing or 'certainty' in candidate:
+            variants = existing.setdefault("extraction_certainty_variants", [existing.get("certainty")])
+            if certainty not in variants:
+                variants.append(certainty)
         existing.setdefault("source_evidence_records", []).extend(candidate.get("source_evidence_records") or [])
         links = existing.setdefault('source_citation_links', [])
         links.extend(link for link in candidate.get('source_citation_links', []) if link not in links)

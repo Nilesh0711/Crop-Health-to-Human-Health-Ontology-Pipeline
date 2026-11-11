@@ -1,4 +1,5 @@
 """Assess local adjacent-claim pairs; never enumerate complete validation routes."""
+from backend.config.pipeline import VALIDATION_STAGES_PAUSED, PAUSED_MESSAGE
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import RLock
@@ -31,6 +32,8 @@ def _checkpoint_writer(root, provisional, records):
 
 
 def run_pathway_assessment(root, output, provisional, clients, settings, emit, *, cache=None, assessment_id=None):
+    if VALIDATION_STAGES_PAUSED:
+        raise RuntimeError(PAUSED_MESSAGE)
     (root / DIRECTORY).mkdir(parents=True,exist_ok=True)
     existing = {r['pathway_id']:r for r in read_records(root,graph=provisional['graph'])}
     incomplete = {None,'queued','in_progress','pipeline_error','assessment_incomplete'}

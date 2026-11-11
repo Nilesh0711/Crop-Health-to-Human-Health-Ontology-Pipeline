@@ -8,12 +8,12 @@ from backend.config.paths import PROJECT_ROOT, ONTOLOGY_DIR, PDF_DIR, CLI_OUTPUT
 
 # Preserve extraction compatibility; source-scope and pathway policies version separately.
 SCHEMA_VERSION = "external-validation-v36"
-APPLICATION_VERSION = "neighbor-validation-v50"
+APPLICATION_VERSION = "ontology-grounding-v53"
 
 DEFAULT_EXTRACTION_MODEL = "opencode-go/deepseek-v4.1-flash"
 DEFAULT_SOURCE_MODEL = "opencode-go/deepseek-v4.1-flash"
-DEFAULT_QUERY_MODEL = "opencode-go/mimo-v2.6-flash"
-DEFAULT_EXTERNAL_MODEL = "opencode-go/muse-spark-1.3-contributor"
+DEFAULT_QUERY_MODEL = DEFAULT_EXTRACTION_MODEL
+DEFAULT_EXTERNAL_MODEL = DEFAULT_EXTRACTION_MODEL
 
 GO_PIPELINE_MODELS = tuple(f'opencode-go/{name}' for name in (
     'deepseek-v4.1-flash', 'mimo-v2.6-flash', 'glm-5.3-flash', 'mimo-v2.6-pro',
@@ -27,7 +27,7 @@ TASK_DEFAULT_MODELS = {
     'source': DEFAULT_SOURCE_MODEL,
     'query': DEFAULT_QUERY_MODEL,
     'external': DEFAULT_EXTERNAL_MODEL,
-    'pathway_assembly': 'opencode-go/mimo-v2.6-flash',
+    'pathway_assembly': DEFAULT_EXTRACTION_MODEL,
 }
 
 
@@ -45,13 +45,18 @@ def _default_neural_device() -> str:
 class Settings:
     """Runtime configuration for hosted LLMs and local specialist models."""
 
-    thinking: dict[str, bool] = field(default_factory=lambda: {task: False for task in TASK_DEFAULT_MODELS})
+    thinking: dict[str, bool] = field(default_factory=lambda: {
+        task: task == 'pathway_assembly' for task in TASK_DEFAULT_MODELS})
     extraction_model: str = os.getenv("EXTRACTION_MODEL", DEFAULT_EXTRACTION_MODEL)
     source_model: str = os.getenv('OPEN_CODE_SOURCE_MODEL', TASK_DEFAULT_MODELS['source'])
     query_model: str = os.getenv('OPEN_CODE_QUERY_MODEL', TASK_DEFAULT_MODELS['query'])
     external_model: str = os.getenv('OPEN_CODE_EXTERNAL_MODEL', DEFAULT_EXTERNAL_MODEL)
     external_paper_model: str = os.getenv('OPEN_CODE_EXTERNAL_PAPER_MODEL', DEFAULT_SOURCE_MODEL)
-    pathway_assembly_model: str = os.getenv('OPEN_CODE_PATHWAY_ASSEMBLY_MODEL', 'opencode-go/mimo-v2.6-flash')
+    pathway_assembly_model: str = os.getenv('OPEN_CODE_PATHWAY_ASSEMBLY_MODEL', TASK_DEFAULT_MODELS['pathway_assembly'])
+    ontology_grounding_batch_size: int = int(os.getenv('ONTOLOGY_GROUNDING_BATCH_SIZE', '3'))
+    ontology_grounding_workers: int = int(os.getenv('ONTOLOGY_GROUNDING_WORKERS', '5'))
+    ontology_grounding_timeout_seconds: int = int(os.getenv('ONTOLOGY_GROUNDING_TIMEOUT_SECONDS', '600'))
+    ontology_grounding_output_format: str = os.getenv('ONTOLOGY_GROUNDING_OUTPUT_FORMAT', 'json')
     pathway_assembly_batch_size: int = int(os.getenv('PATHWAY_ASSEMBLY_BATCH_SIZE', '24'))
     pathway_assembly_input_characters: int = int(os.getenv('PATHWAY_ASSEMBLY_INPUT_CHARACTERS', '140000'))
     pathway_candidate_strategy: str = os.getenv('PATHWAY_CANDIDATE_STRATEGY', 'indexed')
@@ -85,18 +90,13 @@ class Settings:
     cross_encoder_device: str = os.getenv("CROSS_ENCODER_DEVICE", _default_neural_device())
     cross_encoder_candidates: int = int(os.getenv("CROSS_ENCODER_CANDIDATES", "20"))
     extraction_claims_per_packet: int = int(os.getenv("EXTRACTION_CLAIMS_PER_PACKET", "0"))
-    extraction_concurrency: int = int(os.getenv("EXTRACTION_CONCURRENCY", "4"))
+    extraction_concurrency: int = int(os.getenv("EXTRACTION_CONCURRENCY", "2"))
     extraction_mode: str = os.getenv('EXTRACTION_MODE', 'target_context')
-    extraction_target_words: int = int(os.getenv('EXTRACTION_TARGET_WORDS', '800'))
-    fallback_models: dict[str, str] = field(default_factory=lambda: {
-        'extraction': 'opencode-go/mimo-v2.6-flash',
-        'source': 'opencode-go/mimo-v2.6-flash',
-        'pathway_assembly': 'opencode-go/deepseek-v4.1-flash',
-    })
+    extraction_target_words: int = int(os.getenv('EXTRACTION_TARGET_WORDS', '200'))
     request_timeout_seconds: int = int(os.getenv("VALIDATION_TIMEOUT_SECONDS", "300"))
     external_timeout_seconds: int = int(os.getenv("EXTERNAL_TIMEOUT_SECONDS", "1200"))
     extraction_timeout_seconds: int = int(os.getenv("EXTRACTION_TIMEOUT_SECONDS", "420"))
-    extraction_min_output_budget: int = int(os.getenv('EXTRACTION_MIN_OUTPUT_BUDGET', '24576'))
+    extraction_min_output_budget: int = int(os.getenv('EXTRACTION_MIN_OUTPUT_BUDGET', '50000'))
     external_min_output_budget: int = int(os.getenv('EXTERNAL_MIN_OUTPUT_BUDGET', '28192'))
     validation_batch_size: int = int(os.getenv("VALIDATION_BATCH_SIZE", "3"))
     embedding_batch_size: int = int(os.getenv('EMBEDDING_BATCH_SIZE', '16'))
@@ -109,6 +109,12 @@ class Settings:
     user_agent: str = "crop-to-human-health-ontology/0.2 (external evidence validation)"
 
     def __post_init__(self) -> None:
+        if self.ontology_grounding_output_format not in {'tsv', 'json'}:
+            raise ValueError('ONTOLOGY_GROUNDING_OUTPUT_FORMAT must be tsv or json')
+        if not 1 <= self.ontology_grounding_batch_size <= 3:
+            raise ValueError('ONTOLOGY_GROUNDING_BATCH_SIZE must be 1?3 claims')
+        if not 1 <= self.ontology_grounding_workers <= 8:
+            raise ValueError('ONTOLOGY_GROUNDING_WORKERS must be 1..8')
         if not 1 <= self.neighbor_workers <= 2 or not 1 <= self.source_workers <= 4:
             raise ValueError('Neighbor workers must be 1..2 and source workers 1..4')
         if self.pathway_candidate_strategy not in {'indexed', 'exhaustive'}:
@@ -133,9 +139,6 @@ class Settings:
             raise ValueError('EXTRACTION_TARGET_WORDS must be between 200 and 2000')
         if not 1 <= self.extraction_concurrency <= 8:
             raise ValueError('EXTRACTION_CONCURRENCY must be between 1 and 8')
-        for task, fallback_selector in self.fallback_models.items():
-            if fallback_selector not in ALLOWED_PIPELINE_MODELS:
-                raise ValueError(f'Fallback model {fallback_selector} for {task} must use an approved OpenCode Go model')
         if self.opencode_response_format not in {'model_default', 'json_object', 'json_schema'}:
             raise ValueError('OPENCODE_RESPONSE_FORMAT must be model_default, json_object or json_schema')
         if self.json_repair_attempts not in {0, 1}:
@@ -151,7 +154,8 @@ class Settings:
             raise ValueError('External top-k must be 1..30 and chunks per paper 1..12')
         if self.external_input_max_characters < 1000:
             raise ValueError('External context character budget must be at least 1000')
-        if min(self.request_timeout_seconds, self.extraction_timeout_seconds, self.external_timeout_seconds) < 1:
+        if min(self.request_timeout_seconds, self.extraction_timeout_seconds, self.external_timeout_seconds,
+               self.ontology_grounding_timeout_seconds) < 1:
             raise ValueError("Model request timeouts must be positive")
         if self.extraction_min_output_budget < 1:
             raise ValueError('EXTRACTION_MIN_OUTPUT_BUDGET must be positive')

@@ -1,0 +1,127 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:envo="http://purl.obolibrary.org/obo/envo#"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:ns3="http://purl.obolibrary.org/obo/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/envo#envoPolar"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000116"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/envo#envoAstro"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000050 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000050">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label xml:lang="en">part of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000040 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/BFO_0000040">
+        <rdfs:label xml:lang="en">material entity</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/ENVO_01000799 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/ENVO_01000799">
+        <rdfs:label xml:lang="en">astronomical body</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/ENVO_01000813 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/ENVO_01000813">
+        <rdfs:label xml:lang="en">astronomical body part</rdfs:label>
+        <equivalentClass>
+            <Class>
+                <intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000040"/>
+                    <Restriction>
+                        <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000050"/>
+                        <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/ENVO_01000799"/>
+                    </Restriction>
+                </intersectionOf>
+            </Class>
+        </equivalentClass>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000040"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000050"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/ENVO_01000799"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns3:IAO_0000115>A material part of an astronomical body.</ns3:IAO_0000115>
+        <ns3:IAO_0000116 xml:lang="en">Also note that some astronomical body parts (ABPs) may have fiat boundaries: if there&#39;s strong debate about where an ABP begins or ends (over and above fuzzy boundaries), with different official classifications setting different thresholds or limits, axiomatise the class with fiat boundaries of the appropriate dimension.</ns3:IAO_0000116>
+        <rdfs:comment xml:lang="en">Material parts of astronomical bodies generally have boundaries formed by discontinuities in qualities, composition, or other physical characterisitcs. These boundaries are sometimes sharp, and sometimes diffuse, with different classification systems and communities declaring varying thresholds (e.g. for where a shoreline, forest, or other entity begins and ends). However, some boundaries are declared by fiat - that is, by arbitrary human convention or decree - particularly by regulatory or other authorities and communities of practice. The classes in this hierarchy attempt to offer generalisable definitions that allow multiple classfiication systems to map to and interoperate through. If desired, we can create classes that declare thresholds used by a given authority or community under the more generic ones, annotated with source information.</rdfs:comment>
+        <ns3:IAO_0000116 xml:lang="en">Note that material entities may have immaterial entities (e.g. sites) as parts.</ns3:IAO_0000116>
+        <ns3:IAO_0000116 xml:lang="en">This class includes material parts of astronomical bodies. Immaterial parts, such as magnetospheres, are represented as sites under the influence of magnetic fields.Please post countercases in the ENVO tracker for revision of this hierarchy if needed.</ns3:IAO_0000116>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/envo#envoAstro"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/envo#envoPolar"/>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

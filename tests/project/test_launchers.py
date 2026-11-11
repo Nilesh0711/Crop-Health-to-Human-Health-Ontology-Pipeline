@@ -25,7 +25,8 @@ def test_backend_reload_defaults_and_override(tmp_path, reload_value):
         '  printf "LAUNCH_ARG=%s\\n" "$@"\n'
         'fi\n', encoding='utf-8', newline='\n')
     python.chmod(0o755)
-    environment = {k:v for k,v in os.environ.items() if k != 'BACKEND_RELOAD'}
+    environment = {k:v for k,v in os.environ.items()
+                   if k not in {'BACKEND_RELOAD', 'ONTOLOGY_GROUNDING_BATCH_SIZE', 'ONTOLOGY_GROUNDING_WORKERS', 'EXTRACTION_TARGET_WORDS'}}
     if reload_value is not None:
         environment['BACKEND_RELOAD'] = reload_value
     result = subprocess.run([BASH, launcher.as_posix()], env=environment,
@@ -35,6 +36,9 @@ def test_backend_reload_defaults_and_override(tmp_path, reload_value):
         assert 'LAUNCH_ARG=' not in result.stdout
         return
     assert result.returncode == 0, result.stderr
+    assert 'target size: 200 words' in result.stdout
+    assert 'grounding=5' in result.stdout
+    assert 'Grounding: 1 claims per batch' in result.stdout
     arguments = [line.removeprefix('LAUNCH_ARG=') for line in result.stdout.splitlines()
                  if line.startswith('LAUNCH_ARG=')]
     assert arguments[:3] == ['-m', 'uvicorn', 'backend.app:app']

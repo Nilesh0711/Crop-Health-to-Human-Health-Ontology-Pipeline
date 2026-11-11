@@ -1,0 +1,121 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#created_by"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#creation_date"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000050 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000050">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>part_of</rdfs:label>
+        <rdfs:label>part of</rdfs:label>
+        <rdfs:label xml:lang="en">part of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0009011 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0009011">
+        <rdfs:label>plant structure</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025496 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025496">
+        <rdfs:label>multi-tissue plant structure</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025498 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025498">
+        <rdfs:label>cardinal part of multi-tissue plant structure</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/PO_0009011"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000050"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PO_0025496"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:comment>Includes cardinal parts of plant organs (PO:0025001) as well as parts of other multi-tissue plant structures. Cardinal refers to the fact that these are biologically meaningful and not arbitrary parts. Most cardinal parts of multi-tissue plant structures have both fiat and bona-fide boundaries, including parts with large fiat boundaries, such as leaf base (PO:0020040) or fruit distal end (PO:0008001), and parts with primarily bona-fide boundaries, such as leaflet (PO:0020049).</rdfs:comment>
+        <oboInOwl:hasExactSynonym>parte cardinal de estructura vegetal con m&amp;#250ltiples tejidos (Spanish, exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>複数の組織からなる植物構造の基本（主要）部分 (Japanese, exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:created_by>Laurel_Cooper</oboInOwl:created_by>
+        <oboInOwl:creation_date>2012-06-11T15:28:44Z</oboInOwl:creation_date>
+        <ns4:IAO_0000115>A plant structure (PO:0009011) that is a proper part of a multi-tissue plant structure (PO:0025496) and includes portions of plant tissues (PO:0009007) of at least two different types.</ns4:IAO_0000115>
+        <oboInOwl:id>PO:0025498</oboInOwl:id>
+        <oboInOwl:hasDbXref>PO_GIT:485</oboInOwl:hasDbXref>
+        <oboInOwl:hasOBONamespace>plant_anatomy</oboInOwl:hasOBONamespace>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

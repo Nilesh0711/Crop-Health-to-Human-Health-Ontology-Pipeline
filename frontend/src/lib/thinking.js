@@ -2,7 +2,7 @@ export const THINKING_STAGES = [
   ['extraction', 'Claim extraction'], ['source', 'Source validation'], ['query', 'Query planning'],
   ['external', 'External judgement'], ['pathway_assembly', 'Pathway assembly'],
 ]
-export const defaultThinking = () => Object.fromEntries(THINKING_STAGES.map(([key]) => [key, false]))
+export const defaultThinking = () => Object.fromEntries(THINKING_STAGES.map(([key]) => [key, key === 'pathway_assembly']))
 export function resumeWithThinking(saved, current) {
   const { pathway_max_paths, pathway_max_hops, ...compatible } = saved
   return { ...compatible,

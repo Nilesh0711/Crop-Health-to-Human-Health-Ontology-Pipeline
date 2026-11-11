@@ -1,0 +1,145 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:chebi="http://purl.obolibrary.org/obo/chebi/3"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:obo="http://purl.obolibrary.org/obo/"
+     xmlns:ns4="https://w3id.org/chemrof/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_key_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/smiles_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/charge"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/generalized_empirical_formula"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/mass"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/monoisotopic_mass"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0000087 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000087">
+        <rdfs:label>has role</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_25555 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_25555">
+        <rdfs:label>nitrogen atom</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_25585"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_33300"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_33937"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns4:charge rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">0</ns4:charge>
+        <ns4:monoisotopic_mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">14.00307</ns4:monoisotopic_mass>
+        <ns4:mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">14.007</ns4:mass>
+        <ns4:generalized_empirical_formula>N</ns4:generalized_empirical_formula>
+        <ns4:inchi_key_string>QJGQUHMNIGDVPM-UHFFFAOYSA-N</ns4:inchi_key_string>
+        <oboInOwl:id>CHEBI:25555</oboInOwl:id>
+        <oboInOwl:hasRelatedSynonym>nitrogen</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>7N</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>azote</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>webelements:N</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>nitrogen</oboInOwl:hasExactSynonym>
+        <ns4:smiles_string>[N]</ns4:smiles_string>
+        <ns4:inchi_string>InChI=1S/N</ns4:inchi_string>
+        <oboInOwl:hasRelatedSynonym>N</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>Stickstoff</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>nitrogeno</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasOBONamespace>chebi_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_25585 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_25585">
+        <rdfs:label>nonmetal atom</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_33300 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_33300">
+        <rdfs:label>pnictogen</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_33937 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_33937">
+        <rdfs:label>macronutrient</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

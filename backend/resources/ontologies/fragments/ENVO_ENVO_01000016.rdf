@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:ns3="http://purl.obolibrary.org/obo/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000116"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000051 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000051">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label xml:lang="en">has part</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0000053 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000053">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#InverseFunctionalProperty"/>
+        <rdfs:label xml:lang="en">has characteristic</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0000086 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000086">
+        <rdfs:label xml:lang="en">has quality</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/ENVO_00000343 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/ENVO_00000343">
+        <rdfs:label>particle of silt</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/ENVO_01000016 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/ENVO_01000016">
+        <rdfs:label>silt</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/ENVO_01000060"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000086"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PATO_0000984"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/ENVO_00000343"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000053"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PATO_0000150"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <disjointWith rdf:resource="http://purl.obolibrary.org/obo/ENVO_01000017"/>
+        <oboInOwl:hasDbXref>https://en.wikipedia.org/wiki/Silt</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>SWEETRealm:Silt</oboInOwl:hasDbXref>
+        <ns3:IAO_0000116 xml:lang="en">Do not oversimplify the particulate environmental material subclasses with design patterns or similar. The materials have properties that their components do not - write full definitions including these where possible.</ns3:IAO_0000116>
+        <oboInOwl:hasDbXref>EcoLexicon:silt</oboInOwl:hasDbXref>
+        <ns3:IAO_0000115 xml:lang="en">Particulate environmental material which is primarily composed of silt particles.</ns3:IAO_0000115>
+        <rdfs:comment xml:lang="en">This definition is intentionally ambiguous to support the multiple thresholds set by different authorities. Some authorities consider this soil material that contains 80% or more silt and less than 12% clay. In the Udden-Wentworth scale (due to Krumbein), silt particles range between 0.0039 to 0.0625 mm, larger than clay but smaller than sand particles. ISO 14688 grades silts between 0.002 mm and 0.063 mm. In actuality, silt is chemically distinct from clay, and unlike clay, grains of silt are approximately the same size in all dimensions; furthermore, their size ranges overlap. Clays are formed from thin plate-shaped particles held together by electrostatic forces, so present a cohesion. According to the U.S. Department of Agriculture Soil Texture Classification system, the sand-silt distinction is made at the 0.05 mm particle size. The USDA system has been adopted by the Food and Agriculture Organization (FAO). In the Unified Soil Classification System (USCS) and the AASHTO Soil Classification system, the sand-silt distinction is made at the 0.075 mm particle size (i.e., material passing the #200 sieve). Silts and clays are distinguished mechanically by their plasticity.</rdfs:comment>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/ENVO_01000017 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/ENVO_01000017">
+        <rdfs:label>sand</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/ENVO_01000060 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/ENVO_01000060">
+        <rdfs:label xml:lang="en">particulate environmental material</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PATO_0000150 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PATO_0000150">
+        <rdfs:label>texture</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PATO_0000984 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PATO_0000984">
+        <rdfs:label>porous</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

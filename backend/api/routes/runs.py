@@ -14,6 +14,9 @@ from backend.shared.storage import read_jsonl
 from backend.shared.activity import display_error
 from backend.shared.jobs import ACTIVE_STATUSES, read_job
 from backend.shared.cancellation import CancellationToken
+from backend.config.pipeline import VALIDATION_STAGES_PAUSED, PAUSED_MESSAGE, active_task_models
+from backend.config.pipeline import ONTOLOGY_GROUNDING_PAUSED, GROUNDING_PAUSED_MESSAGE
+from backend.config.pipeline import MANUAL_GROUNDING_ENABLED
 
 
 class RunsRoutes:
@@ -27,7 +30,7 @@ class RunsRoutes:
         return self.workspace._start_document_run(pdf_id, options, resume=True)
 
     def redo_external_validation(self, pdf_id: str, options: RunOptions) -> dict[str, Any]:
-        return self.workspace._start_document_run(pdf_id, options, resume=True, redo_external=True)
+        raise HTTPException(status_code=409, detail=PAUSED_MESSAGE)
 
     def recovery_options(self, pdf_id: str) -> dict[str, Any]:
         """Check saved progress for a user choice; never queue work from this GET."""
@@ -80,6 +83,9 @@ class RunsRoutes:
                         reason = f"Saved pathway validation progress available: {completed_count} neighbor pairs verified. Resume will continue remaining connections."
         except (ValueError, OSError) as exc:
             reason = str(exc)
+        if can_continue and VALIDATION_STAGES_PAUSED:
+            reason = (GROUNDING_PAUSED_MESSAGE if ONTOLOGY_GROUNDING_PAUSED else
+                      'Saved extraction can be resumed for ontology grounding. Later stages are paused.')
         return {'can_continue': can_continue, 'reason': reason, 'options': options,
                 'job_id': state.get('id'), 'error': display_error(state.get('error')),
                 'job_missing': not state.get('id') or (
@@ -90,7 +96,7 @@ class RunsRoutes:
         metadata = self.workspace.read_metadata(output) or self.workspace._read_json(output / 'summary.json', {}) or {}
         defaults = self.workspace.Settings()
         # Runs predating thinking metadata used On. Preserve their extraction mode
-        # on recovery even though fresh runs now default to Off.
+        # on recovery rather than applying the current per-stage defaults.
         saved_thinking = metadata.get('thinking') or ({task: True for task in defaults.task_models} if metadata else defaults.task_thinking)
         restored = {'thinking': saved_thinking, 'extraction_mode': metadata.get('extraction_mode', 'whole_packet'),
                 'neighbor_max_pairs': metadata.get('neighbor_max_pairs', metadata.get('pathway_max_paths',defaults.neighbor_max_pairs)),
@@ -102,6 +108,8 @@ class RunsRoutes:
         return restored
 
     def _start_document_run(self, pdf_id: str, options: RunOptions, resume: bool = False, *, redo_external=False) -> dict[str, Any]:
+        if redo_external:
+            raise HTTPException(status_code=409, detail=PAUSED_MESSAGE)
         pdf = self.workspace._pdf_path(pdf_id)
         if resume:
             try:
@@ -121,21 +129,20 @@ class RunsRoutes:
             available_models = set(self.workspace.OpenCodeClient(settings).health_check().get("models", []))
         except Exception as exc:
             raise HTTPException(status_code=503, detail=f"OpenCode is unavailable: {exc}") from exc
-        missing = [f'{task}: {model}' for task, model in settings.task_models.items()
+        missing = [f'{task}: {model}' for task, model in active_task_models(settings).items()
                    if model.split('#', 1)[0] not in available_models]
-        if settings.external_paper_model not in available_models:
-            missing.append(f'per-paper external: {settings.external_paper_model}')
         if missing:
             raise HTTPException(status_code=400, detail=f"Required OpenCode model is unavailable: {', '.join(missing)}")
         with self.workspace._lock:
-            if any(job["status"] in ACTIVE_STATUSES for job in self.workspace._jobs.values()):
+            if (getattr(self.workspace, '_grounding_tester_tokens', {})
+                    or any(job["status"] in ACTIVE_STATUSES for job in self.workspace._jobs.values())):
                 raise HTTPException(status_code=409, detail="A pipeline is already running. Wait for it to finish.")
             job_id = uuid.uuid4().hex
             output_dir = self.workspace._output_dir(pdf)
             assessment_id = None
             if redo_external:
                 assessment_id = job_id
-            elif resume:
+            elif resume and not VALIDATION_STAGES_PAUSED:
                 assessment_id = ((self.workspace._read_json(output_dir / 'run_state.json', {}) or {}).get('external_assessment_id')
                                  or (self.workspace.read_metadata(output_dir) or {}).get('external_assessment_id'))
             job = {"id": job_id, "pdf_id": pdf_id, "pdf_path": str(pdf), "status": "queued", "resume": resume,
@@ -160,7 +167,7 @@ class RunsRoutes:
                 log_path.write_text("", encoding="utf-8")
             self.workspace._jobs[job_id] = job
             self.workspace._persist_job(job_id)
-        if resume:
+        if resume and not VALIDATION_STAGES_PAUSED:
             try:
                 self.workspace.refresh_saved_views(pdf, output_dir)
             except Exception:
@@ -169,26 +176,19 @@ class RunsRoutes:
         return self.workspace._job_snapshot(job)
 
     def review_source(self, pdf_id: str, candidate_id: str, options: SourceReviewOptions) -> dict[str, Any]:
-        pdf = self.workspace._pdf_path(pdf_id)
-        with self.workspace._lock:
-            if any(job['status'] in ACTIVE_STATUSES for job in self.workspace._jobs.values()):
-                raise HTTPException(status_code=409, detail='Stop or finish the active pipeline before saving a manual source review')
-            try:
-                return self.workspace.save_manual_source_review(pdf, self.workspace._output_dir(pdf), candidate_id, options.dimension, options.decision,
-                    expected_revision=options.expected_revision, note=options.note)
-            except LookupError as exc:
-                raise HTTPException(status_code=404, detail=str(exc)) from exc
-            except ValueError as exc:
-                raise HTTPException(status_code=409 if 'Refresh' in str(exc) else 400, detail=str(exc)) from exc
+        raise HTTPException(status_code=409, detail=PAUSED_MESSAGE)
 
     def start_claim_action(self, pdf_id: str, candidate_id: str, action: str, options: RunOptions) -> dict[str, Any]:
         """Queue a deliberate, single-claim operation without clearing PDF artifacts."""
+        if VALIDATION_STAGES_PAUSED:
+            raise HTTPException(status_code=409, detail=PAUSED_MESSAGE)
         if action not in {'repair','reextract'}:
             raise HTTPException(status_code=410, detail='Individual-claim external validation is retired. Resume pathway validation instead.')
         pdf = self.workspace._pdf_path(pdf_id)
         output = self.workspace._output_dir(pdf)
         with self.workspace._lock:
-            if any(job['status'] in ACTIVE_STATUSES for job in self.workspace._jobs.values()):
+            if (getattr(self.workspace, '_grounding_tester_tokens', {})
+                    or any(job['status'] in ACTIVE_STATUSES for job in self.workspace._jobs.values())):
                 raise HTTPException(status_code=409, detail='Wait for the current pipeline or claim action to finish')
             candidate = next((c for c in read_jsonl(output / 'candidates.jsonl') if c['candidate_id'] == candidate_id), None)
             if candidate is None:
@@ -226,22 +226,35 @@ class RunsRoutes:
                 raise HTTPException(status_code=404, detail="Job not found")
             return self.workspace._job_snapshot(job)
 
-    def start_pathway_assembly(self, pdf_id: str, options: RunOptions | None = None):
+    def start_grounding(self, pdf_id: str, options: RunOptions | None = None):
+        if not MANUAL_GROUNDING_ENABLED:
+            raise HTTPException(status_code=409, detail=GROUNDING_PAUSED_MESSAGE)
         pdf = self.workspace._pdf_path(pdf_id)
         with self.workspace._lock:
-            if any(job['status'] in ACTIVE_STATUSES for job in self.workspace._jobs.values()):
+            if (getattr(self.workspace, '_grounding_tester_tokens', {})
+                    or any(job['status'] in ACTIVE_STATUSES for job in self.workspace._jobs.values())):
                 raise HTTPException(status_code=409, detail='Wait for the current pipeline to finish')
+            output = self.workspace._output_dir(pdf)
+            checkpoint = self.workspace._read_json(output / 'pipeline_checkpoint.json', {})
+            if not checkpoint.get('extraction_complete') or not read_jsonl(output / 'candidates.jsonl'):
+                raise HTTPException(status_code=409, detail='Complete extraction for this PDF before running ontology grounding.')
+            coverage = read_jsonl(output / 'extraction_packets.jsonl')
+            if any(r.get('status') not in {'completed', 'cached'} for r in coverage):
+                raise HTTPException(status_code=409, detail='Extraction has incomplete regions. Finish extraction before grounding saved claims.')
             job_id = uuid.uuid4().hex
             options = options or RunOptions()
-            job = dict(id=job_id, pdf_id=pdf_id, pdf_path=str(pdf), status='queued', action='assemble_pathways',
+            job = dict(id=job_id, pdf_id=pdf_id, pdf_path=str(pdf), status='queued', action='ground_claims',
                        logs=read_jsonl(self.workspace._output_dir(pdf) / 'run_log.jsonl'), options=options.model_dump(),
                        started_at=datetime.now(timezone.utc).isoformat(timespec='seconds'),
                        updated_at=None, finished_at=None, result=None, error=None)
             self.workspace._jobs[job_id] = job
             self.workspace._output_dir(pdf).mkdir(parents=True, exist_ok=True)
             self.workspace._persist_job(job_id)
-        threading.Thread(target=self.workspace._worker, args=(job_id, options), daemon=True, name='global-pathway-assembly').start()
+        threading.Thread(target=self.workspace._worker, args=(job_id, options), daemon=True, name='manual-ontology-grounding').start()
         return self.workspace._job_snapshot(job)
+
+    # Retain the historical route for existing clients; it performs grounding only.
+    start_pathway_assembly = start_grounding
 
 
 def create_router(workspace):
@@ -256,4 +269,5 @@ def create_router(workspace):
     router.add_api_route('/api/jobs/{job_id}/stop', views.stop_job, methods=['POST'], status_code=202)
     router.add_api_route('/api/jobs/{job_id}', views.job_status, methods=['GET'])
     router.add_api_route('/api/pdfs/{pdf_id}/assemble-pathways', views.start_pathway_assembly, methods=['POST'], status_code=202)
+    router.add_api_route('/api/pdfs/{pdf_id}/ground-claims', views.start_grounding, methods=['POST'], status_code=202)
     return router, views

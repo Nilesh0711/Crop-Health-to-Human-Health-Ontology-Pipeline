@@ -34,9 +34,11 @@ def test_each_stage_sends_explicit_thinking_and_records_requested_vs_observed(mo
     assert all(mode is False for key,mode in configuration.task_thinking.items() if key != stage)
 
 
-def test_all_defaults_off_and_strict_api_values():
-    assert not any(RunOptions().thinking.model_dump().values())
-    assert not any(Settings().task_thinking.values())
+def test_hybrid_extraction_and_grounding_defaults_and_strict_api_values():
+    from backend.config.settings import Settings as RuntimeSettings
+    expected = {task: task == 'pathway_assembly' for task in TASK_DEFAULT_MODELS}
+    assert RunOptions().thinking.model_dump() == expected
+    assert RuntimeSettings().task_thinking == expected
     assert RunOptions(thinking={'external':True}).thinking.extraction is False
     assert RunOptions(thinking={'external':True}).thinking.external is True
     for invalid in ({'external':'false'}, {'external':0}, {'invented':False}):

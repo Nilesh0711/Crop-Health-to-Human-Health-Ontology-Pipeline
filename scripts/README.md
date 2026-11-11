@@ -23,6 +23,9 @@ archived code do not trigger reload. Editing watched files interrupts active
 requests; compatible saved checkpoints remain resumable. Disable reload explicitly
 with `BACKEND_RELOAD=0 bash scripts/run_backend.sh`. Run one backend worker process
 for the local job registry. The frontend launcher retains Vite hot reload.
+The backend launcher checks port 8000 before starting and refuses a duplicate
+instance. If the port is occupied but API requests hang, stop the stale backend
+process before launching it again; starting another reload supervisor is not a fix.
 
 Local generative-model launchers are removed. Install test dependencies using
 `python -m pip install -r requirements-dev.txt`. Offline evaluation lives at

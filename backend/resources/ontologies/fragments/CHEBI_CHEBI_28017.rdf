@@ -1,0 +1,249 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:chebi="http://purl.obolibrary.org/obo/chebi/3"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000051 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000051">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>has part</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0000087 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000087">
+        <rdfs:label>has role</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_22587 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_22587">
+        <rdfs:label>antiviral agent</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_28017 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_28017">
+        <rdfs:label>starch</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_37163"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_53784"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_28102"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_28057"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_35610"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_75771"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_22587"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_35674"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_50748"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_74518"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <oboInOwl:hasRelatedSynonym>Bio-sorb</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>Staerke</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:9251</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>kegg.compound:C00369</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>kegg.glycan:G10545</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>amidon</oboInOwl:hasRelatedSynonym>
+        <ns4:IAO_0000115>The most important reserve polysaccharide found in plants. It is a glucan consisting of amylose and amylopectin.</ns4:IAO_0000115>
+        <oboInOwl:hasRelatedSynonym>Starch</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>wikipedia.en:Starch</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>CHEBI:26750</oboInOwl:hasAlternativeId>
+        <oboInOwl:id>CHEBI:28017</oboInOwl:id>
+        <oboInOwl:hasAlternativeId>CHEBI:26751</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>kegg.drug:D06507</oboInOwl:hasDbXref>
+        <oboInOwl:hasOBONamespace>chebi_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasDbXref>cas:9005-25-8</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>amylum</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_28057 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_28057">
+        <rdfs:label>amylopectin</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_28102 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_28102">
+        <rdfs:label>amylose</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_35610 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_35610">
+        <rdfs:label>antineoplastic agent</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_35674 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_35674">
+        <rdfs:label>antihypertensive agent</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_37163 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_37163">
+        <rdfs:label>glucan</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_50748 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_50748">
+        <rdfs:label>antipsoriatic</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_53784 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_53784">
+        <rdfs:label>antispasmodic drug</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_74518 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_74518">
+        <rdfs:label>anti-obesity agent</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_75771 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_75771">
+        <rdfs:label>mouse metabolite</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

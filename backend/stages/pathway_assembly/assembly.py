@@ -1,6 +1,7 @@
 """MiMo-assisted global entity registry, with bounded requests and resumable shards."""
 from backend.shared.cancellation import check_cancelled, PipelineStopped
 import json
+from backend.config.pipeline import UNVALIDATED_ASSEMBLY_DIRECTORY, UNVALIDATED_ELIGIBILITY_POLICY
 
 from backend.shared.artifacts import save_json
 from backend.shared.storage import stable_hash, utc_now
@@ -168,7 +169,7 @@ def _scan_batch(batch, registry, assignments, redirects, by_id, state, state_pat
             return
 
 
-def assemble_pathways(root, client, settings, emit=lambda *args: None, *, provisional=False):
+def assemble_pathways(root, client, settings, emit=lambda *args: None, *, provisional=False, unvalidated=False):
     """Read every saved document and align source/external-supported edges.
 
     Indexed retrieval proposes context/name/lexical candidates; MiMo still decides
@@ -176,11 +177,11 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None, *, provis
     Selected-node contexts are sharded losslessly. A failed/stopped scan never
     publishes a partial graph; bounded candidate coverage is saved explicitly.
     """
-    folder = root / ('.provisional_pathways' if provisional else ASSEMBLY_DIRECTORY)
-    eligibility = PROVISIONAL_ELIGIBILITY_POLICY if provisional else ASSEMBLY_ELIGIBILITY_POLICY
+    folder = root / (UNVALIDATED_ASSEMBLY_DIRECTORY if unvalidated else '.provisional_pathways' if provisional else ASSEMBLY_DIRECTORY)
+    eligibility = UNVALIDATED_ELIGIBILITY_POLICY if unvalidated else PROVISIONAL_ELIGIBILITY_POLICY if provisional else ASSEMBLY_ELIGIBILITY_POLICY
     folder.mkdir(parents=True, exist_ok=True)
-    edges, endpoints = collect_corpus(root, provisional=provisional)
-    signature = corpus_signature(edges, endpoints, settings.pathway_assembly_model, settings.task_thinking['pathway_assembly'], provisional=provisional)
+    edges, endpoints = collect_corpus(root, provisional=provisional, unvalidated=unvalidated)
+    signature = corpus_signature(edges, endpoints, settings.pathway_assembly_model, settings.task_thinking['pathway_assembly'], provisional=provisional, unvalidated=unvalidated)
     snapshot_path = folder / 'snapshot.json'
     previous = _read(snapshot_path)
     match_signature = matching_signature(settings)
@@ -217,7 +218,7 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None, *, provis
     pending = [by_id[identifier] for identifier in state['pending_ids']]
     state.update(status='running', error=None, updated_at=utc_now(), request_protocol=REQUEST_PROTOCOL)
     save_json(state_path, state)
-    emit('stage', f"Pathway Assembly: {len(edges)} {'provisional' if provisional else 'validated'} claims across {len({e['document_key'] for e in edges})} papers; MiMo Flash aligns endpoints globally")
+    emit('stage', f"Pathway Assembly: {len(edges)} {'unvalidated' if unvalidated else 'provisional' if provisional else 'validated'} claims across {len({e['document_key'] for e in edges})} papers; MiMo Flash aligns endpoints globally")
     try:
         candidate_index = None
         while state['cursor'] < len(pending):
@@ -296,7 +297,7 @@ def assemble_pathways(root, client, settings, emit=lambda *args: None, *, provis
         snapshot = dict(version=ASSEMBLY_VERSION, input_signature=signature, completed_at=utc_now(),
                         request_protocol=REQUEST_PROTOCOL, matching_signature=match_signature,
                         candidate_selection=_selection_coverage(state, settings),
-                        eligibility_policy=eligibility,
+                        eligibility_policy=eligibility, validation_stages_paused=unvalidated,
                         model=settings.pathway_assembly_model, thinking=settings.task_thinking['pathway_assembly'], causal_chain_validated=False,
                         graph=dict(nodes=[{**n, 'type':n['types'][0]} for n in registry.values()], edges=graph_edges,
                                    counts=dict(nodes=len(registry), edges=len(graph_edges))),
@@ -328,9 +329,9 @@ def _stat_sig(path):
     return (s.st_mtime_ns, s.st_size)
 
 
-def read_assembly(root, model, *, provisional=False):
+def read_assembly(root, model, *, provisional=False, unvalidated=False):
     from copy import deepcopy
-    folder = root / ('.provisional_pathways' if provisional else ASSEMBLY_DIRECTORY)
+    folder = root / (UNVALIDATED_ASSEMBLY_DIRECTORY if unvalidated else '.provisional_pathways' if provisional else ASSEMBLY_DIRECTORY)
     cand_paths = sorted(root.glob('*/candidates.jsonl'))
     val_paths = [] if provisional else sorted(root.glob('*/validation_runs.jsonl'))
     stamp = (
@@ -339,14 +340,14 @@ def read_assembly(root, model, *, provisional=False):
         tuple((str(p), _stat_sig(p)) for p in cand_paths),
         tuple((str(p), _stat_sig(p)) for p in val_paths),
     )
-    cache_key = (str(root.resolve()), model, provisional)
+    cache_key = (str(root.resolve()), model, provisional, unvalidated)
     cached = _assembly_cache.get(cache_key)
     if cached and cached['stamp'] == stamp:
         return deepcopy(cached['result'])
     snapshot = _read(folder / 'snapshot.json')
     state = _read(folder / 'checkpoint.json') or {}
-    edges, endpoints = collect_corpus(root, provisional=provisional)
-    current = corpus_signature(edges, endpoints, model, (snapshot or state).get('thinking', True), provisional=provisional)
+    edges, endpoints = collect_corpus(root, provisional=provisional, unvalidated=unvalidated)
+    current = corpus_signature(edges, endpoints, model, (snapshot or state).get('thinking', True), provisional=provisional, unvalidated=unvalidated)
     stale = bool(snapshot and snapshot.get('input_signature') != current)
     if stale and not snapshot.get('matching_signature'):
         # v44 stored claim_text on edges but not endpoint input objects. Compare
@@ -356,7 +357,7 @@ def read_assembly(root, model, *, provisional=False):
         legacy = [{k: v for k, v in row.items() if k != 'claim_text'}
                   if row['endpoint_id'] in old_ids & compatible else row for row in endpoints]
         stale = snapshot.get('input_signature') != corpus_signature(edges, legacy, model,
-            (snapshot or state).get('thinking', True), provisional=provisional)
+            (snapshot or state).get('thinking', True), provisional=provisional, unvalidated=unvalidated)
     if snapshot:
         # Never display newly excluded edges through an older saved snapshot.
         # Rebuilding identity alignment remains an explicit assembly operation.

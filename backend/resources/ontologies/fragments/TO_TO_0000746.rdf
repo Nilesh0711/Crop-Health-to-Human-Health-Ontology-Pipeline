@@ -1,0 +1,148 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:to="http://purl.obolibrary.org/obo/to#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#created_by"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#creation_date"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/to#Solanaceae_spp"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0000052 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000052">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
+        <rdfs:label xml:lang="en">characteristic of</rdfs:label>
+        <rdfs:label>inheres in</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PATO_0000125 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PATO_0000125">
+        <rdfs:label>mass</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0004547 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0004547">
+        <rdfs:label>subterranean shoot axis tuber</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/TO_0000568 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/TO_0000568">
+        <rdfs:label>shoot axis weight</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/TO_0000742 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/TO_0000742">
+        <rdfs:label>subterranean shoot axis tuber morphology trait</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/TO_0000746 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/TO_0000746">
+        <rdfs:label>subterranean shoot axis tuber mass</rdfs:label>
+        <equivalentClass>
+            <Class>
+                <intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://purl.obolibrary.org/obo/PATO_0000125"/>
+                    <Restriction>
+                        <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000052"/>
+                        <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PO_0004547"/>
+                    </Restriction>
+                </intersectionOf>
+            </Class>
+        </equivalentClass>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/TO_0000568"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/TO_0000742"/>
+        <ns4:IAO_0000115>A subterranean shoot axis tuber morphology trait (TO:0000742) which is the mass of a subterranean shoot axis tuber (PO:0004547).</ns4:IAO_0000115>
+        <oboInOwl:hasOBONamespace>plant_trait_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:creation_date>2012-04-19T10:56:34Z</oboInOwl:creation_date>
+        <oboInOwl:id>TO:0000746</oboInOwl:id>
+        <rdfs:comment>Refer to mass (PATO:0000125): A physical quality that inheres in a bearer by virtue of the proportion of the bearer&#39;s amount of matter.</rdfs:comment>
+        <oboInOwl:hasExactSynonym>tuber weight (exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>TO_GIT:56</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PATO:0000125</oboInOwl:hasDbXref>
+        <oboInOwl:hasBroadSynonym>tuber mass (broad)</oboInOwl:hasBroadSynonym>
+        <oboInOwl:created_by>moorel</oboInOwl:created_by>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/to#Solanaceae_spp"/>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

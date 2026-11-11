@@ -5,6 +5,7 @@ export const edgeKey = edge => edge.document_key && edge.candidate_id ? `${edge.
 
 export function splitLocalAssessments(data, assembly) {
   const records = data?.records || []
+  if (assembly?.validation_stages_paused) return { current: [], historical: records }
   if (data?.policy !== 'neighbor-pair-v1') return { current: records, historical: [] }
   const edges = new Map((assembly?.graph?.edges || []).map(edge => [edge.id, edge]))
   const graphKnown = Boolean(assembly?.graph && !assembly.stale)

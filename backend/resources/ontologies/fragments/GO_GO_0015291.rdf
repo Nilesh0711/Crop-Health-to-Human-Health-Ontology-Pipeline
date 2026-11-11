@@ -1,0 +1,110 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:ns3="http://purl.obolibrary.org/obo/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0015291 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0015291">
+        <rdfs:label>secondary active transmembrane transporter activity</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0022804"/>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9661799</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>coupled carrier</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9757010</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-879584</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-879562</oboInOwl:hasDbXref>
+        <oboInOwl:hasNarrowSynonym>multidrug endosomal transmembrane transporter activity</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>energizer of outer membrane receptor-mediated transport activity</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9749583</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>TC:2.A</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>GO:0015404</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9749607</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>galactose/glucose (methylgalactoside) porter activity</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasExactSynonym>electrochemical potential-driven transporter activity</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>porter activity</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9661723</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>GO:0015570</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasExactSynonym>secondary carrier-type facilitators</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9661446</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>GO:0015290</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasNarrowSynonym>ion-gradient-driven energizer activity</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-879594</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>porters</oboInOwl:hasExactSynonym>
+        <oboInOwl:id>GO:0015291</oboInOwl:id>
+        <oboInOwl:hasAlternativeId>GO:0015353</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasNarrowSynonym>nitrite/nitrate porter activity</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-549241</oboInOwl:hasDbXref>
+        <oboInOwl:hasNarrowSynonym>heavy metal ion porter activity</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-561059</oboInOwl:hasDbXref>
+        <oboInOwl:hasBroadSynonym>active transporter</oboInOwl:hasBroadSynonym>
+        <oboInOwl:hasOBONamespace>molecular_function</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9661397</oboInOwl:hasDbXref>
+        <ns3:IAO_0000115>Enables the transfer of a solute from one side of a membrane to the other, up its concentration gradient. The transporter binds the solute and undergoes a series of conformational changes. Transport works equally well in either direction and is driven by a chemiosmotic source of energy, not direct ATP coupling. Secondary active transporters include symporters and antiporters.</ns3:IAO_0000115>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0022804 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0022804">
+        <rdfs:label>active transmembrane transporter activity</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

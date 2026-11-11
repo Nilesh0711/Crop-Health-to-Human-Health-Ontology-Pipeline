@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#created_by"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#creation_date"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0000052 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000052">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
+        <rdfs:label xml:lang="en">characteristic of</rdfs:label>
+        <rdfs:label>inheres in</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PATO_0000117 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PATO_0000117">
+        <rdfs:label>size</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0000003 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0000003">
+        <rdfs:label>whole plant</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/TO_0000398 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/TO_0000398">
+        <rdfs:label>whole plant morphology trait</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/TO_1000012 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/TO_1000012">
+        <rdfs:label>whole plant size</rdfs:label>
+        <equivalentClass>
+            <Class>
+                <intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://purl.obolibrary.org/obo/PATO_0000117"/>
+                    <Restriction>
+                        <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000052"/>
+                        <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PO_0000003"/>
+                    </Restriction>
+                </intersectionOf>
+            </Class>
+        </equivalentClass>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/PATO_0000117"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/TO_0000398"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000052"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PO_0000003"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <oboInOwl:hasNarrowSynonym>frutex size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>gametophyte size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:creation_date>2015-12-30T19:41:19Z</oboInOwl:creation_date>
+        <oboInOwl:hasOBONamespace>plant_trait_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasNarrowSynonym>tree size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>bush size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:created_by>cooperl</oboInOwl:created_by>
+        <oboInOwl:hasNarrowSynonym>vine size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasRelatedSynonym>colony size (related)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasNarrowSynonym>prothallus size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:id>TO:1000012</oboInOwl:id>
+        <oboInOwl:hasNarrowSynonym>sporophyte size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>frutices size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>herb size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>prothalli size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>shrub size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>woody clump size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>suffrutex size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>seedling size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasNarrowSynonym>prothallium size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasExactSynonym>planta entera (Spanish) size (exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasNarrowSynonym>liana size (narrow)</oboInOwl:hasNarrowSynonym>
+        <ns4:IAO_0000115>A whole plant morphology trait (TO:0000398) which is the size of a whole plant (PO:0000003).</ns4:IAO_0000115>
+        <oboInOwl:hasNarrowSynonym>suffrutices size (narrow)</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasRelatedSynonym>clonal colony size (related)</oboInOwl:hasRelatedSynonym>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

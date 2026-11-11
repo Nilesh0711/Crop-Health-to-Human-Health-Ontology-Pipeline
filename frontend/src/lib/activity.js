@@ -4,6 +4,7 @@ export const STAGE_LABELS = {
   literature_search: 'Literature search', article_ranking: 'Article ranking', article_fetch: 'Paper fetching',
   chunk_preparation: 'Chunk preparation', external_validation: 'External judgement',
   pathway_assembly: 'Pathway assembly', graph_construction: 'Graph construction',
+  ontology_grounding: 'Ontology grounding', ontology_reasoning: 'Reasoning',
 }
 export const ACTIVITY_STAGES = Object.keys(STAGE_LABELS)
 const aliases = { extraction: 'claim_extraction', source: 'source_validation', query: 'query_planning', external: 'external_validation' }

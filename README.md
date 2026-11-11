@@ -1,13 +1,27 @@
 # Crop Health Research Workbench
 
+> **Current research mode, 11 November 2026:** Extraction contract v10 and profile v9 use 203 established ontology classes and 10 established RO/BFO properties. Project-added scientific definitions, synonyms and properties are not supplied for grounding. The active pipeline extracts then grounds; manual **Run grounded claims** also reuses saved extraction. Grounding groups up to three claims with the same evidence, using five workers. Extraction Thinking is Off; grounding Thinking is On. Suspected extraction omissions remain visible under review holds and cannot share concept identities or enter downstream assembly until reviewed. Scientific validation, pathway assembly and reasoning remain paused. Older descriptions below concern historical workflows. See the [current grounding protocol](backend/stages/ontology_grounding/README.md).
+
+The active profile covers **potato, soil nutrients and crop nutrition** using the
+203-class/10-property established-only module. Extraction receives every approved
+class name and each property name with a short relationship hint; full ontology definitions and identifiers
+are supplied during grounding. Extraction no longer requests certainty or
+provisional subject/object classifications. The **Entity registry**
+keeps valid endpoint groundings visible independently of complete-claim mapping;
+uncertain alignments and individual observations remain separate. Start with the
+[small grounding pilot](analysis/grounding_pilot/README.md) before expanding
+the scope. Thinking defaults to Off for extraction and On for grounding; isolated comparisons
+are available without changing saved production results.
+
+
 The [v50 model update](docs/protocols/muse_external_model.md) replaces MiMo Pro with Muse Spark 1.3 Contributor for synthesis and quotation audits. The discounted Go route requires a workspace privacy opt-in. With Muse, an unchecked external Thinking switch requests minimal reasoning; complete disablement is unsupported.
 
-Current application: **v50** (`neighbor-validation-v50`). Start with the
+Current application: **v53** (`ontology-grounding-v53`). Start with the
 [documentation index](docs/README.md).
 
 The [v49 update](docs/protocols/proof_audit_atomic_reextraction_and_layout.md) adds independent external-quotation audits before supported-graph admission, bounded arithmetic assistance, deliberate atomic re-extraction and column-aware parsing for fresh runs. Saved extraction retains its parsing policy.
 
-The active pipeline extracts claims, checks PDF fidelity and project scope,
+The historical v50 pipeline extracted claims, checked PDF fidelity and project scope,
 assembles a globally aligned candidate graph, then externally assesses **two
 neighboring claims and their local connection**. MiMo Flash plans searches,
 DeepSeek Flash judges papers and Muse Spark 1.3 Contributor synthesizes local findings. Longer
@@ -71,6 +85,18 @@ activity log. One bounded same-model recovery may propose formatting edits or
 regenerate missing response content from original evidence; no local JSON
 correction or fallback model changes the judgement. Saved compatible checkpoints
 can resume after failure. See [provider behavior](backend/providers/README.md).
+
+Ontology grounding uses JSON output and supplies all approved classes without
+shortlisting. TSV is retained as an explicit comparison format. See the
+[grounding output contract and paired format benchmark](backend/stages/ontology_grounding/README.md).
+Extraction still uses schema-based JSON output. Neither format establishes scientific merge
+correctness by itself.
+
+New extraction uses the [five-required-field contract (v8)](backend/stages/claim_extraction/README.md):
+subject, relation, object, qualifiers and evidence sentence IDs; type hints are
+optional. Short optional subject_context/object_context strings keep endpoint
+restrictions separate. Grounding reads these with exact source evidence; no
+generated claim summary or extra LLM stage is introduced.
 
 Run setup once:
 

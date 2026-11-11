@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/ncbitaxon#"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:ns3="http://purl.obolibrary.org/obo/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/TAXRANK_1000000"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/ncbitaxon#has_rank"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/NCBITaxon_1423 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/NCBITaxon_1423">
+        <rdfs:label>Bacillus subtilis</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/NCBITaxon_653685"/>
+        <oboInOwl:hasDbXref>GC_ID:11</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1042382</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232830</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1760969</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:981081</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232470</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1042380</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1042381</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1707495</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232819</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>Vibrio subtilis</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1652099</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>Bacillus subtilis/Bacillus globigii</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>NCBITaxon:523730</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1494536</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:941949</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1494586</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232840</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232841</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>Bacillus natto</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasOBONamespace>ncbi_taxonomy</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasRelatedSynonym>Bacillus mesentericus</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1451270</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1617262</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>PMID:11211269</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1451272</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1695905</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:387338</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1224247</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1429427</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1429428</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232828</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1828507</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232824</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>Bacillus uniflagellatus</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232825</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232844</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasAlternativeId>NCBITaxon:1232822</oboInOwl:hasAlternativeId>
+        <ns4:has_rank rdf:resource="http://purl.obolibrary.org/obo/NCBITaxon_species"/>
+        <ns3:TAXRANK_1000000 rdf:resource="http://purl.obolibrary.org/obo/TAXRANK_0000006"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/NCBITaxon_653685 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/NCBITaxon_653685">
+        <rdfs:label>Bacillus subtilis group</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/NCBITaxon_species -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/NCBITaxon_species">
+        <rdfs:label>obsolete species</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/TAXRANK_0000006 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/TAXRANK_0000006">
+        <rdfs:label>species</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

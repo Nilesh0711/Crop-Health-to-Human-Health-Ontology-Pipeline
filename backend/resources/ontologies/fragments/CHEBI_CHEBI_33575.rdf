@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:ns5="https://w3id.org/chemrof/"
+     xmlns:chebi="http://purl.obolibrary.org/obo/chebi/3"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/smiles_string"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/charge"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/generalized_empirical_formula"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/mass"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/monoisotopic_mass"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000051 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000051">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>has part</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0018034 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0018034">
+        <rdfs:label>is conjugate acid of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_29067 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_29067">
+        <rdfs:label>carboxylic acid anion</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_33575 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_33575">
+        <rdfs:label>carboxylic acid</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_35605"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_36586"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_64709"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_46883"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0018034"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_29067"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns5:charge rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">0</ns5:charge>
+        <ns5:monoisotopic_mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">44.99765</ns5:monoisotopic_mass>
+        <ns5:mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">45.017</ns5:mass>
+        <oboInOwl:hasDbXref>pubmed:17147560</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Carbonsaeuren</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>Karbonsaeure</oboInOwl:hasRelatedSynonym>
+        <ns5:generalized_empirical_formula>CHO2R</ns5:generalized_empirical_formula>
+        <oboInOwl:hasRelatedSynonym>acido carboxilico</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>Carbonsaeure</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>wikipedia.en:Carboxylic_acid</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>carboxylic acid</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:13627</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>RC(=O)OH</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasExactSynonym>carboxylic acids</oboInOwl:hasExactSynonym>
+        <oboInOwl:id>CHEBI:33575</oboInOwl:id>
+        <oboInOwl:hasDbXref>pubmed:18433345</oboInOwl:hasDbXref>
+        <oboInOwl:hasOBONamespace>chebi_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasAlternativeId>CHEBI:13428</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>acides carboxyliques</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasExactSynonym>carboxylic acid</oboInOwl:hasExactSynonym>
+        <ns5:smiles_string>*C(=O)O</ns5:smiles_string>
+        <ns4:IAO_0000115>A carbon oxoacid acid carrying at least one ‒C(=O)OH group and having the structure RC(=O)OH, where R is any any monovalent functional group. Carboxylic acids are the most common type of organic acid.</ns4:IAO_0000115>
+        <oboInOwl:hasRelatedSynonym>acide carboxylique</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>carboxylic acids</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:23027</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>acidos carboxilicos</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_35605 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_35605">
+        <rdfs:label>carbon oxoacid</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_36586 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_36586">
+        <rdfs:label>carbonyl compound</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_46883 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_46883">
+        <rdfs:label>carboxy group</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_64709 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_64709">
+        <rdfs:label>organic acid</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

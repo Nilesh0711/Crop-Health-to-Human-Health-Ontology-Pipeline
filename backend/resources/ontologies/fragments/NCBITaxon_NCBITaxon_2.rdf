@@ -1,0 +1,134 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/ncbitaxon#"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:ns3="http://purl.obolibrary.org/obo/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/TAXRANK_1000000"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/ncbitaxon#has_rank"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/NCBITaxon_131567 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/NCBITaxon_131567">
+        <rdfs:label>cellular organisms</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/NCBITaxon_2 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/NCBITaxon_2">
+        <rdfs:label>Bacteria</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/NCBITaxon_131567"/>
+        <oboInOwl:hasRelatedSynonym>Monera</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>PMID:36748408</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:10490293</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:8123559</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:10425797</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Bacteria Woese et al. 2024</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>PMID:10425796</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Bacteria (ex Cavalier-Smith 1987)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>PMID:10425795</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>GC_ID:11</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>prokaryote</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>PMID:11211268</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>eubacteria</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>PMID:32628106</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:11542017</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:10939677</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>bacteria</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>PMID:11321083</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:10843050</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:11540071</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:9336922</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>bacteria</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasRelatedSynonym>Prokaryota</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasOBONamespace>ncbi_taxonomy</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasDbXref>PMID:11760965</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:8186100</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:7520741</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:10939673</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:10939651</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:8590690</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:11411719</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Prokaryotae</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>prokaryotes</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>PMID:11321113</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:9103655</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Bacteriobiota</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>PMID:12054223</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Procaryotae</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>PMID:11542087</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>PMID:270744</oboInOwl:hasDbXref>
+        <ns4:has_rank rdf:resource="http://purl.obolibrary.org/obo/NCBITaxon_domain"/>
+        <ns3:TAXRANK_1000000 rdf:resource="http://purl.obolibrary.org/obo/TAXRANK_0000037"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/NCBITaxon_domain -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/NCBITaxon_domain">
+        <rdfs:label>obsolete domain</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/TAXRANK_0000037 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/TAXRANK_0000037">
+        <rdfs:label>domain</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

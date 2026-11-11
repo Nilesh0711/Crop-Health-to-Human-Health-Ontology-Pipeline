@@ -13,18 +13,23 @@ from pathlib import Path
 from typing import Any, Callable
 from backend.config.settings import SCHEMA_VERSION
 from backend.providers.llm import LLMServiceError, OpenCodeClient
-from backend.shared.storage import file_hash, stable_hash
-from backend.domain.claim_context import claim_description, local_evidence_context
+from backend.providers.response_repair import validate_schema
+from backend.shared.storage import file_hash, stable_hash, read_jsonl
+from backend.domain.claim_context import local_evidence_context
+from backend.domain.abbreviations import packet_definitions, relevant_definitions, expand_claim_names, abbreviation_source_anchor
+from backend.domain.extraction_review import extraction_warnings
 from backend.stages.claim_extraction.prompt import build_extraction_prompt
-from backend.stages.claim_extraction.targeting import build_extraction_targets, targeted_prompt, check_target_evidence
-from backend.domain.ontology import schema_error, CORE_DOMAIN_TYPES
-from backend.domain.modality import uses_conditional_modality
+from backend.stages.claim_extraction.targeting import (
+    build_extraction_targets, targeted_prompt, check_target_evidence, TARGETING_VERSION, READING_CONTEXT_POLICY,
+)
+from backend.domain.ontology import schema_error
 from backend.shared.text import anchored_quote, normalized, source_surface_mention
 from backend.stages.claim_extraction.contract import (
     ASSOCIATIVE_TRIGGER_RE,
     COMPARATIVE_CUE_RE,
     CORE_PATHWAY_HINT_RE,
     EXTRACTION_MAX_CLAIMS_PER_PACKET,
+    EXTRACTION_CONTRACT_VERSION,
     EXTRACTION_OUTPUT_TOKENS,
     EXTRACTION_PATHWAY_TERM_RE,
     EXTRACTION_RELATION_CUE_RE,
@@ -33,6 +38,7 @@ from backend.stages.claim_extraction.contract import (
     GENERIC_ENTITIES,
     NON_EMPIRICAL_RE,
     PURPOSE_ONLY_RE,
+    valid_relation_wording,
 )
 from backend.stages.pdf_parsing.packets import (
     author_year_citation_keys,
@@ -75,9 +81,6 @@ def extraction_review_hints(candidate: dict[str, Any], evidence_span: str) -> li
     evidence = str(evidence_span or "").strip()
     qualifiers = candidate.get("qualifiers") or {}
     hints = []
-    if candidate.get('relation') in {'has_contaminant', 'has_nutrient', 'contains'} and candidate.get('subject_type') not in {
-            'Crop', 'FoodProduct', 'SoilMaterial', 'SoilCondition', 'SoilChemicalProperty'}:
-        hints.append('review_composition_subject_role')
     if subject in GENERIC_ENTITIES or obj in GENERIC_ENTITIES:
         hints.append('review_generic_entity')
     if candidate.get('relation') in {'increases', 'reduces'} and ASSOCIATIVE_TRIGGER_RE.search(
@@ -92,8 +95,10 @@ def extraction_review_hints(candidate: dict[str, Any], evidence_span: str) -> li
     if COMPARATIVE_CUE_RE.search(evidence):
         if not str(qualifiers.get("comparator") or "").strip() or not str(qualifiers.get("metric") or "").strip():
             hints.append("review_comparator_or_metric")
-    if uses_conditional_modality(evidence, candidate.get('relation_trigger', '')) and candidate.get('certainty') != 'conditional':
-        hints.append('review_source_modality')
+    if qualifiers.get("comparator"):
+        target_context = f"{candidate.get('subject_context') or ''} {candidate.get('object_context') or ''} {qualifiers.get('population') or ''}".strip()
+        if not target_context:
+            hints.append("review_missing_target_population_for_comparator")
     return hints
 
 
@@ -136,9 +141,9 @@ def compact_literal_entity_anchors(candidate: dict[str, Any], subject_mention: s
 
 
 def evidence_span_from_item(item: dict[str, Any], packet_sentences: list[dict[str, Any]]) -> tuple[list[int], list[dict[str, Any]], str] | None:
-    """Resolve 1-3 original sentences, marking gaps rather than inventing continuity."""
-    numbers = item.get("evidence_sentence_numbers")
-    if isinstance(numbers, list) and 1 <= len(numbers) <= 3 and not any(isinstance(number, bool) or not isinstance(number, int) for number in numbers):
+    """Resolve selected original sentences, marking gaps rather than inventing continuity."""
+    numbers = item.get("evidence_sentence_ids", item.get("evidence_sentence_numbers"))
+    if isinstance(numbers, list) and numbers and not any(isinstance(number, bool) or not isinstance(number, int) for number in numbers):
         indexes = sorted(set(numbers))
         if numbers == indexes and 1 <= indexes[0] <= indexes[-1] <= len(packet_sentences):
             evidence_sentences = [packet_sentences[index - 1] for index in indexes]
@@ -180,10 +185,13 @@ def _packet_coverage_record(packet: dict[str, Any], extraction_mode: str) -> dic
     record = {'packet_number': packet['packet_number'], 'section_heading': packet['section_heading'],
               'page_start': packet['page_start'], 'page_end': packet['page_end'],
               'word_count': packet['word_count'], 'extraction_mode': extraction_mode, 'status': 'not_started'}
+    record['output_contract_version'] = EXTRACTION_CONTRACT_VERSION
     if extraction_mode == 'target_context':
         record.update({key: packet[key] for key in (
             'target_id', 'target_number', 'target_sentence_numbers', 'target_source_sentence_ids',
             'target_word_count', 'target_page_start', 'target_page_end', 'targeting_version')})
+        record.update({key: packet[key] for key in ('reading_context_policy',
+            'reading_context_sentence_numbers', 'reading_context_word_count')})
     return record
 
 
@@ -219,39 +227,57 @@ def _whole_packet_prompt(packet: dict[str, Any], source_title: str) -> str:
             f"SECTION CONTEXT PACKET:\n{packet_text}")
 
 
+def check_extraction_response(response, response_schema, allowed_numbers, target_numbers=None, *, enforce_target=True):
+    """Malformed endpoints are schema failures, not token-limit failures."""
+    from backend.providers.structured_output import SchemaValidationError
+    validate_schema(response, response_schema)
+    for index, row in enumerate(response['claims']):
+        for role in ('subject', 'relation', 'object'):
+            if not str(row.get(role) or '').strip():
+                raise SchemaValidationError(f'claims.{index}.{role}: provide nonempty source-grounded '
+                    'wording; never invent an endpoint to force a single-entity observation into a triplet')
+        if not valid_relation_wording(row['relation']):
+            raise SchemaValidationError(f'claims.{index}.relation: use a complete written predicate, not a single-letter code')
+    check_target_evidence(response, allowed_numbers, target_numbers if enforce_target else None)
+
+
 def _request_packet(packet, packet_record, index, total_packets, client, system, source_title,
                     extraction_mode, claims_per_packet, response_schema, emit):
     check_cancelled()
     packet_started = time.monotonic()
     packet_record['status'] = 'started'
     packet_sentences = packet['sentences']
+    if hasattr(client, 'set_request_context'):
+        client.set_request_context({'extraction_contract_version': EXTRACTION_CONTRACT_VERSION,
+            **({'targeting_version': TARGETING_VERSION, 'reading_context_policy': READING_CONTEXT_POLICY}
+               if extraction_mode == 'target_context' else {})})
     label = (f"extraction target {index}/{total_packets} ({packet['target_id']}; packet {packet['packet_number']})"
              if extraction_mode == 'target_context' else f"extraction packet {index}/{total_packets}")
+    target_numbers = packet['target_sentence_numbers'] if extraction_mode == 'target_context' else None
+    allowed_numbers = sorted(set(target_numbers or range(1, len(packet_sentences) + 1)) | set(packet.get('reading_context_sentence_numbers', [])))
     emit("info", f"Extracting {packet['section_heading']} (pages {packet['page_start']}-{packet['page_end']}), "
-         f"{label}; {packet.get('target_word_count', packet['word_count'])} extraction words; "
-         f"~{packet['estimated_token_count']} source input tokens")
+         f"{label}; {packet.get('target_word_count', packet['word_count'])} extraction words"
+         + (f"; {packet['reading_context_word_count']} nearby context words"
+            if extraction_mode == 'target_context' else f"; ~{packet['estimated_token_count']} source input tokens"))
     def check_extraction_complete(response):
-        from backend.providers.structured_output import IncompleteResponseError
-        for row in response['claims']:
-            required = ('claim_text', 'subject', 'relation', 'object', 'subject_source_mention', 'object_source_mention', 'relation_trigger')
-            if any(not str(row.get(field) or '').strip() for field in required):
-                raise IncompleteResponseError('An extracted claim omitted required endpoint or source wording')
-        check_target_evidence(response, range(1, len(packet_sentences) + 1))
+        # Ownership failures are isolated by the binder per claim. They must
+        # not regenerate otherwise valid target findings in the same response.
+        check_extraction_response(response, response_schema, allowed_numbers, target_numbers, enforce_target=False)
     try:
         user = (targeted_prompt(packet, source_title) if extraction_mode == 'target_context'
                 else _whole_packet_prompt(packet, source_title))
         answer_budget = (EXTRACTION_OUTPUT_TOKENS if claims_per_packet else
                          min(12000, max(4000, packet.get('target_word_count', packet['word_count']) * 8)))
         packet_schema = json.loads(json.dumps(response_schema))
-        packet_schema['properties']['claims']['items']['properties']['evidence_sentence_numbers']['items']['enum'] = (
-            list(range(1, len(packet_sentences) + 1)))
+        packet_schema['properties']['claims']['items']['properties']['evidence_sentence_ids']['items']['enum'] = (
+            list(allowed_numbers))
         result = client.chat_json(system, user, max_tokens=answer_budget,
                                   json_schema=packet_schema, request_label=label,
                                   response_check=check_extraction_complete)
     except LLMServiceError as exc:
         packet_record.update(status='service_error', error=str(exc), elapsed_seconds=round(time.monotonic() - packet_started, 3))
-        emit('error', f"{label} failed; extraction is incomplete; "
-             f"{total_packets - index} extraction regions were not processed")
+        emit('error', f"{label} could not complete; extraction is incomplete. "
+             "Parallel target status cannot be inferred from this target's position; completed response artifacts are retained.")
         raise
     except Exception as exc:
         packet_record.update(status='timeout' if 'timed out' in str(exc).casefold() else 'failed',
@@ -267,29 +293,43 @@ def _request_packet(packet, packet_record, index, total_packets, client, system,
     packet_record.update(status='completed', proposed_claims=len(extracted_items),
                          claim_limit_reached=bool(claims_per_packet and len(extracted_items) >= claims_per_packet),
                          elapsed_seconds=round(time.monotonic() - packet_started, 3))
+    context_only = sum(not set(item['evidence_sentence_ids']).intersection(target_numbers)
+                       for item in extracted_items if isinstance(item, dict)
+                       and isinstance(item.get('evidence_sentence_ids'), list)
+                       and all(type(n) is int for n in item['evidence_sentence_ids'])) if target_numbers is not None else 0
+    packet_record['context_only_claims_quarantined'] = context_only
+    if context_only:
+        emit('warning' if context_only == len(extracted_items) else 'info',
+             f'{label}: {context_only} context-only findings quarantined for audit; '
+             'other claims continue through source anchoring; no response regeneration. '
+             'Processing coverage does not establish exhaustive claim recall.')
     return extracted_items
 
 
 def _proposed_candidate(item: dict[str, Any]) -> dict[str, Any]:
     candidate = {
         'subject': str(item.get('subject', '')).strip(),
-        'relation': str(item.get('relation', '')).strip().lower(),
+        'relation': str(item.get('relation', '')).strip(),
         'object': str(item.get('object', '')).strip(),
-        'source_context': str(item.get('source_context') or '').strip()[:300],
-        'subject_type': str(item.get('subject_type', '')).strip(),
-        'object_type': str(item.get('object_type', '')).strip(),
-        'certainty': str(item.get('certainty', '')).strip().lower(),
-        'relation_trigger': str(item.get('relation_trigger', '')).strip(),
     }
+    for role in ('subject', 'object'):
+        if item.get(role + '_context'):
+            candidate[role + '_context'] = item[role + '_context'].strip()
     raw_qualifiers = item.get('qualifiers')
     candidate['qualifiers'] = {
-        key: str(raw_qualifiers.get(key, '')).strip()[:160]
-        for key in ('crop_or_species', 'population', 'condition', 'comparator', 'metric')
+        key: str(value).strip() for key, value in raw_qualifiers.items()
+        if key in {'crop_or_species', 'population', 'condition', 'comparator', 'metric'} and isinstance(value, str)
     } if isinstance(raw_qualifiers, dict) else {}
+    hints = {role: item[role + '_type'] for role in ('subject', 'object') if item.get(role + '_type')}
+    if hints:
+        candidate['extraction_type_hints'] = hints
     return candidate
 
 
 def _proposed_anchors(item: dict[str, Any]) -> dict[str, str]:
+    if 'evidence_sentence_ids' in item:
+        return {role: str(item.get(role + '_anchor') or item.get(role, '')).strip() for role in ('subject', 'object')} | {
+            'relation': str(item.get('relation', '')).strip()}
     return {'subject': str(item.get('subject_source_mention', '')).strip(),
             'object': str(item.get('object_source_mention', '')).strip(),
             'relation': str(item.get('relation_trigger', '')).strip()}
@@ -298,8 +338,7 @@ def _proposed_anchors(item: dict[str, Any]) -> dict[str, str]:
 def _record_claim_rejection(reason, packet, candidate, item, rejection_records, evidence_record=None):
     record = {'reason': reason, 'packet_number': packet['packet_number'],
               'section_heading': packet['section_heading'], 'proposed_claim': dict(candidate),
-              'proposed_source_anchors': _proposed_anchors(item),
-              'proposed_claim_text': item.get('claim_text')}
+              'proposed_source_anchors': _proposed_anchors(item)}
     if evidence_record is not None:
         record.update(source_evidence_sentence_numbers=evidence_record['sentence_numbers'],
                       source_evidence_span=evidence_record['evidence_span'])
@@ -314,15 +353,26 @@ def _bind_claim_evidence(item, candidate, packet, extraction_mode, state):
         state.rejected['malformed'] += 1
         _record_claim_rejection('malformed', packet, candidate, item, state.rejection_records)
         return None
+    if not valid_relation_wording(candidate['relation']):
+        state.rejected['malformed_relation'] += 1
+        _record_claim_rejection('malformed_relation', packet, candidate, item, state.rejection_records)
+        return None
     evidence_numbers, evidence_sentences, evidence_span = evidence
     # Alternate clients may not invoke the provider response_check callback.
-    if extraction_mode == 'target_context' and not set(evidence_numbers) <= set(packet['target_sentence_numbers']):
+    if extraction_mode == 'target_context' and not set(evidence_numbers) <= set(packet['target_sentence_numbers']) | set(packet.get('reading_context_sentence_numbers', [])):
         state.rejected['outside_extraction_target'] += 1
         state.rejection_records.append({'reason': 'outside_extraction_target', 'target_id': packet['target_id'],
                                         'packet_number': packet['packet_number'], 'proposed_claim': candidate,
                                         'source_evidence_sentence_numbers': evidence_numbers})
         return None
+    if extraction_mode == 'target_context' and not set(evidence_numbers).intersection(packet['target_sentence_numbers']):
+        state.rejected['context_only_finding'] += 1
+        _record_claim_rejection('context_only_finding', packet, candidate, item,
+                                state.rejection_records, {'sentence_numbers': evidence_numbers, 'evidence_span': evidence_span})
+        return None
     evidence_record = {
+        'target_sentence_numbers': sorted(set(evidence_numbers) & set(packet.get('target_sentence_numbers', evidence_numbers))),
+        'supporting_context_sentence_numbers': sorted(set(evidence_numbers) - set(packet.get('target_sentence_numbers', evidence_numbers))),
         'source_evidence_is_contiguous': evidence_numbers == list(range(evidence_numbers[0], evidence_numbers[-1] + 1)),
         'source_evidence_fragments': [{'sentence_number': n, 'page': sentence['page'], 'text': sentence['text']}
                                       for n, sentence in zip(evidence_numbers, evidence_sentences)],
@@ -335,16 +385,52 @@ def _bind_claim_evidence(item, candidate, packet, extraction_mode, state):
     }
     review_hints = extraction_review_hints(candidate, evidence_span)
     proposed = _proposed_anchors(item)
-    subject_mention = source_surface_mention(evidence_span, proposed['subject'])
-    object_mention = source_surface_mention(evidence_span, proposed['object'])
+    def literal_endpoint(value):
+        return next((span for sentence in evidence_sentences
+                     if (span := source_surface_mention(sentence['text'], value))), None)
+    subject_mention = literal_endpoint(proposed['subject']) or literal_endpoint(candidate['subject'])
+    object_mention = literal_endpoint(proposed['object']) or literal_endpoint(candidate['object'])
     trigger = source_surface_mention(evidence_span, proposed['relation'])
-    if not subject_mention or not object_mention or not trigger:
+    minimal = 'evidence_sentence_ids' in item
+    coordination_adjustments = []
+    if minimal:
+        for role, mention in (('subject', subject_mention), ('object', object_mention)):
+            if mention:
+                continue
+            anchors, basis, definitions_used = set(), 'document_defined_abbreviation', None
+            glossary = packet.get('source_abbreviation_definitions', [])
+            documents = {r.get('document') for r in glossary if r.get('document')}
+            if len(documents) == 1:
+                matches = [match for sentence in evidence_sentences
+                           if (match := abbreviation_source_anchor(proposed[role], sentence['text'], glossary, next(iter(documents))))]
+                if len({match[0] for match in matches}) == 1:
+                    anchors = {matches[0][0]}
+                    definitions_used = matches[0][1]
+            if len(anchors) != 1:
+                continue
+            anchor = next(iter(anchors))
+            if role == 'subject':
+                subject_mention = anchor
+            else:
+                object_mention = anchor
+            coordination_adjustments.append({'role': role, 'mention': anchor,
+                'basis': basis, 'atomic_endpoint': proposed[role]})
+            if definitions_used:
+                coordination_adjustments[-1]['definitions'] = definitions_used
+            review_hints.append('review_abbreviation_anchor_' + role)
+    if not subject_mention or not object_mention or (not trigger and not minimal):
         state.rejected['unanchored_evidence'] += 1
         _record_claim_rejection('unanchored_evidence', packet, candidate, item, state.rejection_records, evidence_record)
         return None
-    subject_mention, object_mention, adjustments = compact_literal_entity_anchors(
-        candidate, subject_mention, object_mention, trigger, evidence_span)
-    anchor_error = extraction_anchor_error(subject_mention, object_mention, trigger)
+    if minimal:
+        adjustments = coordination_adjustments
+        if not trigger:
+            review_hints.append('review_nonliteral_relation_wording')
+        anchor_error = None
+    else:
+        subject_mention, object_mention, adjustments = compact_literal_entity_anchors(
+            candidate, subject_mention, object_mention, trigger, evidence_span)
+        anchor_error = extraction_anchor_error(subject_mention, object_mention, trigger)
     if anchor_error == 'missing_source_anchor':
         state.rejected[anchor_error] += 1
         _record_claim_rejection(anchor_error, packet, candidate, item, state.rejection_records, evidence_record)
@@ -352,9 +438,8 @@ def _bind_claim_evidence(item, candidate, packet, extraction_mode, state):
     if anchor_error:
         review_hints.append('review_' + anchor_error)
     evidence_record.update(subject_source_mention=subject_mention, object_source_mention=object_mention,
-                           relation_trigger=trigger, anchor_adjustments=adjustments,
-                           certainty=candidate['certainty'], subject_type=candidate['subject_type'],
-                           object_type=candidate['object_type'], qualifiers=dict(candidate['qualifiers']),
+                           relation_trigger=trigger or '', anchor_adjustments=adjustments,
+                           qualifiers=dict(candidate['qualifiers']),
                            source_context=candidate.get('source_context', ''))
     return evidence_record, review_hints
 
@@ -372,9 +457,10 @@ def _link_evidence_citations(evidence_record, packet, bibliography, emit):
 def _occurrence_key(candidate, evidence_record):
     """Only the same assertion, restrictions, and source occurrence are merged."""
     return (normalized(candidate['subject']), candidate['relation'], normalized(candidate['object']),
-            candidate['certainty'], candidate['subject_type'], candidate['object_type'], evidence_record['page'],
+            evidence_record['page'],
             normalized(evidence_record['evidence_span']), json.dumps(candidate['qualifiers'], sort_keys=True),
-            normalized(candidate.get('source_context', '')))
+            normalized(candidate.get('source_context', '')),
+            normalized(candidate.get('subject_context', '')), normalized(candidate.get('object_context', '')))
 
 
 def _merge_overlap_occurrence(existing, evidence_record):
@@ -438,10 +524,12 @@ def _materialize_candidate(item, candidate, evidence_record, packet, context, re
     cited_references, citation_links = evidence_record['references'], evidence_record['citation_links']
     candidate_id = "candidate-" + stable_hash(
         f"{document_id}|{normalized(subject)}|{relation}|{normalized(obj)}|"
-        f"{candidate['certainty']}|{candidate['subject_type']}|{candidate['object_type']}|"
+        f"v{EXTRACTION_CONTRACT_VERSION}|"
         f"{json.dumps(candidate['qualifiers'], sort_keys=True)}|{evidence_page}|{normalized(evidence_span)}"
+        + f"|subject_context:{normalized(candidate.get('subject_context', ''))}|object_context:{normalized(candidate.get('object_context', ''))}"
         + (f"|context:{normalized(candidate['source_context'])}" if normalized(candidate.get('source_context', '')) else ''), 32)
     candidate.update({**evidence_details, "schema_version": SCHEMA_VERSION, "candidate_id": candidate_id,
+                      "extraction_contract_version": EXTRACTION_CONTRACT_VERSION,
                       "source_document_id": document_id, "source_paper_title": source_title,
                        "source_doi": source_identifiers.get("source_doi", ""),
                        "source_pmcid": source_identifiers.get("source_pmcid", ""),
@@ -453,6 +541,8 @@ def _materialize_candidate(item, candidate, evidence_record, packet, context, re
                       "source_packet_number": packet["packet_number"],
                       "source_context_estimated_tokens": packet["estimated_token_count"],
                       "source_evidence_sentence_numbers": evidence_numbers,
+                      "source_evidence_target_sentence_numbers": evidence_record['target_sentence_numbers'],
+                      "source_evidence_context_sentence_numbers": evidence_record['supporting_context_sentence_numbers'],
                       "source_evidence_span": evidence_span,
                       "subject_source_mention": subject_source_mention,
                       "object_source_mention": object_source_mention,
@@ -472,15 +562,21 @@ def _materialize_candidate(item, candidate, evidence_record, packet, context, re
                       "document_scope": (document_scope or {}).get("scope", "uncertain"),
                       "source_context_packet": " ".join(sentence["text"] for sentence in packet_sentences),
                       "source_local_context": local_evidence_context(packet_sentences, evidence_numbers),
-                      "extraction_type_variants": [{"subject_type": candidate["subject_type"],
-                                                    "object_type": candidate["object_type"]}],
+                      "source_reading_context": '\n'.join(
+                          f"[{n}] [page {sentence['page']}] {sentence['text']}"
+                          for n, sentence in enumerate(packet_sentences, 1)
+                          if extraction_mode != 'target_context'
+                          or n in set(packet.get('target_sentence_numbers', ())) | set(packet.get('reading_context_sentence_numbers', ()))),
                       })
-    candidate["claim_text"], candidate["claim_text_origin"] = claim_description({**candidate, "claim_text": item.get("claim_text")})
     if extraction_mode == 'target_context':
         candidate.update(source_extraction_mode=extraction_mode, source_target_id=packet['target_id'],
                          source_target_sentence_numbers=packet['target_sentence_numbers'],
-                         source_target_sentence_ids=packet['target_source_sentence_ids'])
+                         source_target_sentence_ids=packet['target_source_sentence_ids'],
+                         source_extraction_reading_context_sentence_numbers=packet['reading_context_sentence_numbers'],
+                         source_extraction_reading_context_policy=packet['reading_context_policy'])
     candidate["schema_error"] = schema_error(candidate)
+    candidate['extraction_warnings'] = extraction_warnings(candidate)
+    candidate['extraction_review_status'] = 'held' if candidate['extraction_warnings'] else 'not_flagged'
     return candidate
 
 
@@ -491,18 +587,17 @@ def _process_packet_claims(extracted_items, packet, context, state, emit):
             state.rejection_records.append({'reason': 'malformed', 'packet_number': packet['packet_number'],
                                             'section_heading': packet['section_heading'], 'proposed_claim': {}})
             continue
+        try:
+            validate_schema({'claims': [item]}, EXTRACTION_RESPONSE_SCHEMA)
+        except ValueError:
+            state.rejected['malformed'] += 1
+            state.rejection_records.append({'reason': 'malformed', 'packet_number': packet['packet_number'],
+                                            'section_heading': packet['section_heading'], 'proposed_claim': item})
+            continue
         candidate = _proposed_candidate(item)
         if normalized(candidate['subject']) == normalized(candidate['object']):
             state.rejected['identical_endpoints'] += 1
             _record_claim_rejection('identical_endpoints', packet, candidate, item, state.rejection_records)
-            continue
-        if candidate['subject_type'] == 'Unresolved' and candidate['object_type'] == 'Unresolved':
-            state.rejected['out_of_domain_unresolved'] += 1
-            _record_claim_rejection('out_of_domain_unresolved', packet, candidate, item, state.rejection_records)
-            continue
-        if candidate['subject_type'] not in CORE_DOMAIN_TYPES and candidate['object_type'] not in CORE_DOMAIN_TYPES:
-            state.rejected['out_of_domain_entity'] += 1
-            _record_claim_rejection('out_of_domain_entity', packet, candidate, item, state.rejection_records)
             continue
         bound = _bind_claim_evidence(item, candidate, packet, context.extraction_mode, state)
         if bound is None:
@@ -527,6 +622,10 @@ def _load_cached_packet_claims(cache_dir: Path | None, extraction_mode: str) -> 
     responses_dir = cache_dir / 'model_responses'
     if not responses_dir.is_dir():
         return {}
+    coverage = read_jsonl(cache_dir / 'extraction_packets.jsonl')
+    current = {r.get('target_id') if extraction_mode == 'target_context' else f"packet_{r.get('packet_number')}"
+               for r in coverage if r.get('output_contract_version') == EXTRACTION_CONTRACT_VERSION
+               and r.get('status') == 'completed'}
     target_claims = {}
     for filename in responses_dir.iterdir():
         if filename.suffix != '.json':
@@ -535,17 +634,25 @@ def _load_cached_packet_claims(cache_dir: Path | None, extraction_mode: str) -> 
             data = json.loads(filename.read_text(encoding='utf-8'))
             if data.get('status') != 'ok':
                 continue
+            if data.get('extraction_contract_version') != EXTRACTION_CONTRACT_VERSION:
+                continue
             task = data.get('task', '')
             accepted = data.get('accepted_response')
             if not isinstance(accepted, dict) or 'claims' not in accepted:
                 continue
             claims = accepted.get('claims') or []
+            # Historical responses remain archived. Reusing them as new outputs
+            # would silently bypass the current extraction contract.
+            validate_schema(accepted, EXTRACTION_RESPONSE_SCHEMA)
+            if any(not valid_relation_wording(row.get('relation')) for row in claims):
+                continue
             m = re.search(r'\((target-[0-9a-f]+); packet (\d+)\)', task)
             if m:
-                target_claims[m.group(1)] = claims
+                if m.group(1) in current:
+                    target_claims[m.group(1)] = claims
             else:
                 m_pkt = re.search(r'extraction packet (\d+)/', task)
-                if m_pkt:
+                if m_pkt and f"packet_{m_pkt.group(1)}" in current:
                     target_claims[f"packet_{m_pkt.group(1)}"] = claims
         except Exception:
             continue
@@ -641,7 +748,7 @@ def extract_claims(pdf_path: Path, client: OpenCodeClient, max_pages: int,
                    packet_results: list[dict[str, Any]] | None = None,
                    repair_target: dict[str, Any] | None = None, bibliography=None,
                    extraction_mode: str = 'whole_packet', target_words: int = 800,
-                   resume_cache_dir: Path | None = None
+                   resume_cache_dir: Path | None = None, scope_instructions: str | None = None
                    ) -> tuple[list[dict[str, Any]], dict[str, int], list[dict[str, Any]]]:
     digest = file_hash(pdf_path)
     document_id = "local-" + stable_hash(f"{pdf_path.stem}|{digest}", 32)
@@ -654,18 +761,19 @@ def extract_claims(pdf_path: Path, client: OpenCodeClient, max_pages: int,
     if repair_target is not None:
         extraction_mode = 'whole_packet'
     system = build_extraction_prompt(claims_per_packet, extraction_mode)
+    if scope_instructions:
+        system += '\n\n' + scope_instructions
     if repair_target is not None:
         if repair_target.get('mode') == 'atomic_reextraction':
             system += ('\nRE-EXTRACT ONLY THE SPECIFIED HELD CLAIM INTO ATOMIC CHILDREN. Return all eligible '
                        'independently testable propositions from its original selected sentences, preserving '
                        'all real restrictions and citations. Use wider context only for explicit referents. '
-                       'Every evidence_sentence_numbers value must belong to parent_evidence_sentence_numbers. '
+                       'Every evidence_sentence_ids value must belong to parent_evidence_sentence_numbers. '
                        'Do not add unrelated packet claims, speculative bridges, editorial emphasis or '
                        'excluded yield/economic assertions. Zero children is valid. Preserve the original '
                        'claim question where faithful; source failure feedback is not proof. '
-                       'Each child claim_text must state ONLY that specific child proposition, never the full '
-                       'compound sentence. Capability or disposition phrasing (e.g., ability to, can produce) '
-                       'must be certainty=descriptive, not causal. TARGET: '
+                       'Each child triple must state ONLY that specific child proposition. Preserve capability '
+                       'and possibility wording in relation/qualifiers without converting it to a definite effect. TARGET: '
                        + json.dumps(repair_target,ensure_ascii=False))
         else:
             system += ("\nREPAIR ONE EXISTING CLAIM. Return at most one correction of the specified claim, "
@@ -683,10 +791,12 @@ def extract_claims(pdf_path: Path, client: OpenCodeClient, max_pages: int,
     packets = packets if packets is not None else list(iter_pdf_context_packets(pdf_path, max_pages))
     if not packets:
         raise ValueError("The PDF has no extractable text. OCR is required before extraction.")
+    abbreviation_glossary = packet_definitions(packets, document_id)
     if extraction_mode == 'target_context':
-        packets = build_extraction_targets(packets, target_words)
+        packets = build_extraction_targets(packets, target_words,
+            abbreviation_glossary=abbreviation_glossary, document_id=document_id)
         emit('info', f"Target/context extraction: {len(packets)} targets; about {target_words} words per target; "
-             "original packets retained as reading context; no LLM discovery pass")
+             "nearby paragraphs and source-defined abbreviations supplied; full packets stored; no LLM discovery pass")
     packet_results = packet_results if packet_results is not None else []
     planned_records = [_packet_coverage_record(packet, extraction_mode) for packet in packets]
     packet_results.extend(planned_records)
@@ -705,4 +815,8 @@ def extract_claims(pdf_path: Path, client: OpenCodeClient, max_pages: int,
     emit("info", f"Extraction complete: {len(state.candidates)} unique candidates; "
          f"{state.rejected.get('overlap_occurrence_deduplicated', 0)} overlap duplicates removed; "
          f"{sum(value for key, value in state.rejected.items() if key != 'overlap_occurrence_deduplicated')} discarded ({dict(state.rejected)})")
+    for candidate in state.candidates:
+        candidate['source_abbreviation_definitions'] = relevant_definitions(candidate, abbreviation_glossary)
+        expanded = expand_claim_names(candidate, abbreviation_glossary)
+        candidate.update(expanded)
     return state.candidates, dict(state.rejected), state.rejection_records

@@ -2,9 +2,11 @@
 import json
 
 from backend.config.settings import SCHEMA_VERSION
+from backend.config.pipeline import VALIDATION_STAGES_PAUSED
 from backend.shared.artifacts import save_json
 from backend.shared.storage import file_hash, read_jsonl, stable_hash
 from backend.stages.claim_extraction.targeting import TARGETING_VERSION
+from backend.stages.claim_extraction.contract import valid_relation_wording
 
 
 def read_metadata(output):
@@ -82,6 +84,8 @@ def resume_metadata(output, pdf, settings, max_pages, claims_per_packet, *, extr
     # Downstream synthesis/audit and assembly assignments do not change the
     # completed extraction. Their own scientific fingerprints invalidate reuse.
     downstream = {'pathway_assembly','external'}
+    if VALIDATION_STAGES_PAUSED:
+        downstream.update({'source', 'query'})
     core_models = {k:v for k,v in settings.task_models.items() if k not in downstream}
     saved_models = {k:v for k,v in (metadata.get('task_models') or {}).items() if k not in downstream}
     if (metadata.get('schema_version') != SCHEMA_VERSION or metadata.get('pdf_sha256') != file_hash(pdf)
@@ -127,9 +131,11 @@ def resume_metadata(output, pdf, settings, max_pages, claims_per_packet, *, extr
         raise ValueError('Saved candidate identifiers are missing or duplicated')
     if 'candidate_ids' in metadata and metadata['candidate_ids'] != ids:
         raise ValueError('Saved candidates do not match the extraction checkpoint')
-    required = {'candidate_id', 'subject', 'relation', 'object', 'subject_type', 'object_type', 'schema_error'}
+    required = {'candidate_id', 'subject', 'relation', 'object', 'schema_error'}
     if any(not required <= row.keys() or row.get('source_pdf_sha256') != metadata['pdf_sha256'] for row in candidates):
         raise ValueError('Saved candidates do not have complete matching PDF provenance')
+    if any(not valid_relation_wording(row['relation']) for row in candidates):
+        raise ValueError('Saved extraction contains incomplete relation labels; start a new run to extract complete predicates')
     return metadata
 
 

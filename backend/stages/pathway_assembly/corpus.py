@@ -1,5 +1,6 @@
 """Read saved extractions globally, with document-scoped immutable edge references."""
 import json
+from backend.config.pipeline import UNVALIDATED_ELIGIBILITY_POLICY
 
 from backend.shared.storage import read_jsonl, stable_hash
 from backend.stages.graph_construction.graph import _edge_status
@@ -16,7 +17,9 @@ SUPPORTED_EXTERNAL_STATUSES = {'world_independently_corroborated_pending_review'
                                'world_independent_supported_pending_corroboration'}
 
 
-def collect_corpus(root, provisional=False):
+def collect_corpus(root, provisional=False, *, unvalidated=False):
+    if unvalidated and not provisional:
+        raise ValueError('Unvalidated claims can only enter provisional assembly')
     edges, endpoints = [], []
     for path in sorted(root.glob('*/candidates.jsonl')):
         if path.parent.name == ASSEMBLY_DIRECTORY:
@@ -31,7 +34,9 @@ def collect_corpus(root, provisional=False):
             # Provisional assembly requires PDF fidelity and explicit model
             # scope acceptance. Historical validated views additionally require
             # independent external support. Exclusions remain auditable.
-            if (source_fidelity_decision(c) != 'entailed'
+            if c.get('superseded_by'):
+                continue
+            if not unvalidated and (source_fidelity_decision(c) != 'entailed'
                     or (provisional and not source_pathway_eligible(c))
                     or (not provisional and (external_project_scope(result) is not True
                     or result.get('validation_status') not in SUPPORTED_EXTERNAL_STATUSES
@@ -53,8 +58,15 @@ def collect_corpus(root, provisional=False):
                         source_page=c.get('source_page'), source_status=source_fidelity_decision(c),
                         **({'project_scope': effective_project_scope(c)} if provisional else {}),
                         external_status='not_individually_evaluated' if provisional else results.get(c['candidate_id'], {}).get('validation_status', 'not_evaluated'),
-                        status=status, support_count=len(support), contradiction_count=len(contradict),
+                        status='unvalidated' if unvalidated else status,
+                        support_count=0 if unvalidated else len(support),
+                        contradiction_count=0 if unvalidated else len(contradict),
                         causal_chain_validated=False, **({'provisional': True} if provisional else {}))
+            if unvalidated:
+                edge.update(validation_stages_paused=True, validation_status='not_assessed',
+                            external_status='not_assessed', source_status='not_assessed',
+                            historical_source_status=source_fidelity_decision(c),
+                            project_scope={'decision': 'not_assessed'})
             edges.append(edge)
             for role in ('subject', 'object'):
                 endpoints.append(dict(endpoint_id=f'{edge_id}:{role}', edge_id=edge_id, role=role,
@@ -67,9 +79,9 @@ def collect_corpus(root, provisional=False):
     return edges, endpoints
 
 
-def corpus_signature(edges, endpoints, model, thinking=True, *, provisional=False):
+def corpus_signature(edges, endpoints, model, thinking=True, *, provisional=False, unvalidated=False):
     if provisional:
         edges = [{k: v for k, v in edge.items() if k not in {'external_status', 'status', 'support_count', 'contradiction_count'}} for edge in edges]
-    return stable_hash(json.dumps(dict(version=ASSEMBLY_VERSION, eligibility_policy=PROVISIONAL_ELIGIBILITY_POLICY if provisional else ASSEMBLY_ELIGIBILITY_POLICY,
+    return stable_hash(json.dumps(dict(version=ASSEMBLY_VERSION, eligibility_policy=UNVALIDATED_ELIGIBILITY_POLICY if unvalidated else PROVISIONAL_ELIGIBILITY_POLICY if provisional else ASSEMBLY_ELIGIBILITY_POLICY,
                                   model=model, edges=edges, endpoints=endpoints, **({} if thinking else {'thinking': 'disabled'})),
                                   sort_keys=True, ensure_ascii=False), 64)

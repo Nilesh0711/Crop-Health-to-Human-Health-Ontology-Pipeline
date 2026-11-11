@@ -14,11 +14,20 @@ class SchemaValidationError(StructuredOutputError):
     """Parsed JSON violates the response contract; not a token truncation."""
 
 
+class NullAnnotationError(SchemaValidationError):
+    """Only undeclared null-valued object fields prevent schema acceptance."""
+
+    def __init__(self, message, paths):
+        super().__init__(message)
+        self.paths = paths
+
+
 class ResponseStructureError(StructuredOutputError):
-    """A prematurely closed root or multiple values need fresh schema-bound output.
+    """Ambiguous nesting or invalid quoted values need fresh schema-bound output.
 
     Separator edits cannot safely establish which object owns the remaining
-    fields. Never select the first parsed object or move fields locally.
+    fields or reinterpret string contents. Never select the first parsed object,
+    relax JSON string parsing, or move fields locally.
     """
 
 
@@ -60,6 +69,14 @@ def parse_json_object(content, schema=None):
     try:
         parsed = json.loads(content, object_pairs_hook=_unique_object, parse_constant=_reject_constant)
     except json.JSONDecodeError as exc:
+        if exc.msg.startswith('Invalid control character'):
+            # A raw control character is inside a quoted value. Our formatting
+            # repair may edit separators outside strings, not reinterpret their
+            # contents or silently accept a permissively decoded answer.
+            raise ResponseStructureError(
+                'Model returned invalid JSON: unescaped control character inside a string; '
+                'separator-only repair cannot certify string contents; a fresh schema-bound response is required '
+                f'(line {exc.lineno}, column {exc.colno})') from exc
         remaining = content[exc.pos:].strip()
         incomplete_literal = remaining in {'', 't', 'tr', 'tru', 'f', 'fa', 'fal', 'fals', 'n', 'nu', 'nul', '-'}
         missing_value = exc.msg == 'Expecting value' and incomplete_literal

@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasNarrowSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000233"/>
+    <AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#exactMatch"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000051 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000051">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>has part</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0015399 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0015399">
+        <rdfs:label>primary active transmembrane transporter activity</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0016887 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0016887">
+        <rdfs:label>ATP hydrolysis activity</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0042626 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0042626">
+        <rdfs:label>ATPase-coupled transmembrane transporter activity</rdfs:label>
+        <equivalentClass>
+            <Class>
+                <intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://purl.obolibrary.org/obo/GO_0015399"/>
+                    <Restriction>
+                        <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                        <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/GO_0016887"/>
+                    </Restriction>
+                </intersectionOf>
+            </Class>
+        </equivalentClass>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0015399"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0140657"/>
+        <ns4:IAO_0000233 rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://github.com/geneontology/go-ontology/issues/14642</ns4:IAO_0000233>
+        <ns4:IAO_0000233 rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://github.com/geneontology/go-ontology/issues/17373</ns4:IAO_0000233>
+        <ns4:IAO_0000233 rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://github.com/geneontology/go-ontology/issues/19965</ns4:IAO_0000233>
+        <ns4:IAO_0000233 rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://github.com/geneontology/go-ontology/issues/30193</ns4:IAO_0000233>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9750546</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>ATP-dependent transmembrane transporter activity</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasBroadSynonym>P-P-bond-hydrolysis-driven transmembrane transporter activity</oboInOwl:hasBroadSynonym>
+        <ns4:IAO_0000115>Primary active transporter of a solute across a membrane, via the reaction: ATP + H2O = ADP + phosphate, to directly drive the transport of a substance across a membrane. The transport protein may be transiently phosphorylated (P-type transporters), or not (ABC-type transporters and other families of transporters). Primary active transport occurs up the solute&#39;s concentration gradient and is driven by a primary energy source.</ns4:IAO_0000115>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9753278</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>GO:0015405</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-2161538</oboInOwl:hasDbXref>
+        <oboInOwl:hasBroadSynonym>P-P-bond-hydrolysis-driven transporter</oboInOwl:hasBroadSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9659680</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>EC:7.2.2.-</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-1454916</oboInOwl:hasDbXref>
+        <oboInOwl:id>GO:0042626</oboInOwl:id>
+        <oboInOwl:hasBroadSynonym>ATPase activity, coupled to movement of substances</oboInOwl:hasBroadSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9759461</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>GO:0043492</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasNarrowSynonym>hydrolase activity, acting on acid anhydrides, catalyzing transmembrane movement of substances</oboInOwl:hasNarrowSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9033505</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-1467457</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9753283</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9753284</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>GO:0016820</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-2161506</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9750617</oboInOwl:hasDbXref>
+        <oboInOwl:hasOBONamespace>molecular_function</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9794572</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-390393</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9033499</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9794120</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>ATPase activity, coupled to transmembrane movement of substances</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-9759454</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>ATP-coupled transmembrane transporter activity</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>Reactome:R-HSA-5690340</oboInOwl:hasDbXref>
+        <skos:exactMatch rdf:resource="http://purl.uniprot.org/enzyme/7.2.2.-"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0140657 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0140657">
+        <rdfs:label>ATP-dependent activity</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

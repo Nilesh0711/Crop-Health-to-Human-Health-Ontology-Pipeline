@@ -1,0 +1,324 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:ns5="https://w3id.org/chemrof/"
+     xmlns:chebi="http://purl.obolibrary.org/obo/chebi/3"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_key_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/wurcs_representation"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/smiles_string"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/charge"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/generalized_empirical_formula"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/mass"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/monoisotopic_mass"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0000087 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000087">
+        <rdfs:label>has role</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_17992 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_17992">
+        <rdfs:label>sucrose</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_24407"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_50505"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_25728"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_35554"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_76971"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_75771"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_75772"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_35480"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_84735"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0000087"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_77746"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns5:charge rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">0</ns5:charge>
+        <ns5:monoisotopic_mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">342.11621</ns5:monoisotopic_mass>
+        <ns5:mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">342.297</ns5:mass>
+        <oboInOwl:hasDbXref>pubmed:17597061</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:18625236</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>kegg.drug:D00025</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:16304615</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:21972845</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:15845855</oboInOwl:hasDbXref>
+        <ns5:wurcs_representation>WURCS=2.0/2,2,1/[a2122h-1a_1-5][ha122h-2b_2-5]/1-2/a1-b2</ns5:wurcs_representation>
+        <oboInOwl:hasDbXref>pdb-ccd:SUC</oboInOwl:hasDbXref>
+        <ns5:inchi_key_string>CZMRCDWAGMRECN-UGDNZRGBSA-N</ns5:inchi_key_string>
+        <oboInOwl:hasDbXref>pubmed:17233733</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:22311778</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>wikipedia.en:Sucrose</oboInOwl:hasDbXref>
+        <ns5:generalized_empirical_formula>C12H22O11</ns5:generalized_empirical_formula>
+        <oboInOwl:id>CHEBI:17992</oboInOwl:id>
+        <oboInOwl:hasDbXref>kegg.drug:D06533</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:7381857</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>drugcentral:4610</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:22085755</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>sucrose</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>reaxys:1435311</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>reaxys:90825</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>White sugar</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>table sugar</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>SUCROSE</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:15128</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>pubmed:21703290</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:25466198</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Saccharose</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>gmelin:97695</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:16313996</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>cas:57-50-1</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>S-67F</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>beta-D-fructofuranosyl alpha-D-glucopyranoside</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:22404833</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:19726178</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:3110376</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>sacarosa</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:26812</oboInOwl:hasAlternativeId>
+        <ns5:smiles_string>OC[C@H]1O[C@@](CO)(O[C@H]2O[C@H](CO)[C@@H](O)[C@H](O)[C@H]2O)[C@@H](O)[C@@H]1O</ns5:smiles_string>
+        <oboInOwl:hasDbXref>pubmed:12706980</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:19199566</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>knapsack:C00001151</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Sacharose</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>metacyc.compound:SUCROSE</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:7392035</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:16663947</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:21813280</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:30034596</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>beta-D-Fruf-(2&lt;-&gt;1)-alpha-D-Glcp</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:22819594</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:15291457</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>GNE-410</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:19734051</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>kegg.compound:C00089</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:15660210</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:17439666</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:11111003</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:2342061</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:22751876</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:15792978</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:17827020</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>1-alpha-D-Glucopyranosyl-2-beta-D-fructofuranoside</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:3965718</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:16660545</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:11021636</oboInOwl:hasDbXref>
+        <ns4:IAO_0000115>A glycosyl glycoside formed by glucose and fructose units joined by an acetal oxygen bridge from hemiacetal of glucose to the hemiketal of the fructose.</ns4:IAO_0000115>
+        <oboInOwl:hasAlternativeId>CHEBI:45795</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasOBONamespace>chebi_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasRelatedSynonym>NSC-406942</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>hmdb:HMDB0000258</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:17576845</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Cane sugar</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:37468498</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:11093712</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:16525719</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:13508893</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>Sucrose</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasDbXref>pubmed:26203869</oboInOwl:hasDbXref>
+        <ns5:inchi_string>InChI=1S/C12H22O11/c13-1-4-6(16)8(18)9(19)11(21-4)23-12(3-15)10(20)7(17)5(2-14)22-12/h4-11,13-20H,1-3H2/t4-,5-,6-,7-,8+,9-,10+,11-,12+/m1/s1</ns5:inchi_string>
+        <oboInOwl:hasExactSynonym>beta-D-fructofuranosyl alpha-D-glucopyranoside</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>pubmed:12065720</oboInOwl:hasDbXref>
+        <oboInOwl:hasAlternativeId>CHEBI:9314</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasDbXref>kegg.glycan:G00370</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>drugbank:DB02772</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:20014752</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:16665852</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>pubmed:16228482</oboInOwl:hasDbXref>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_24407 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_24407">
+        <rdfs:label>glycosyl glycoside</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_25728 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_25728">
+        <rdfs:label>osmolyte</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_35480 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_35480">
+        <rdfs:label>analgesic</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_35554 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_35554">
+        <rdfs:label>cardiovascular drug</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_50505 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_50505">
+        <rdfs:label>sweetening agent</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_75771 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_75771">
+        <rdfs:label>mouse metabolite</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_75772 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_75772">
+        <rdfs:label>Saccharomyces cerevisiae metabolite</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_76971 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_76971">
+        <rdfs:label>Escherichia coli metabolite</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_77746 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_77746">
+        <rdfs:label>human metabolite</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_84735 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_84735">
+        <rdfs:label>algal metabolite</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

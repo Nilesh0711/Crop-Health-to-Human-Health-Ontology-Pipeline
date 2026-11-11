@@ -67,7 +67,7 @@ def schema_error(candidate: dict) -> str | None:
     an entity actually has that role, whether a type pair is plausible, or
     whether a claim belongs to the project. Those are evidence-based decisions.
     """
-    if candidate.get("subject_type") not in ENTITY_TYPES or candidate.get("object_type") not in ENTITY_TYPES:
+    if any(key in candidate and candidate[key] not in ENTITY_TYPES for key in ('subject_type', 'object_type')):
         return "Unknown entity label; use Unresolved when classification is uncertain"
     relation = candidate.get("relation")
     if not isinstance(relation, str) or not relation.strip():

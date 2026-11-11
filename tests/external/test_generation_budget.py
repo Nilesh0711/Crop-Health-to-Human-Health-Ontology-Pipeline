@@ -64,7 +64,7 @@ def test_syntax_repair_is_a_warning_then_a_successful_repair_notice():
     assert metrics[1]['recovery_completed']
 
 
-@pytest.mark.parametrize('task,expected', [('extraction', 24576), ('source', 8192), ('query', 8192)])
+@pytest.mark.parametrize('task,expected', [('extraction', 50000), ('source', 8192), ('query', 8192)])
 def test_extraction_gets_more_room_without_changing_source_or_query_budgets(task, expected):
     client = OpenCodeClient(Settings(), task=task)
     with patch.object(client._inference, 'chat', return_value=response(VALID)) as call:
@@ -80,3 +80,16 @@ def test_external_floor_is_configurable_and_does_not_reduce_a_larger_request():
     assert [c.args[4] for c in call.call_args_list] == [20000, 26096]
     with pytest.raises(ValueError, match='EXTERNAL_MIN_OUTPUT_BUDGET'):
         Settings(external_min_output_budget=8191)
+
+
+def test_extraction_runtime_accepts_50000_and_recovery_does_not_reduce_it():
+    from backend.api.contracts import RunOptions
+    from pydantic import ValidationError
+    assert RunOptions().extraction_generation_budget == 50000
+    options = RunOptions(extraction_generation_budget=50000)
+    with pytest.raises(ValidationError):
+        RunOptions(extraction_generation_budget=50001)
+    client = OpenCodeClient(Settings(extraction_min_output_budget=options.extraction_generation_budget), task='extraction')
+    with patch.object(client._inference, 'chat', side_effect=[response(VALID, 'length'), response(VALID)]) as call:
+        assert client.chat_json('rules', 'original source', max_tokens=1000, json_schema=SCHEMA) == ANSWER
+    assert [item.args[4] for item in call.call_args_list] == [50000, 50000]

@@ -35,7 +35,8 @@ def claim_description(item: dict[str, Any]) -> tuple[str, str]:
     qualifiers = "; ".join(f"{key.replace('_', ' ')}: {value}" for key, value in
                            (item.get("qualifiers") or {}).items() if value)
     text = f"{item['subject']} — {item['relation'].replace('_', ' ')} — {item['object']}."
-    text += f" Wording: {item.get('certainty') or 'unspecified'}."
+    if item.get('certainty'):
+        text += f" Wording: {item['certainty']}."
     return text + (f" Context: {qualifiers}." if qualifiers else ""), "structured_rendering"
 
 

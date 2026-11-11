@@ -18,6 +18,32 @@ else
 fi
 
 cd "$PROJECT_ROOT"
+# Windows can retain a listening reload supervisor even when its worker stalls.
+# Refuse a second launch instead of creating another server tree on this port.
+"$PYTHON" - <<'PY'
+import socket
+import sys
+
+try:
+    # Windows can take about two seconds to report a refused local connection.
+    connection = socket.create_connection(('127.0.0.1', 8000), timeout=3)
+except ConnectionRefusedError:
+    pass
+except OSError as exc:
+    sys.exit(f'Cannot check backend port 8000: {exc}')
+else:
+    connection.close()
+    sys.exit('Backend port 8000 is already in use. Use the existing backend, or stop it before starting another instance.')
+PY
+export EXTRACTION_MODEL="${EXTRACTION_MODEL:-opencode-go/deepseek-v4.1-flash}"
+export OPEN_CODE_SOURCE_MODEL="${OPEN_CODE_SOURCE_MODEL:-opencode-go/deepseek-v4.1-flash}"
+export OPEN_CODE_QUERY_MODEL="${OPEN_CODE_QUERY_MODEL:-opencode-go/deepseek-v4.1-flash}"
+export OPEN_CODE_PATHWAY_ASSEMBLY_MODEL="${OPEN_CODE_PATHWAY_ASSEMBLY_MODEL:-opencode-go/deepseek-v4.1-flash}"
+export OPEN_CODE_EXTERNAL_MODEL="${OPEN_CODE_EXTERNAL_MODEL:-opencode-go/deepseek-v4.1-flash}"
+export ONTOLOGY_GROUNDING_WORKERS="${ONTOLOGY_GROUNDING_WORKERS:-5}"
+export ONTOLOGY_GROUNDING_BATCH_SIZE="${ONTOLOGY_GROUNDING_BATCH_SIZE:-3}"
+export ONTOLOGY_GROUNDING_TIMEOUT_SECONDS="${ONTOLOGY_GROUNDING_TIMEOUT_SECONDS:-600}"
+export EXTRACTION_CONCURRENCY="${EXTRACTION_CONCURRENCY:-2}"
 export OPENCODE_RESPONSE_FORMAT="${OPENCODE_RESPONSE_FORMAT:-model_default}"
 export JSON_REPAIR_ATTEMPTS="${JSON_REPAIR_ATTEMPTS:-1}"
 export JSON_REGENERATION_ATTEMPTS="${JSON_REGENERATION_ATTEMPTS:-1}"
@@ -31,9 +57,9 @@ export PATHWAY_FOLLOWUP_PAPERS="${PATHWAY_FOLLOWUP_PAPERS:-3}"
 export EXTERNAL_PAPER_WORKERS="${EXTERNAL_PAPER_WORKERS:-3}"
 export OPEN_CODE_EXTERNAL_PAPER_MODEL="${OPEN_CODE_EXTERNAL_PAPER_MODEL:-opencode-go/deepseek-v4.1-flash}"
 export EXTRACTION_MODE="${EXTRACTION_MODE:-target_context}"
-export EXTRACTION_TARGET_WORDS="${EXTRACTION_TARGET_WORDS:-800}"
+export EXTRACTION_TARGET_WORDS="${EXTRACTION_TARGET_WORDS:-200}"
 export EXTRACTION_CLAIMS_PER_PACKET="${EXTRACTION_CLAIMS_PER_PACKET:-0}"
-export EXTRACTION_MIN_OUTPUT_BUDGET="${EXTRACTION_MIN_OUTPUT_BUDGET:-24576}"
+export EXTRACTION_MIN_OUTPUT_BUDGET="${EXTRACTION_MIN_OUTPUT_BUDGET:-50000}"
 export EXTERNAL_MIN_OUTPUT_BUDGET="${EXTERNAL_MIN_OUTPUT_BUDGET:-28192}"
 # Fail early for stale exports instead of invoking an unapproved paid Zen model.
 "$PYTHON" -c 'from backend.config.settings import Settings; Settings()'
@@ -61,22 +87,18 @@ fi
 export EMBEDDING_DEVICE="${EMBEDDING_DEVICE:-$DEFAULT_SPECIALIST_DEVICE}"
 export CROSS_ENCODER_DEVICE="${CROSS_ENCODER_DEVICE:-$DEFAULT_SPECIALIST_DEVICE}"
 echo "Starting FastAPI at http://127.0.0.1:8000"
-"$PYTHON" -c 'from backend.config.settings import Settings; s = Settings(); [print(f"LLM {task}: {model}") for task, model in s.task_models.items()]'
+"$PYTHON" -c 'from backend.config.settings import Settings; from backend.config.pipeline import active_task_models; s = Settings(); [print(f"LLM {task}: {model}") for task, model in active_task_models(s).items()]'
 echo "Model policy: assigned primary only; model errors stop the run and appear in the activity log."
 echo "Extraction timeout: ${EXTRACTION_TIMEOUT_SECONDS}s; minimum output budget: $EXTRACTION_MIN_OUTPUT_BUDGET"
 echo "Extraction mode: $EXTRACTION_MODE; target size: $EXTRACTION_TARGET_WORDS words (configurable per run)"
 echo "Extraction claim cap: $EXTRACTION_CLAIMS_PER_PACKET (0 = all eligible claims)"
-echo "External request timeout: ${EXTERNAL_TIMEOUT_SECONDS}s"
-echo "External validation target: neighboring claim pairs only; pair budget=$NEIGHBOR_MAX_PAIRS; workers=$NEIGHBOR_WORKERS"
-echo "Assembly candidates: ${PATHWAY_CANDIDATE_STRATEGY:-indexed}; top-k=${PATHWAY_CANDIDATE_TOP_K:-10}; wider=${PATHWAY_CANDIDATE_EXPANSION_K:-30}; small registry=${PATHWAY_CANDIDATE_SMALL_REGISTRY:-64}"
-echo "Paper requests: up to $EXTERNAL_PAPER_WORKERS globally in parallel (EXTERNAL_PAPER_WORKERS=1 for serial execution)"
-echo "External minimum generation budget (answer + reasoning): $EXTERNAL_MIN_OUTPUT_BUDGET tokens"
-echo "Source validation batch size=$VALIDATION_BATCH_SIZE; retrieval workers=$RETRIEVAL_WORKERS"
+echo "Active pipeline: extraction -> ontology grounding. Later stages are paused."
+echo "Source fidelity and external scientific validation remain paused."
+echo "Concurrent requests: extraction=$EXTRACTION_CONCURRENCY; grounding=$ONTOLOGY_GROUNDING_WORKERS"
+echo "Grounding: $ONTOLOGY_GROUNDING_BATCH_SIZE claims per batch; ${ONTOLOGY_GROUNDING_TIMEOUT_SECONDS}s request timeout"
 echo "Specialist-model device selection: $SPECIALIST_DEVICE_NOTE"
 echo "Dense retriever: $EMBEDDING_MODEL ($EMBEDDING_DEVICE)"
-echo "Cross-encoder reranker: $CROSS_ENCODER_MODEL ($CROSS_ENCODER_DEVICE)"
-echo "Neighbor-pair judgement; per-paper model=$OPEN_CODE_EXTERNAL_PAPER_MODEL; synthesis/audit model=${OPEN_CODE_EXTERNAL_MODEL:-opencode-go/muse-spark-1.3-contributor}; shared external Thinking; bounded follow-up papers=$PATHWAY_FOLLOWUP_PAPERS"
-echo "Local inference batches: dense=$EMBEDDING_BATCH_SIZE, cross-encoder=$CROSS_ENCODER_BATCH_SIZE"
+echo "Local embedding batch size: $EMBEDDING_BATCH_SIZE"
 case "${BACKEND_RELOAD:-1}" in
   1)
     "$PYTHON" -c 'import watchfiles' || {

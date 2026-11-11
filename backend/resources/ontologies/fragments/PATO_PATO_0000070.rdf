@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:pato="http://purl.obolibrary.org/obo/pato#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/pato#attribute_slim"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0015012 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0015012">
+        <rdfs:label>reciprocal of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PATO_0000070 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PATO_0000070">
+        <rdfs:label>amount</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/PATO_0001241"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0015012"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PATO_0001555"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <oboInOwl:hasAlternativeId>PATO:0001226</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>presence</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>PATO:0001169</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasRelatedSynonym>number</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasExactSynonym>quantitative</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasRelatedSynonym>count in organism</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasExactSynonym>presence or absence in organism</oboInOwl:hasExactSynonym>
+        <oboInOwl:id>PATO:0000070</oboInOwl:id>
+        <rdfs:comment>This term was originally named &quot;presence&quot;. It has been renamed to reduce ambiguity. Consider annotating with the reciprocal relation,PATO:0001555, has_number_of. For example, rather than E=fin ray Q=count in organism C=10, say E=organism Q=has number of E2= fin ray C=10.</rdfs:comment>
+        <oboInOwl:hasOBONamespace>quality</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasAlternativeId>PATO:0000053</oboInOwl:hasAlternativeId>
+        <ns4:IAO_0000115>The number of entities of this type that are part of the whole organism.</ns4:IAO_0000115>
+        <oboInOwl:hasAlternativeId>PATO:0000071</oboInOwl:hasAlternativeId>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/pato#attribute_slim"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PATO_0001241 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PATO_0001241">
+        <rdfs:label>physical object characteristic</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PATO_0001555 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PATO_0001555">
+        <rdfs:label>has number of</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

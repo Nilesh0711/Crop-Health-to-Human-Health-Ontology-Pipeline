@@ -55,7 +55,7 @@ export default function App() {
   const claimCounts = useMemo(() => {
     const counts = { all: claims.length, source: 0, supported: 0, review: 0, rejected: 0, unvalidated: 0 }
     for (const record of claims) {
-      if ((record.source_review?.fidelity_decision || record.candidate.source_validation?.decision) === 'entailed') counts.source += 1
+      if (!record.validation_stages_paused && (record.source_review?.fidelity_decision || record.candidate.source_validation?.decision) === 'entailed') counts.source += 1
       counts[claimGroup(record)] = (counts[claimGroup(record)] || 0) + 1
     }
     return counts
@@ -66,7 +66,7 @@ export default function App() {
   const pageClaims = useMemo(() => visibleClaims.slice(0, claimsPageSize), [visibleClaims, claimsPageSize])
   const pipelineBusy = claimReviewBusy || isRunning || pdfs.some(pdf => ['running', 'queued', 'stopping'].includes(pdf.status))
   const errorCount = logs.filter(entry => entry.level === 'error').length
-  const pathwayOnly = selected?.summary?.knowledge_building_mode === 'pathway_only'
+  const pathwayOnly = ['pathway_only', 'extraction_assembly'].includes(selected?.summary?.knowledge_building_mode)
   const paperAssembly = useMemo(() => scopeAssemblyGraph(trustData?.graph, selected?.title), [trustData?.graph, selected?.title])
   const assemblyGraph = useMemo(() => graphScope === 'paper' ? paperAssembly : scopeAssemblyGraph(trustData?.graph), [graphScope, paperAssembly, trustData?.graph])
   const graph = graphMode === 'assembled' ? assemblyGraph : savedGraph

@@ -7,11 +7,13 @@ from collections import defaultdict
 from fastapi import HTTPException, Query
 from fastapi.responses import FileResponse
 from backend.shared.storage import read_jsonl
+from backend.domain.abbreviations import collect_definitions, expand_claim_names
 from backend.stages.graph_construction.graph import merge_graphs
 from backend.shared.activity import display_log, display_request, research_activity
 from backend.stages.source_validation.review import source_review_state
 from backend.stages.pathway_assembly.paths import assembled_paths
 from backend.stages.external_validation.history import connection_assessments
+from backend.config.pipeline import VALIDATION_STAGES_PAUSED
 
 
 class ResultsRoutes:
@@ -24,6 +26,7 @@ class ResultsRoutes:
     def pdf_claims(self, pdf_id: str) -> dict[str, Any]:
         output = self.workspace._output_dir(self.workspace._pdf_path(pdf_id))
         candidates = read_jsonl(output / "candidates.jsonl")
+        abbreviation_glossary = collect_definitions(candidates)
         results = read_jsonl(output / "validation_runs.jsonl")
         by_id = {item["candidate_id"]: item for item in results}
         revisions = read_jsonl(output / 'claim_revisions.jsonl')
@@ -32,7 +35,7 @@ class ResultsRoutes:
         metadata = self.workspace._read_json(output / 'pipeline_checkpoint.json', {})
         pathway_only = (output / 'external_validation_target.json').exists() or summary.get('knowledge_building_mode') == 'pathway_only' or metadata.get('knowledge_building_mode') == 'pathway_only'
         path_records = []
-        if pathway_only:
+        if pathway_only and not summary.get('validation_stages_paused'):
             from backend.stages.neighbor_validation.records import assessment_view
             path_records = assessment_view(self.workspace.ONTOLOGY_DIR, output.name)['records']
         saved_trust = {r['candidate_id']: r for r in read_jsonl(output / 'trust_scores.jsonl') if 'candidate_id' in r}
@@ -55,12 +58,14 @@ class ResultsRoutes:
             cid = candidate['candidate_id']
             validation = None if pathway_only else by_id.get(cid)
             conflicts = self.workspace.verified_contradictions(candidate, validation)
-            claims.append({'candidate': candidate, 'validation': validation, 'source_review': source_review_state(candidate),
+            claims.append({'candidate': expand_claim_names(candidate, abbreviation_glossary), 'validation': validation,
+                           'validation_stages_paused': VALIDATION_STAGES_PAUSED,
+                           'historical_validation': by_id.get(cid), 'source_review': source_review_state(candidate),
                            'source_review_history': reviews_by_candidate.get(cid, []),
                            'trust': None if pathway_only else saved_trust.get(cid),
                            'external_validation_target': ('neighboring_claims' if (self.workspace.ONTOLOGY_DIR / '.neighbor_validation').exists() else 'whole_pathway') if pathway_only else 'historical_claim',
                            'pathway_participation': participation_by_candidate.get(cid, []),
-                           'repair_eligibility': {'allowed': bool(conflicts) or self.workspace.repairable(candidate),
+                           'repair_eligibility': {'allowed': not VALIDATION_STAGES_PAUSED and (bool(conflicts) or self.workspace.repairable(candidate)),
                                                   'external_contradictions': conflicts},
                            'revisions': revisions_by_candidate.get(cid, [])})
         return {"claims": claims, "total": len(candidates),
@@ -68,6 +73,9 @@ class ResultsRoutes:
                 "model_requests": [display_request(row) for row in read_jsonl(output / 'llm_requests.jsonl')]}
 
     def pdf_graph(self, pdf_id: str) -> dict[str, Any]:
+        output = self.workspace._output_dir(self.workspace._pdf_path(pdf_id))
+        if self.workspace._read_json(output / 'summary.json', {}).get('validation_stages_paused'):
+            return self.workspace._read_json(output / 'graph.json', {'nodes': [], 'edges': [], 'counts': {}})
         if (self.workspace.ONTOLOGY_DIR / '.neighbor_validation').exists():
             graph = self.workspace._current_pathway_graph()
             document = self.workspace._output_dir(self.workspace._pdf_path(pdf_id)).name
@@ -121,12 +129,16 @@ class ResultsRoutes:
         if view == 'validated' and any((self.workspace.ONTOLOGY_DIR / d).exists() for d in ('.neighbor_validation','.pathway_validation')):
             from backend.stages.neighbor_validation.records import validated_paths
             return validated_paths(self.workspace.ONTOLOGY_DIR,limit=limit,max_hops=max_hops,offset=offset)
-        data = self.workspace.read_assembly(self.workspace.ONTOLOGY_DIR, self.workspace.Settings().pathway_assembly_model, provisional=True) if view == 'provisional' else self.workspace.read_assembly(self.workspace.ONTOLOGY_DIR, self.workspace.Settings().pathway_assembly_model)
+        if view == 'provisional' and VALIDATION_STAGES_PAUSED:
+            data = self.workspace.read_assembly(self.workspace.ONTOLOGY_DIR, self.workspace.Settings().pathway_assembly_model, provisional=True, unvalidated=True)
+        else:
+            data = self.workspace.read_assembly(self.workspace.ONTOLOGY_DIR, self.workspace.Settings().pathway_assembly_model, provisional=True) if view == 'provisional' else self.workspace.read_assembly(self.workspace.ONTOLOGY_DIR, self.workspace.Settings().pathway_assembly_model)
         snapshot = data.pop('snapshot') or {}
         graph = snapshot.get('graph', {'nodes':[], 'edges':[], 'counts':{}})
         return {**data, 'graph':graph, 'counts':snapshot.get('counts', {}),
                 'view': view, 'score_is_probability': False,
-                'pathway_connections': connection_assessments(self.workspace.ONTOLOGY_DIR) if view == 'provisional' and not (self.workspace.ONTOLOGY_DIR / '.pathway_validation').exists() else [],
+                'validation_stages_paused': VALIDATION_STAGES_PAUSED and view == 'provisional',
+                'pathway_connections': connection_assessments(self.workspace.ONTOLOGY_DIR) if not VALIDATION_STAGES_PAUSED and view == 'provisional' and not (self.workspace.ONTOLOGY_DIR / '.pathway_validation').exists() else [],
                 'completed_at':snapshot.get('completed_at'), **assembled_paths(graph, limit, max_hops, offset)}
 
     def pdf_pathway_assessments(self, pdf_id: str):

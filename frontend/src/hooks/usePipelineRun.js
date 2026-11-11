@@ -8,7 +8,7 @@ export function usePipelineRun({ workspace, selectedId, setView, setMessage }) {
   const [jobId, setJobId] = useState(null)
   const [job, setJob] = useState(null)
   const [options, setOptions] = useState({ neighbor_max_pairs: 100, max_pages: 0, articles_per_pathway: 8, claims_per_packet: 0,
-    extraction_mode: 'target_context', extraction_target_words: 800, extraction_generation_budget: 24576, thinking: defaultThinking() })
+    extraction_mode: 'target_context', extraction_target_words: 200, extraction_generation_budget: 50000, thinking: defaultThinking() })
   const [claimReviewBusy, setClaimReviewBusy] = useState(false)
   const [recoveryEvent, setRecoveryEvent] = useState(null)
   const [recoveryInfo, setRecoveryInfo] = useState(null)

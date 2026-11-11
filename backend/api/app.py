@@ -30,11 +30,14 @@ from backend.pipelines.claim_repair import repairable, run_claim_action, refresh
 from backend.shared.jobs import ACTIVE_STATUSES, save_job, read_job, interrupt_job
 from backend.shared.cancellation import CancellationToken, PipelineStopped, cancellation_scope, check_cancelled
 from backend.pipelines.pathways import assemble_saved_pathways
+from backend.pipelines.ontology import rebuild as rebuild_ontology
 from backend.stages.pathway_assembly.assembly import read_assembly
 from backend.stages.source_validation.abbreviations import SOURCE_VALIDATION_POLICY
 from backend.stages.source_validation.summary import source_assessment_counts
 from backend.pipelines.source_review import save_manual_source_review
 from backend.stages.pathway_assembly.corpus import PROVISIONAL_ELIGIBILITY_POLICY
+from backend.config.pipeline import (PIPELINE_MODE, VALIDATION_STAGES_PAUSED,
+    UNVALIDATED_ELIGIBILITY_POLICY, active_task_models, stage_status, MANUAL_GROUNDING_ENABLED)
 
 
 app = FastAPI(title="Crop to Human Health Workbench", version="1.0.0")
@@ -111,7 +114,7 @@ def _saved_job(job_id: str) -> dict[str, Any] | None:
 def _summary_with_coverage(output: Path) -> dict[str, Any] | None:
     """Annotate historical completion labels from saved call logs, without rewriting data."""
     summary = _read_json(output / 'summary.json')
-    if (output / 'external_validation_target.json').exists() and (output.parent / '.neighbor_validation').exists():
+    if not (summary or {}).get('validation_stages_paused') and (output / 'external_validation_target.json').exists() and (output.parent / '.neighbor_validation').exists():
         from backend.stages.neighbor_validation.records import assessment_view
         pathways = assessment_view(output.parent, output.name)
         summary = {**(summary or {}), 'knowledge_building_mode':'pathway_only', 'external_validation_target':'neighboring_claims',
@@ -200,7 +203,7 @@ def _run_worker(job_id: str, options: RunOptions) -> None:
         _persist_job(job_id)
     try:
         check_cancelled()
-        label = ('Starting global Pathway Assembly from saved claims' if _jobs[job_id].get('action') == 'assemble_pathways' else
+        label = ('Grounding saved claims and refreshing mapping views' if _jobs[job_id].get('action') in {'assemble_pathways', 'ground_claims'} else
                  f"Starting {_jobs[job_id]['action']} for claim {_jobs[job_id]['candidate_id']} in {pdf.name}"
                  if _jobs[job_id].get('action') else f"Starting pipeline for {pdf.name}")
         if _jobs[job_id].get('resume'):
@@ -208,7 +211,7 @@ def _run_worker(job_id: str, options: RunOptions) -> None:
         if _jobs[job_id].get('redo_external_validation'):
             label = f'Redoing external validation of all selected assembled pathways for {pdf.name}; saved extraction is retained'
         _emit(job_id, "stage", label)
-        if _jobs[job_id].get('action') == 'assemble_pathways':
+        if _jobs[job_id].get('action') in {'assemble_pathways', 'ground_claims'}:
             result = assemble_saved_pathways(ONTOLOGY_DIR, _output_dir(pdf), lambda level,message:_emit(job_id, level, message), thinking=options.thinking.model_dump())
         elif _jobs[job_id].get('action'):
             result = run_claim_action(pdf, _output_dir(pdf), _jobs[job_id]['candidate_id'],
@@ -277,39 +280,48 @@ def health() -> dict[str, Any]:
     ready = {task: route_ready(model, task) for task, model in settings.task_models.items()}
     phase_ready = {phase: route_ready(model, 'external') for phase, model in settings.external_phase_models.items()}
     ready['external'] = all(phase_ready.values())
+    active_models = active_task_models(settings)
     extraction_ready, validation_ready, helper_ready = (ready[task] for task in ('extraction', 'external', 'query'))
     return {"status": "ok", "capabilities": {"execute": True, "upload": True, "read_only": False},
-            "model": settings.external_model, "model_ready": all(ready.values()),
+            "model": settings.extraction_model, "model_ready": all(ready[task] for task in active_models),
             "available_models": opencode_models,
             "extraction": {"provider": "opencode", "model": settings.extraction_model,
                            "ready": extraction_ready, "available_models": opencode_models},
             "validation": {"provider": "opencode", "model": settings.external_model,
-                           "ready": validation_ready, "available_models": opencode_models},
-            "helper": {"provider": "opencode", "model": settings.query_model, "ready": helper_ready},
+                           "ready": validation_ready and not VALIDATION_STAGES_PAUSED, "enabled": False, "available_models": opencode_models},
+            "helper": {"provider": "opencode", "model": settings.query_model, "ready": helper_ready and not VALIDATION_STAGES_PAUSED, "enabled": False},
             "pipeline": {"schema_version": SCHEMA_VERSION, "version": APPLICATION_VERSION,
                          "artifact_write_policy": ARTIFACT_WRITE_POLICY,
-                         "pathway_assembly_policy": PROVISIONAL_ELIGIBILITY_POLICY,
+                         "pathway_assembly_policy": UNVALIDATED_ELIGIBILITY_POLICY,
+                         "validation_stages_paused": VALIDATION_STAGES_PAUSED, "stage_status": stage_status(),
                          "pathway_candidate_strategy": settings.pathway_candidate_strategy,
                          "pathway_candidate_top_k": settings.pathway_candidate_top_k,
                          "pathway_candidate_expansion_k": settings.pathway_candidate_expansion_k,
                          "pathway_candidate_small_registry": settings.pathway_candidate_small_registry,
-                         "external_validation_target": 'neighboring_claims',
+                         "external_validation_target": 'paused',
                          "external_validation_policy": 'neighbor-pair-v1',
-                         "source_validation_policy": SOURCE_VALIDATION_POLICY,
+                         "source_validation_policy": 'paused',
                          "external_judgement_mode": "pathway_only",
-                         "knowledge_building_mode": settings.knowledge_building_mode,
+                         "knowledge_building_mode": PIPELINE_MODE,
                          "neighbor_max_pairs": settings.neighbor_max_pairs,
                          "neighbor_workers":settings.neighbor_workers, "source_workers":settings.source_workers,
                          "validation_batch_size": settings.validation_batch_size,
                          "model_policy": "primary_only",
-                         "task_models": settings.task_models,
+                         "task_models": active_models,
+                         "manual_grounding": {"enabled": MANUAL_GROUNDING_ENABLED, "model": settings.pathway_assembly_model,
+                                              "ready": ready['pathway_assembly']},
                          "external_phase_models": settings.external_phase_models,
                          "external_phase_ready": phase_ready,
                          "external_top_chunks": settings.external_top_chunks,
                          "external_top_k": settings.external_top_k,
                          "external_input_max_characters": settings.external_input_max_characters,
-                         "task_ready": ready,
+                         "task_ready": {task: ready[task] for task in active_models},
                          "extraction_timeout_seconds": settings.extraction_timeout_seconds,
+                         "extraction_concurrency": settings.extraction_concurrency,
+                         "ontology_grounding_timeout_seconds": settings.ontology_grounding_timeout_seconds,
+                         "ontology_grounding_workers": settings.ontology_grounding_workers,
+                         "ontology_grounding_batch_size": settings.ontology_grounding_batch_size,
+                         "ontology_grounding_output_format": settings.ontology_grounding_output_format,
                          "extraction_mode": settings.extraction_mode,
                          "extraction_target_words": settings.extraction_target_words,
                          "extraction_generation_budget": settings.extraction_min_output_budget,
@@ -381,6 +393,11 @@ global_pathways = _results_views.global_pathways
 pdf_pathway_assessments = _results_views.pdf_pathway_assessments
 pathway_assessments = _results_views.pathway_assessments
 pdf_trust = _results_views.pdf_trust
+
+from backend.api.routes.ontology import create_router as create_ontology_router
+app.include_router(create_ontology_router(sys.modules[__name__]))
+from backend.api.routes.grounding_tester import create_router as create_grounding_tester_router
+app.include_router(create_grounding_tester_router(sys.modules[__name__]))
 
 dist = FRONTEND_DIST_DIR
 if dist.exists():

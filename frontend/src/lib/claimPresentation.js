@@ -8,6 +8,7 @@ export const statusLabels = {
   external_needs_review: 'Review external evidence', out_of_scope: 'Outside project scope',
   scope_needs_review: 'Review project scope', scope_not_assessed: 'Scope not assessed',
   blocked_text_quality: 'Blocked: text quality',
+  validation_paused: 'Unvalidated ? validation paused',
   extracted: 'Extracted', single_source: 'Independent article', corroborated: 'Independently corroborated',
   source_reference_supported: 'Source reference support',
   contested: 'Contested', contradicted: 'Contradicted', insufficient: 'Evidence not found', not_found: 'Evidence not found', error: 'Needs attention',
@@ -49,6 +50,7 @@ export const formatDuration = value => value == null ? 'Not recorded' : value >=
 
 export function claimStatus(record) {
   const { candidate, validation } = record
+  if (record.validation_stages_paused && !candidate.schema_error) return 'validation_paused'
   const semanticDecision = candidate.semantic_validation?.decision
   const sourceDecision = record.source_review?.fidelity_decision || candidate.source_validation?.decision
   const scopeDecision = record.source_review?.scope_decision || candidate.source_validation?.project_scope?.decision
@@ -67,6 +69,7 @@ const rejectedStatuses = new Set(['schema_rejected', 'rejected', 'semantic_rejec
   'contradicted', 'world_contradicted_or_contested', 'out_of_scope'])
 export const claimGroup = record => {
   const status = claimStatus(record)
+  if (status === 'validation_paused') return 'unvalidated'
   if (['whole_pathway', 'neighboring_claims'].includes(record.external_validation_target) && status === 'source_entailed') return 'unvalidated'
   if (supportedStatuses.has(status)) return 'supported'
   if (rejectedStatuses.has(status)) return 'rejected'

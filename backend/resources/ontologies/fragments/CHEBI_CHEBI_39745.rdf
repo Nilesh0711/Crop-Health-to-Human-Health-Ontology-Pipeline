@@ -1,0 +1,180 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:ns5="https://w3id.org/chemrof/"
+     xmlns:chebi="http://purl.obolibrary.org/obo/chebi/3"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_key_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/smiles_string"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/charge"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/generalized_empirical_formula"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasAlternativeId"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/mass"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/inchi_string"/>
+    <AnnotationProperty rdf:about="https://w3id.org/chemrof/monoisotopic_mass"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0018033 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0018033">
+        <rdfs:label>is conjugate base of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0018034 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0018034">
+        <rdfs:label>is conjugate acid of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_26078 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_26078">
+        <rdfs:label>phosphoric acid</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_35780 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_35780">
+        <rdfs:label>phosphate ion</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_39745 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_39745">
+        <rdfs:label>dihydrogenphosphate</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_35780"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/CHEBI_79389"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0018034"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_43474"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0018033"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/CHEBI_26078"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns5:charge rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">-1</ns5:charge>
+        <ns5:monoisotopic_mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">96.96962</ns5:monoisotopic_mass>
+        <ns5:mass rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">96.986</ns5:mass>
+        <oboInOwl:hasDbXref>pdb-ccd:2HP</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>dihydrogen(tetraoxidophosphate)(1-)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>gmelin:1999</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>dihydroxidodioxidophosphate(1-)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:29137</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasExactSynonym>dihydrogenphosphate</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasRelatedSynonym>dihydrogentetraoxophosphate(V)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasOBONamespace>chebi_ontology</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasRelatedSynonym>dihydrogentetraoxophosphate(1-)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasAlternativeId>CHEBI:39739</oboInOwl:hasAlternativeId>
+        <oboInOwl:hasExactSynonym>dihydrogentetraoxophosphate(1-)</oboInOwl:hasExactSynonym>
+        <ns4:IAO_0000115>A monovalent inorganic anion that consists of phosphoric acid in which one of the three OH groups has been deprotonated.</ns4:IAO_0000115>
+        <oboInOwl:hasRelatedSynonym>dihydroxidodioxidophosphate(1-)</oboInOwl:hasRelatedSynonym>
+        <ns5:inchi_key_string>NBIIXXVUZAFLBC-UHFFFAOYSA-M</ns5:inchi_key_string>
+        <ns5:generalized_empirical_formula>H2O4P</ns5:generalized_empirical_formula>
+        <oboInOwl:hasDbXref>drugbank:DB02831</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>H2PO4(-)</oboInOwl:hasRelatedSynonym>
+        <ns5:inchi_string>InChI=1S/H3O4P/c1-5(2,3)4/h(H3,1,2,3,4)/p-1</ns5:inchi_string>
+        <ns5:smiles_string>[H]OP(=O)([O-])O[H]</ns5:smiles_string>
+        <oboInOwl:hasRelatedSynonym>dihydrogenphosphate</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>dihydrogen(tetraoxidophosphate)(1-)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasRelatedSynonym>DIHYDROGENPHOSPHATE ION</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasExactSynonym>dihydrogentetraoxophosphate(V)</oboInOwl:hasExactSynonym>
+        <oboInOwl:id>CHEBI:39745</oboInOwl:id>
+        <oboInOwl:hasRelatedSynonym>[PO2(OH)2](-)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/chebi/3_STAR"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_43474 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_43474">
+        <rdfs:label>hydrogenphosphate</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/CHEBI_79389 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/CHEBI_79389">
+        <rdfs:label>monovalent inorganic anion</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

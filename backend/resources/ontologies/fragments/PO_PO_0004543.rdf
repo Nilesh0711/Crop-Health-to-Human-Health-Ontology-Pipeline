@@ -1,0 +1,146 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:po="http://purl.obolibrary.org/obo/po#">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#reference"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#TraitNet"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#Potato"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0002202 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0002202">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>develops_from</rdfs:label>
+        <rdfs:label xml:lang="en">develops from</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0004543 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0004543">
+        <rdfs:label>shoot axis tuber</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/PO_0025029"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/PO_0025522"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/UBERON_0001062"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/RO_0002202"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/PO_0025073"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <rdfs:comment>Functions in storage of photosynthate metabolites. This term should be used for tubers derived from branches, as found in Solanum spp. (e.g. potato) or Dioscorea spp. (e.g. yam) and other species. Use the term tuberous root tuber (PO:0025476) for tubers derived from roots, such as those found in Cassava, Ipomoea, or Hemerocallis.</rdfs:comment>
+        <oboInOwl:hasExactSynonym>tub&amp;#233rculo (Spanish, exact)</oboInOwl:hasExactSynonym>
+        <ns4:IAO_0000115>A shoot axis (PO:0025029) that develops from a branch (PO:0025073) and is radially enlarged for storage.</ns4:IAO_0000115>
+        <oboInOwl:hasExactSynonym>tuber branch (exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasBroadSynonym>diaspore (broad)</oboInOwl:hasBroadSynonym>
+        <oboInOwl:hasOBONamespace>plant_anatomy</oboInOwl:hasOBONamespace>
+        <oboInOwl:id>PO:0004543</oboInOwl:id>
+        <oboInOwl:hasExactSynonym>シュート軸塊茎 (Japanese, exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>shoot axis branch tuber (exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>PO_GIT:127</oboInOwl:hasDbXref>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#Potato"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#TraitNet"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#reference"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025029 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025029">
+        <rdfs:label>shoot axis</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025073 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025073">
+        <rdfs:label>branch</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025522 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025522">
+        <rdfs:label>tuber</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/UBERON_0001062 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/UBERON_0001062">
+        <rdfs:label>anatomical entity</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

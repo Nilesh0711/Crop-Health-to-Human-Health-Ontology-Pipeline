@@ -29,10 +29,11 @@ function ClaimCard({ record, index, busy, onClaimAction, onInspectPathway, defau
       <StatusPill value={resultStatus} /><ChevronDown size={17} className={`chevron ${expanded ? 'open' : ''}`} />
     </button>
     {expanded && <div className="claim-expanded">
-      <ClaimActions readOnly={readOnly} candidate={candidate} sourceReview={record.source_review} pathwayOnly={record.external_validation_target === 'whole_pathway'} repairEligibility={record.repair_eligibility} revisions={record.revisions}
+      <ClaimActions readOnly={readOnly || record.validation_stages_paused} candidate={candidate} sourceReview={record.source_review} pathwayOnly={record.external_validation_target === 'whole_pathway'} repairEligibility={record.repair_eligibility} revisions={record.revisions}
         busy={busy} onAction={(action, note) => onClaimAction?.(candidate.candidate_id, action, note, record.source_review?.revision)} />
       {record.external_validation_target !== 'whole_pathway' && <TrustEvidence trust={record.trust || validation?.trust} />}
       {record.external_validation_target === 'whole_pathway' && <div className="quote-box"><strong>External assessment target: complete pathways</strong><p>This claim has no independent external-validation verdict. Its source fidelity is assessed separately.</p>{record.pathway_participation?.length ? <><p>{record.pathway_participation.length} assessed pathway{record.pathway_participation.length === 1 ? '' : 's'}</p>{record.pathway_participation.map(row => <div key={row.pathway_id} className="claim-pathway-row"><span>{row.pathway_id}: {row.stale ? 'Stale; reassessment needed' : (row.verdict === 'pathway_supported' ? 'Pathway supported' : row.verdict.replaceAll('_',' '))}</span>{onInspectPathway && <button type="button" className="text-button" onClick={() => onInspectPathway(row.pathway_id)}>Inspect pathway <ArrowRight size={13} /></button>}</div>)}</> : <p>Not included in an assessed pathway.</p>}</div>}
+      {record.validation_stages_paused && <p className="soft-note">Validation is paused. Any source or external decisions below are saved historical assessments.</p>}
       <ClaimContext candidate={candidate} sourceReview={record.source_review} />
       <ValidationTrace candidate={candidate} validation={validation} sourceReview={record.source_review} reviewHistory={record.source_review_history} externalTarget={record.external_validation_target} />
       <JointAssessment validation={validation} />

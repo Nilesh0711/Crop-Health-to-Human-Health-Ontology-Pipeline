@@ -80,10 +80,10 @@ def graph_from_candidates(candidates: list[dict[str, Any]], results: list[dict[s
         if (view == "main" and not externally_supported) or (view == "source" and not source_supported) or (view == "audit" and externally_supported):
             continue
         display_status = (status if status in {'out_of_scope', 'scope_needs_review'} else 'source_supported') if view == 'source' else status
-        source = f"{candidate['subject_type']}:{candidate['subject'].casefold()}"
-        target = f"{candidate['object_type']}:{candidate['object'].casefold()}"
-        nodes.setdefault(source, {"id": source, "label": candidate["subject"], "type": candidate["subject_type"]})
-        nodes.setdefault(target, {"id": target, "label": candidate["object"], "type": candidate["object_type"]})
+        source = f"{candidate.get('subject_type', 'Unresolved')}:{candidate['subject'].casefold()}"
+        target = f"{candidate.get('object_type', 'Unresolved')}:{candidate['object'].casefold()}"
+        nodes.setdefault(source, {"id": source, "label": candidate["subject"], "type": candidate.get('subject_type', 'Unresolved')})
+        nodes.setdefault(target, {"id": target, "label": candidate["object"], "type": candidate.get('object_type', 'Unresolved')})
         edges.append({"id": candidate["candidate_id"], "source": source, "target": target,
                       **({'trust': result['trust']} if result.get('trust') else {}),
                       "relation": candidate["relation"], "status": display_status,

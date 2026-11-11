@@ -206,6 +206,14 @@ def create_app(snapshot_dir=None, frontend_dist=None):
                     'has_more':offset+limit<len(rows),'offset':offset,'limit':limit,'max_hops':max_hops}
         return {**data, **assembled_paths(data['graph'], limit, max_hops, offset)}
 
+    from types import SimpleNamespace
+    from backend.shared.ontology_browser import create_router as ontology_router
+    def ontology_snapshot(path, default):
+        relative = (snapshot.manifest or {}).get('ontology_grounding', {}).get(path.stem)
+        return snapshot.read(relative) if relative else default
+    app.include_router(ontology_router(SimpleNamespace(ONTOLOGY_DIR=snapshot_path / 'ontology'),
+        read_only=True, snapshot_loader=ontology_snapshot))
+
     @app.get('/api/{unknown:path}')
     def unknown_api(unknown: str):
         raise HTTPException(404, 'Viewer endpoint not found')

@@ -7,6 +7,7 @@ import json
 
 from backend.cli.candidates import build_candidates
 from backend.config.settings import CLI_OUTPUT_DIR, Settings
+from backend.config.pipeline import active_task_models, stage_status
 from backend.providers.llm import OpenCodeClient
 from backend.shared.storage import write_jsonl
 
@@ -24,9 +25,9 @@ def command_health_check(_: argparse.Namespace) -> int:
     settings = Settings()
     names = OpenCodeClient(settings).health_check().get("models", [])
     ready = {task: model.split('#', 1)[0] in names
-             for task, model in settings.task_models.items()}
-    ready['external'] = ready['external'] and settings.external_paper_model in names
-    print(json.dumps({"opencode_reachable": True, 'task_models': settings.task_models, 'task_ready': ready,
+             for task, model in active_task_models(settings).items()}
+    print(json.dumps({"opencode_reachable": True, 'task_models': active_task_models(settings), 'task_ready': ready,
+                      'stage_status': stage_status(),
                       'external_phase_models': settings.external_phase_models,
                       'external_judgement_policy': 'pathway_only',
                       'external_top_k': settings.external_top_k,
@@ -46,7 +47,7 @@ def command_validate(args):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(description='Neighboring-claim validation after source-grounded assembly.')
+    parser = argparse.ArgumentParser(description='Extraction and unvalidated assembly; scientific validation is paused.')
     sub = parser.add_subparsers(dest='command',required=True)
     health = sub.add_parser('health-check')
     health.set_defaults(func=command_health_check)

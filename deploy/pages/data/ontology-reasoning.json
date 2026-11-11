@@ -1,0 +1,1 @@
+{"status":"paused","message":"The pipeline stops after ontology grounding. Pathway assembly, graph construction and reasoning are paused while entity mappings are reviewed.","facts":[],"total":0,"coverage":{"assessed":false},"counts":{},"issues":[],"offset":0,"limit":25,"scientific_validation":"paused","proofs":{}}

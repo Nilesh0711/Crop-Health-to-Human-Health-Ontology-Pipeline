@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:ns3="http://purl.obolibrary.org/obo/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#narrowMatch"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0009684 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0009684">
+        <rdfs:label>indoleacetic acid biosynthetic process</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0009851"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0042435"/>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0072330"/>
+        <oboInOwl:hasExactSynonym>indoleacetic acid formation</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>indole-acetic acid biosynthesis</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>IAA biosynthetic process</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>MetaCyc:TRPIAACAT-PWY</oboInOwl:hasDbXref>
+        <oboInOwl:id>GO:0009684</oboInOwl:id>
+        <oboInOwl:hasOBONamespace>biological_process</oboInOwl:hasOBONamespace>
+        <oboInOwl:hasDbXref>MetaCyc:PWY-5026</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>indole acetic acid biosynthesis</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>MetaCyc:PWY-5025</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>MetaCyc:PWY-3161</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>indoleacetic acid synthesis</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasRelatedSynonym>indole-acetic acid biosynthetic process</oboInOwl:hasRelatedSynonym>
+        <ns3:IAO_0000115>The chemical reactions and pathways resulting in the formation of indole-3-acetic acid, a compound which functions as a growth regulator in plants.</ns3:IAO_0000115>
+        <oboInOwl:hasExactSynonym>indole-3-acetate biosynthesis</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>indole acetic acid biosynthetic process</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasDbXref>MetaCyc:PWY-581</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>MetaCyc:PWY-6303</oboInOwl:hasDbXref>
+        <oboInOwl:hasDbXref>MetaCyc:PWYDQC-4</oboInOwl:hasDbXref>
+        <oboInOwl:hasExactSynonym>indole-3-acetate biosynthetic process</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>indoleacetic acid biosynthesis</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>indoleacetic acid anabolism</oboInOwl:hasExactSynonym>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/PWY-3161"/>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/PWY-5025"/>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/PWY-5026"/>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/PWY-581"/>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/PWY-6303"/>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/PWYDQC-4"/>
+        <skos:narrowMatch rdf:resource="http://identifiers.org/metacyc.reaction/TRPIAACAT-PWY"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0009851 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0009851">
+        <rdfs:label>auxin biosynthetic process</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0042435 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0042435">
+        <rdfs:label>indole-containing compound biosynthetic process</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0072330 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0072330">
+        <rdfs:label>monocarboxylic acid biosynthetic process</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

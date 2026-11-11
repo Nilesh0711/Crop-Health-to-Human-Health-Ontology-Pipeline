@@ -1,8 +1,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App.jsx'
-import './styles/base.css'
-import './styles/pathways.css'
+import App from './ontology/OntologyApp.jsx'
+import './styles/ontology.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

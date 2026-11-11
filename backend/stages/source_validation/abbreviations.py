@@ -4,6 +4,7 @@ import re
 
 from backend.domain.alignment import exact_in
 from backend.domain.vocabulary import normalize_entity
+from backend.domain.abbreviations import name_replacement_matches
 
 
 SOURCE_VALIDATION_POLICY = 'source-fidelity-and-project-scope-v5'
@@ -99,8 +100,7 @@ def prepare_name_expansions(candidate, review, context):
                 or not exact_in(short, quote) or not exact_in(full.replace('_', ' ') if field == 'relation' else full, quote)):
             errors.append(f'{field} expansion lacks matching original text or a source definition')
             continue
-        expected, count = re.subn(r'(?<!\w)' + re.escape(short) + r'(?!\w)', lambda _: full, before)
-        if not count or expected != after:
+        if not name_replacement_matches(before, after, short, full):
             errors.append(f'{field} expansion changes content beyond the declared abbreviation')
             continue
         _set(working, field, after)

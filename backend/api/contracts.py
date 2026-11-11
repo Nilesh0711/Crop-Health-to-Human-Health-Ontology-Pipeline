@@ -11,7 +11,7 @@ class ThinkingOptions(BaseModel):
     source: StrictBool = False
     query: StrictBool = False
     external: StrictBool = False
-    pathway_assembly: StrictBool = False
+    pathway_assembly: StrictBool = True
 
 class RunOptions(BaseModel):
     neighbor_max_pairs: int = Field(default_factory=lambda: Settings().neighbor_max_pairs, ge=1, le=500)
@@ -25,7 +25,7 @@ class RunOptions(BaseModel):
         default_factory=lambda: Settings().extraction_mode)
     extraction_target_words: int = Field(default_factory=lambda: Settings().extraction_target_words, ge=200, le=2000)
     extraction_generation_budget: int = Field(
-        default_factory=lambda: Settings().extraction_min_output_budget, ge=8192, le=32768,
+        default_factory=lambda: Settings().extraction_min_output_budget, ge=8192, le=50000,
         description='Initial generation allowance shared by reasoning and the final answer')
 
 class SourceReviewOptions(BaseModel):

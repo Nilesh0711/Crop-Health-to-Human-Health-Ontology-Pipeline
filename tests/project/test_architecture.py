@@ -107,7 +107,7 @@ def test_local_validation_has_no_global_route_or_nli_execution():
     from dataclasses import fields
     names={f.name for f in fields(Settings)}
     assert not {'pathway_max_paths','pathway_max_hops','enable_nli','nli_model','nli_device'} & names
-    assert APPLICATION_VERSION=='neighbor-validation-v50'
+    assert APPLICATION_VERSION=='ontology-grounding-v53'
     assert (BACKEND_DIR / 'stages/neighbor_validation/targets.py').is_file()
     assert not (BACKEND_DIR / 'stages/pathway_validation').exists()
     assert not (BACKEND_DIR / 'stages/trust_graph').exists()

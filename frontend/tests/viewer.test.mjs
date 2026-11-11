@@ -42,7 +42,7 @@ try {
     for (const text of ['Path length in edges', 'Search pathways and claims', 'Hide assembled graph', 'stale-data warning']) assert.ok(html.includes(text), text)
   })
   test('all published claims render expanded with evidence and without execution actions', () => {
-    const root = new URL('../../deploy/render/snapshot/', import.meta.url)
+    const root = new URL('../../deploy/pages/data/', import.meta.url)
     const manifest = JSON.parse(readFileSync(new URL('manifest.json', root), 'utf8'))
     for (const entry of Object.values(manifest.documents)) {
       const { claims } = JSON.parse(readFileSync(new URL(entry.claims, root), 'utf8'))

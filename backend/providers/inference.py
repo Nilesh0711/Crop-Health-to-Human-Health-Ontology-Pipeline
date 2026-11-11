@@ -8,6 +8,20 @@ import httpx
 
 from backend.providers.credentials import api_key
 from backend.shared.cancellation import current_token, check_cancelled
+from backend.providers.generation_schema import for_model as generation_schema
+
+
+# Verified against OpenCode Go metadata and live probes.
+# Keep route-specific capabilities explicit; don't assume all future versions
+# of a model family expose identical API features.
+# DeepSeek accepted json_schema on 7 November 2026 but rejected it as unavailable
+# on 8 November. Its default is explicitly json_object, verified by a live probe;
+# application-side schema validation remains mandatory. There is no retry that
+# changes response formats, and an explicit caller override is still honored.
+SCHEMA_OUTPUT_MODELS = frozenset({
+    'mimo-v2.6-flash', 'mimo-v2.6-pro',
+    'muse-spark-1.3-contributor',
+})
 
 
 class InferenceError(RuntimeError):
@@ -104,21 +118,25 @@ class InferenceHTTP:
                           if isinstance(row, dict) and isinstance(row.get('id'), str))
         return {'models': models, 'transport': 'api'}
 
-    def chat(self, selector, system, user, schema, output_limit):
+    def chat_text(self, selector, system, user, output_limit):
+        return self.chat(selector, system, user, None, output_limit, output_format='text')
+
+    def chat(self, selector, system, user, schema, output_limit, *, output_format='json'):
+        if output_format not in {'json', 'text'}:
+            raise ValueError('Inference output format must be json or text')
         _, model, base = _route(selector)
         mode = self.settings.opencode_response_format
         if mode == 'model_default':
-            # Configuration probes: MiMo & Muse accept json_schema; DeepSeek rejects
-            # it with HTTP 400. This selection is explicit, never a retry.
-            mode = 'json_schema' if any(model.startswith(p) for p in ('mimo-v2.6', 'muse-spark')) else 'json_object'
+            mode = 'json_schema' if model in SCHEMA_OUTPUT_MODELS else 'json_object'
         response_format = {'type': 'json_object'}
         if mode == 'json_schema' and schema:
             response_format = {'type': 'json_schema', 'json_schema': {
-                'name': 'pipeline_response', 'strict': True, 'schema': schema}}
+                'name': 'pipeline_response', 'strict': True, 'schema': generation_schema(schema, model)}}
         payload = {'model': model, 'messages': [{'role': 'system', 'content': system},
                                                {'role': 'user', 'content': user}],
-                   'temperature': 0, 'max_tokens': output_limit, 'stream': False,
-                   'response_format': response_format}
+                   'temperature': 0, 'max_tokens': output_limit, 'stream': False}
+        if output_format == 'json':
+            payload['response_format'] = response_format
         effort = model_reasoning_effort(selector, self.thinking_enabled)
         if effort is not None:
             payload['reasoning_effort'] = effort
@@ -139,7 +157,8 @@ class InferenceHTTP:
             raise InferenceError('The selected model returned an unsupported final-answer format')
         return {'content': content, 'finish_reason': choice.get('finish_reason'),
                 'usage': data.get('usage') or {}, 'provider_request_id': data.get('id'),
-                'resolved_model': data.get('model'), 'response_format': response_format['type']}
+                'resolved_model': data.get('model'),
+                'response_format': 'text' if output_format == 'text' else response_format['type']}
 
 
 def normalize_usage(usage):

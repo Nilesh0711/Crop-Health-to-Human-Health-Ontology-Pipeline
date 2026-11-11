@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from backend.domain.ontology import ENTITY_TYPES
 
 
 GENERIC_ENTITIES = {"agriculture", "food", "temperature", "yield", "disease", "soil", "pests", "crop", "health", "nutrition", "nutrient",
@@ -12,6 +11,15 @@ GENERIC_ENTITIES = {"agriculture", "food", "temperature", "yield", "disease", "s
 
 
 EXTRACTION_MAX_CLAIMS_PER_PACKET = 0  # No application claim-count cap by default.
+EXTRACTION_CONTRACT_VERSION = 11
+
+
+def valid_relation_wording(value: object) -> bool:
+    """Require written predicate wording, not a one-character output artifact.
+
+    This is a format check, not a relation whitelist or scientific verdict.
+    """
+    return isinstance(value, str) and len(value.strip()) >= 2
 
 
 EXTRACTION_OUTPUT_TOKENS = 3000
@@ -66,39 +74,34 @@ EXTRACTION_RESPONSE_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "claim_text": {"type": "string", "maxLength": 900},
-                    "source_context": {"type": "string", "maxLength": 300},
-                    "subject": {"type": "string"},
-                    "subject_source_mention": {"type": "string"},
-                    "relation": {"type": "string", "minLength": 1, "pattern": "\\S"},
-                    "object": {"type": "string"},
-                    "object_source_mention": {"type": "string"},
-                    "relation_trigger": {"type": "string"},
-                    "subject_type": {"type": "string", "enum": sorted(ENTITY_TYPES)},
-                    "object_type": {"type": "string", "enum": sorted(ENTITY_TYPES)},
-                    "evidence_sentence_numbers": {
-                        "type": "array", "minItems": 1, "maxItems": 3, "uniqueItems": True,
-                        "items": {"type": "integer", "minimum": 1},
-                    },
-                    "certainty": {
-                        "type": "string",
-                        "enum": ["causal", "associative", "conditional", "descriptive"],
-                    },
+                    "subject": {"type": "string", "minLength": 1, "description": "Copy ONE source surface entity, substance or trait name and abbreviations from the selected sentences, not ontology labels or expanded names. Never bundle 'X and Y' in one endpoint."},
+                    "object": {"type": "string", "minLength": 1, "description": "Copy ONE source surface entity, substance or trait name and abbreviations from the selected sentences, not ontology labels or expanded names. Never bundle 'X and Y' in one endpoint."},
+                    # Avoid a regex here: the live route constrained \\S to one
+                    # character during decoding despite JSON Schema search semantics.
+                    "relation": {"type": "string", "minLength": 2,
+                                 "description": "One standalone source-faithful predicate linking subject to object, preserving negation/modality/comparison (e.g. 'increases', 'may increase', 'does not affect', 'is higher than'). Never put numbers/percentages (use qualifiers.metric), cultivar/comparator names (use endpoint_context or qualifiers.comparator), endpoint states ('low', 'high'), the subject, object, a causal chain or experimental conditions inside relation; never a single-letter code."},
                     "qualifiers": {
                         "type": "object",
+                        "description": "Use only crop_or_species, population, condition, comparator and metric. Prefer omitting unused keys. Explicit null means no value, never an observation. Combine applicable details within string values; never create additional keys.",
                         "properties": {
-                            "crop_or_species": {"type": "string"},
-                            "population": {"type": "string"},
-                            "condition": {"type": "string"},
-                            "comparator": {"type": "string"},
-                            "metric": {"type": "string"},
+                            "crop_or_species": {"type": ["string", "null"]},
+                            "population": {"type": ["string", "null"]},
+                            "condition": {"type": ["string", "null"], "description": "All applicable source-stated conditions and restrictions together in one string; preserve multiple details without adding subfields."},
+                            "comparator": {"type": ["string", "null"]},
+                            "metric": {"type": ["string", "null"]},
                         },
                         "additionalProperties": False,
                     },
+                    "subject_anchor": {"type": "string", "description": "Shortest exact text span copied from the cited sentences naming the subject."},
+                    "object_anchor": {"type": "string", "description": "Shortest exact text span copied from the cited sentences naming the object."},
+                    "evidence_sentence_ids": {
+                        "type": "array", "minItems": 1, "uniqueItems": True,
+                        "items": {"type": "integer", "minimum": 1},
+                    },
+                    "subject_type": {"type": "string", "description": "Optional provisional hint; never a final ontology identity."},
+                    "object_type": {"type": "string", "description": "Optional provisional hint; never a final ontology identity."},
                 },
-                "required": ["claim_text", "subject", "subject_source_mention", "relation", "object", "object_source_mention",
-                             "relation_trigger", "subject_type", "object_type",
-                             "evidence_sentence_numbers", "certainty", "qualifiers"],
+                "required": ["subject", "object", "relation", "qualifiers", "evidence_sentence_ids"],
                 "additionalProperties": False,
             },
         },

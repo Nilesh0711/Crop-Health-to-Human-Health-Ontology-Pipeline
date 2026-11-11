@@ -10,8 +10,10 @@ from backend.providers.structured_output import IncompleteResponseError, SchemaV
 from backend.stages.claim_extraction.extractor import extract_claims
 from backend.stages.claim_extraction.prompt import build_extraction_prompt
 from backend.stages.claim_extraction.targeting import (
-    build_extraction_targets, check_target_evidence, sentence_identity, targeted_prompt,
+    build_extraction_targets, check_target_evidence, sentence_identity, targeted_prompt, reading_context_numbers,
 )
+from backend.stages.claim_extraction.contract import EXTRACTION_RESPONSE_SCHEMA
+from backend.stages.claim_extraction.extractor import check_extraction_response
 
 
 def row(number, *, paragraph=None, heading='Results', chapter='chapter-1', text=None):
@@ -63,7 +65,7 @@ def test_oversized_paragraph_splits_at_sentences_and_single_long_sentence_remain
 
 @pytest.mark.parametrize('numbers', [[1], [], [True], ['2'], [3, 2], [2, 2], [2, 3, 4, 5]])
 def test_context_only_or_invalid_evidence_ids_are_rejected(numbers):
-    with pytest.raises(SchemaValidationError, match='inside the extraction target'):
+    with pytest.raises(SchemaValidationError, match='supplied sentence IDs'):
         check_target_evidence({'claims': [{'evidence_sentence_numbers': numbers}]}, [2, 3, 4])
 
 
@@ -81,16 +83,105 @@ def test_target_prompt_preserves_numbering_context_and_excludes_global_priority_
     assert '[1]' in context and '[3]' in context and '[2]' not in context
     system = build_extraction_prompt(4, 'target_context')
     assert 'Start with the priority evidence index' not in system
-    assert 'Only extraction_target supplies direct evidence' in system
+    assert 'Extract only from extraction_target' in system
     assert 'Use the priority evidence index as an attention aid' in build_extraction_prompt(4, 'whole_packet')
 
 
+def test_local_context_keeps_qualifiers_and_antecedents_but_omits_remote_findings():
+    rows = [row(n, text=f'Remote paragraph {n} describes unrelated observations.') for n in range(1, 10)]
+    rows[3] = row(4, text='The treatment lasted seven days in nutrient solution.')
+    rows[4] = row(5, text='The plants received Treatment T at the reported dose.')
+    rows[5] = row(6, text='These plants showed changes in root length.')
+    target = packet(rows)
+    target.update(target_id='fixture', target_sentence_numbers=[6])
+    assert reading_context_numbers(target) == [4, 5, 7, 8]
+    original = deepcopy(target)
+    reduced = targeted_prompt(target, 'Source')
+    full = targeted_prompt(target, 'Source', context_mode='full')
+    assert 'seven days in nutrient solution' in reduced
+    assert '[5] [page 1] The plants received Treatment T' in reduced
+    assert 'Remote paragraph 1' not in reduced and 'Remote paragraph 1' in full
+    assert target == original
+    assert reduced.split('<extraction_target>')[1].split('</extraction_target>')[0] == full.split('<extraction_target>')[1].split('</extraction_target>')[0]
+
+
+def test_context_keeps_whole_boundary_paragraph_and_never_crosses_chapters():
+    rows = [row(1, chapter='previous'), row(2, paragraph='same'), row(3, paragraph='same'),
+            row(4, paragraph='same'), row(5, chapter='next')]
+    target = packet(rows)
+    target.update(target_id='fixture', target_sentence_numbers=[3])
+    assert reading_context_numbers(target) == [2, 4]
+    assert target['sentences'][1]['text'] in targeted_prompt(target, 'Source')
+
+
+def test_large_context_paragraph_is_bounded_without_cutting_sentences_or_skipping_to_remote_text():
+    rows = [row(1, paragraph='remote'), row(2, paragraph='large', text=' '.join(['context'] * 700)),
+            row(3, paragraph='large', text='The final condition belongs to the preceding sentence.'),
+            row(4, paragraph='target'), row(5, paragraph='after')]
+    target = packet(rows)
+    target.update(target_id='fixture', target_sentence_numbers=[4])
+    assert reading_context_numbers(target) == [3, 5]
+
+
+def test_remote_abbreviation_definitions_remain_source_bound_without_remote_findings():
+    rows = [row(1, text='Dry matter (DM) was recorded. Compound Z has another effect.')]
+    rows += [row(n) for n in range(2, 9)]
+    rows[6] = row(7, text='Treatment T affected DM in the plants.')
+    target = next(t for t in build_extraction_targets([packet(rows)], target_words=10)
+                  if 7 in t['target_sentence_numbers'])
+    prompt = targeted_prompt(target, 'Source')
+    assert 'Dry matter (DM)' in prompt
+    assert 'Compound Z has another effect' not in prompt
+    assert 'source_definitions_only' in prompt
+    assert target['source_abbreviation_definitions'][0]['page'] == 1
+
+
+@pytest.mark.parametrize('field,value', [('subject', ''), ('object', ''), ('subject', '  '), ('relation', '  ')])
+def test_blank_endpoints_and_predicates_are_schema_errors_not_truncation(field, value):
+    item = claim([2]); item[field] = value
+    with pytest.raises(SchemaValidationError):
+        check_extraction_response({'claims': [item]}, EXTRACTION_RESPONSE_SCHEMA, [2])
+
+
+def test_empty_endpoint_recovery_preserves_source_and_reports_schema_error():
+    import json
+    from tests.external.test_generation_budget import response
+    bad = claim([2]); bad['object'] = ''
+    good = claim([2])
+    metrics = []
+    client = OpenCodeClient(Settings(), task='extraction', on_request=metrics.append)
+    with patch.object(client._inference, 'chat', side_effect=[response(json.dumps({'claims': [bad]})),
+            response(json.dumps({'claims': [good]}))]) as call:
+        answer = client.chat_json('Source rules', 'Original source text', json_schema=EXTRACTION_RESPONSE_SCHEMA,
+            response_check=lambda result: check_extraction_response(result, EXTRACTION_RESPONSE_SCHEMA, [2]))
+    assert answer == {'claims': [good]}
+    assert metrics[0]['failure_category'] == 'schema_error'
+    assert all(c.args[2] == 'Original source text' for c in call.call_args_list)
+    assert [c.args[4] for c in call.call_args_list] == [50000, 50000]
+
+
+def test_resume_rejects_old_context_policy_without_modifying_its_checkpoint(tmp_path):
+    import json
+    from pathlib import Path
+    from backend.config.settings import SCHEMA_VERSION
+    from backend.pipelines.checkpoints import resume_metadata
+    settings = Settings()
+    checkpoint = {'schema_version': SCHEMA_VERSION, 'pdf_sha256': 'fixture-hash',
+        'task_models': settings.task_models, 'max_pages': 0, 'claims_per_packet': 0,
+        'extraction_mode': 'target_context', 'extraction_target_words': 800,
+        'targeting_version': 2, 'thinking': settings.task_thinking}
+    path = tmp_path / 'pipeline_checkpoint.json'
+    path.write_text(json.dumps(checkpoint), encoding='utf-8')
+    before = path.read_bytes()
+    with patch('backend.pipelines.checkpoints.file_hash', return_value='fixture-hash'):
+        with pytest.raises(ValueError, match='targeting version changed'):
+            resume_metadata(tmp_path, Path('fixture.pdf'), settings, 0, 0, extraction_mode='target_context', target_words=800)
+    assert path.read_bytes() == before
+
+
 def claim(numbers):
-    return dict(claim_text='Wheat grains may contain cadmium under disease Z infection.',
-                subject='Wheat grains', subject_source_mention='Wheat grains', relation='has_contaminant',
-                object='cadmium', object_source_mention='cadmium', relation_trigger='contain',
-                subject_type='Crop', object_type='Contaminant', certainty='conditional', source_context='',
-                evidence_sentence_numbers=numbers,
+    return dict(subject='Wheat grains', relation='may contain', object='cadmium',
+                evidence_sentence_ids=numbers,
                 qualifiers=dict(crop_or_species='wheat', condition='disease Z infection',
                                 population='', comparator='', metric='cadmium presence'))
 
@@ -122,7 +213,9 @@ def test_direct_extraction_retains_context_qualifiers_provenance_and_original_pa
     assert len(client.calls) == 2 and len(candidates) == 1
     c = candidates[0]
     assert c['qualifiers']['condition'] == 'disease Z infection'
-    assert c['certainty'] == 'conditional' and c['schema_error'] is None
+    assert 'may' in c['relation'] and c['schema_error'] is None
+    assert 'claim_text' not in c
+    assert not {'certainty', 'subject_type', 'object_type'} & c.keys()
     assert c['source_evidence_sentence_numbers'] == [2] and c['source_packet_number'] == 1
     assert c['source_evidence_span'] == 'Wheat grains may contain cadmium under these conditions.'
     assert 'disease Z infection' in c['source_local_context']
@@ -137,7 +230,7 @@ def test_alternate_client_cannot_bypass_target_ownership_by_skipping_response_ca
             return {'claims': [claim([2])]}
 
     candidates, rejected, _ = extract_fixture(tmp_path, Client(), mode='target_context')
-    assert len(candidates) == 1 and rejected['outside_extraction_target'] == 1
+    assert len(candidates) == 1 and rejected['context_only_finding'] == 1
 
 
 def test_whole_packet_keeps_single_call_and_priority_index(tmp_path):
@@ -179,7 +272,7 @@ def test_real_response_recovery_keeps_target_guard_original_evidence_and_selecte
                                   response_check=lambda value: check_target_evidence(value, [2, 3]))
     assert answer['claims'][0]['evidence_sentence_numbers'] == [2]
     assert call.call_count == 2
-    assert [c.args[4] for c in call.call_args_list] == [24576, 24576]
+    assert [c.args[4] for c in call.call_args_list] == [50000, 50000]
     assert all(c.args[0] == Settings().extraction_model for c in call.call_args_list)
     assert all(c.args[2] == 'Exact original evidence' for c in call.call_args_list)
 
@@ -194,8 +287,7 @@ def test_uncapped_extraction_returns_more_than_four_claims_with_exact_source_pas
             rows = []
             for name in ('toxin A', 'toxin B', 'toxin C', 'toxin D', 'toxin E'):
                 item = claim([1])
-                item.update(object=name, object_source_mention=name,
-                            claim_text=f'Wheat grains may contain {name} under disease Z infection.')
+                item.update(object=name)
                 rows.append(item)
             value = {'claims':rows}
             kwargs['response_check'](value)
@@ -211,7 +303,7 @@ def test_uncapped_extraction_returns_more_than_four_claims_with_exact_source_pas
     assert len(candidates) == 5
     assert 'maxItems' not in client.schema['properties']['claims']
     assert all(c['source_evidence_span'] == text for c in candidates)
-    assert candidates[0]['claim_text'] != text
+    assert 'claim_text' not in candidates[0]
     assert not records[0]['claim_limit_reached']
 
 
@@ -219,15 +311,11 @@ def test_anaphoric_passage_yields_both_direct_edges_without_a_transitive_shortcu
     rows = [row(1, text='Fusarium head blight affects wheat grains.'),
             row(2, text='These infected grains may contain mycotoxins.')]
     first = claim([1])
-    first.update(subject='Fusarium head blight', subject_source_mention='Fusarium head blight',
-                 subject_type='PlantDisease', object='wheat grains', object_source_mention='wheat grains',
-                 object_type='Crop', relation='affects', relation_trigger='affects', certainty='descriptive',
-                 qualifiers={k:'' for k in first['qualifiers']}, claim_text=rows[0]['text'])
+    first.update(subject='Fusarium head blight', object='wheat grains', relation='affects',
+                 qualifiers={k:'' for k in first['qualifiers']})
     second = claim([1,2])
-    second.update(subject='wheat grains', subject_source_mention='These infected grains',
-                  object='mycotoxins', object_source_mention='mycotoxins',
-                  qualifiers={**second['qualifiers'], 'condition':'Fusarium head blight infection'},
-                  claim_text='Wheat grains affected by Fusarium head blight may contain mycotoxins.')
+    second.update(subject='These infected grains', object='mycotoxins',
+                  qualifiers={**second['qualifiers'], 'condition':'Fusarium head blight infection'})
     class Client:
         def chat_json(self, system, user, **kwargs):
             value = {'claims':[first,second]}
@@ -239,7 +327,10 @@ def test_anaphoric_passage_yields_both_direct_edges_without_a_transitive_shortcu
         candidates, _, _ = extract_claims(pdf, Client(), 0, lambda *args:None, packets=[packet(rows)],
             source_identifiers={'source_doi':'fixture'}, bibliography=[], extraction_mode='target_context')
     assert len(candidates) == 2
-    assert candidates[0]['object'] == candidates[1]['subject']
+    assert candidates[0]['object'] == 'wheat grains'
+    assert candidates[1]['subject'] == 'These infected grains'
     assert candidates[1]['subject_source_mention'] == 'These infected grains'
-    assert candidates[1]['certainty'] == 'conditional'
+    assert 'may contain' in candidates[1]['relation'] and 'certainty' not in candidates[1]
+    assert 'claim_text' not in candidates[1]
+    assert 'Fusarium head blight' in candidates[1]['source_reading_context']
     assert candidates[1]['qualifiers']['condition'] == 'Fusarium head blight infection'

@@ -167,22 +167,29 @@ const modelName = value => {
 
 export function RunSetup({ health, options, onOptions, open, onToggle }) {
   const tasks = health?.pipeline?.task_models || {}
+  const paused = health?.pipeline?.validation_stages_paused === true
   const phases = health?.pipeline?.external_phase_models || {}
   return <section className="workflow-card" aria-label="Pipeline and run settings">
-    <div className="section-head compact"><div><span className="eyebrow">RUN CONFIGURATION</span><h2>From paper to evidence</h2></div>
+    <div className="section-head compact"><div><span className="eyebrow">RUN CONFIGURATION</span><h2>{paused ? 'From paper to candidate graph' : 'From paper to evidence'}</h2></div>
       <button type="button" className="button secondary" aria-expanded={open} aria-controls="run-settings" onClick={onToggle}>
         <Settings2 size={16} />{open ? 'Hide settings' : 'Run settings'}<ChevronDown size={15} className={open ? 'chevron open' : 'chevron'} /></button></div>
-    <div className="steps">{[
+    <div className="steps">{(paused ? [
+      ['Extract claims', FileText, modelName(tasks.extraction)],
+      ['Candidate pathways', GitBranch, modelName(tasks.pathway_assembly)],
+      ['Build graph', Network, 'Unvalidated connections'],
+    ] : [
       ['Extract claims', FileText, modelName(tasks.extraction)], ['Check source & scope', Check, modelName(tasks.source)],
       ['Candidate pathways', GitBranch, modelName(tasks.pathway_assembly)],
       ['Find papers', Search, modelName(tasks.query)], ['Assess evidence', Sparkles, phases.paper ? `${modelName(phases.paper)} → ${modelName(phases.synthesis)}` : modelName(tasks.external)],
       ['Build graph', GitBranch, 'Evidence states'],
-    ].map(([label, Icon, detail], index) => <div className="step-group" key={label}>
+    ]).map(([label, Icon, detail], index) => <div className="step-group" key={label}>
       {index > 0 && <ArrowRight size={15} className="step-arrow" />}<div className="step"><span className="step-icon"><Icon size={18} /></span><span><strong>{label}</strong><small>{detail}</small></span></div>
     </div>)}</div>
     {open && <div id="run-settings" className="run-settings">
+      {paused ? <p className="soft-note" role="note">Source fidelity, project scope and external validation are paused. Extracted claims and assembled connections are unvalidated. Ontology-grounded merging is the next research step.</p> : <>
       <div className="settings-section-title"><h3>Neighboring-claim validation</h3><p>Source-grounded claims are assembled first. External evidence assesses two adjacent relationships and their local connection.</p></div>
       <p className="soft-note">MiMo Flash plans searches for each relationship and its connection conditions. {modelName(phases.paper || tasks.source)} assesses each paper; {modelName(phases.synthesis || tasks.external)} synthesizes the findings and audits proposed support against external quotations. Local support does not establish an entire chain. Claims outside selected pairs remain externally unvalidated.</p>
+      </>}
       <div className="settings-section-title"><h3>Claim extraction</h3><p>Choose what each extraction call is responsible for.</p></div>
       <label>Extraction mode<select value={options.extraction_mode ?? 'target_context'}
         onChange={event => onOptions({ ...options, extraction_mode: event.target.value })}>
@@ -192,11 +199,11 @@ export function RunSetup({ health, options, onOptions, open, onToggle }) {
         ? 'Select claims from anywhere in each reading packet.'
         : 'Extract from smaller assigned regions; read the surrounding packet for context. More calls may be needed.'}</small></label>
       {options.extraction_mode !== 'whole_packet' && <label>Target size (words)<input type="number" min={200} max={2000}
-        value={options.extraction_target_words ?? 800}
+        value={options.extraction_target_words ?? 200}
         onChange={event => onOptions({ ...options, extraction_target_words: Number(event.target.value) })} />
         <small>Approximate maximum; sentence boundaries are preserved. Paragraphs stay together when they fit.</small></label>}
-      <label>Generation budget (tokens)<input type="number" min={8192} max={32768} step={1024}
-        value={options.extraction_generation_budget ?? 24576}
+      <label>Generation budget (tokens)<input type="number" min={8192} max={50000} step={1}
+        value={options.extraction_generation_budget ?? 50000}
         onChange={event => onOptions({ ...options, extraction_generation_budget: Number(event.target.value) })} />
         <small>Shared by reasoning and the answer. A larger allowance can increase request time.</small></label>
       <div className="settings-section-title"><h3>Run limits</h3><p>Choose how much of this paper to process.</p></div>
@@ -205,11 +212,11 @@ export function RunSetup({ health, options, onOptions, open, onToggle }) {
         ['claims_per_packet', 'Claims per extraction call', 0, 8, '0 = all eligible claims; 1–8 = optional maximum per call'],
         ['neighbor_max_pairs', 'Neighbor pairs to assess', 1, 500, 'Additional local pairs remain visibly unassessed'],
         ['articles_per_pathway', 'Search papers per neighboring pair', 1, 30, 'All usable attached citations are additional'],
-      ].map(([key, label, min, max, hint]) => <label key={key}>{label}<input type="number" min={min} max={max} value={options[key]}
+      ].filter(([key]) => !paused || !['neighbor_max_pairs', 'articles_per_pathway'].includes(key)).map(([key, label, min, max, hint]) => <label key={key}>{label}<input type="number" min={min} max={max} value={options[key]}
         onChange={event => onOptions({ ...options, [key]: Number(event.target.value) })} /><small>{hint}</small></label>)}
-      <div className="settings-section-title"><h3>Assigned models</h3><p>Each task uses its configured primary model. Thinking defaults to Off for every stage.</p></div>
-      {THINKING_STAGES.map(([key, label]) => {
-        const enabled = options.thinking?.[key] ?? false
+      <div className="settings-section-title"><h3>Assigned models</h3><p>Each task uses its configured primary model. Thinking defaults to Off for extraction and On for ontology grounding; other stages default Off.</p></div>
+      {THINKING_STAGES.filter(([key]) => !paused || key in tasks).map(([key, label]) => {
+        const enabled = options.thinking?.[key] ?? defaultThinking()[key]
         const minimumReasoning = key === 'external' && ((phases.synthesis || tasks.external) === 'opencode-go/muse-spark-1.3-contributor')
         return <div className="assigned-model" role="group" aria-label={`${label} model settings`} key={key}>
           {key === 'external' && <label>Per-paper judgement model<input value={phases.paper || ''} readOnly placeholder="Loading model assignment…" /><small>Assesses two neighboring claims against each paper</small></label>}
@@ -223,8 +230,8 @@ export function RunSetup({ health, options, onOptions, open, onToggle }) {
         </div>
       })}
       <p className="settings-note">Thinking and the answer share the generation budget. Off keeps the same evidence input. Changing extraction thinking requires a new run; other changed stages recheck their cached judgements on resume.</p>
-      <p className="settings-note">{modelName(phases.paper)} judges each paper; {modelName(phases.synthesis || tasks.external)} synthesizes their findings and exact evidence. External Thinking controls both phases. Model errors appear in Activity. External timeout: {health?.pipeline?.external_timeout_seconds ?? 1200} seconds.</p>
+      {!paused && <p className="settings-note">{modelName(phases.paper)} judges each paper; {modelName(phases.synthesis || tasks.external)} synthesizes their findings and exact evidence. External Thinking controls both phases. Model errors appear in Activity. External timeout: {health?.pipeline?.external_timeout_seconds ?? 1200} seconds.</p>}
     </div>}
-    <p className="soft-note">The source call checks PDF fidelity and project scope separately. Only PDF-supported, in-scope claims enter pathway assembly. External validation assesses neighboring claims and their local connection. Longer chains remain unassessed as complete mechanisms. Its Thinking switch applies to both paper judgements and cross-paper synthesis.</p>
+    {paused ? <p className="soft-note">Scientific validation is temporarily archived. Source passages, citations and structural checks remain available; graph connections are provisional.</p> : <p className="soft-note">The source call checks PDF fidelity and project scope separately. Only PDF-supported, in-scope claims enter pathway assembly. External validation assesses neighboring claims and their local connection. Longer chains remain unassessed as complete mechanisms. Its Thinking switch applies to both paper judgements and cross-paper synthesis.</p>}
   </section>
 }

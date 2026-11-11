@@ -186,6 +186,11 @@ def export_snapshot(ontology, pdf_dir, output, *, include_pdfs=False, replace=Fa
                 for key in ('paths', 'has_more', 'offset', 'limit', 'max_hops'):
                     payload.pop(key, None)
                 manifest['pathways'][view] = write(f'global/pathways-{view}.json', payload)
+            manifest['ontology_grounding'] = {}
+            for name in ('snapshot', 'reasoning'):
+                path = ontology / '.ontology_grounding' / (name + '.json')
+                if path.is_file():
+                    manifest['ontology_grounding'][name] = write(f'global/ontology-{name}.json', json.loads(path.read_text(encoding='utf-8')))
         if source_inventory(ontology, pdf_dir) != before:
             raise ValueError('Source files changed during export; finish local work and retry')
         manifest['snapshot_id'] = manifest_id(manifest)

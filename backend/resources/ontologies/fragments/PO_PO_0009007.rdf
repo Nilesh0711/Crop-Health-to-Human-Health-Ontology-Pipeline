@@ -1,0 +1,128 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:po="http://purl.obolibrary.org/obo/po#">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#reference"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/po#TraitNet"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0009007 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0009007">
+        <rdfs:label>portion of plant tissue</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/PO_0009011"/>
+        <disjointWith rdf:resource="http://purl.obolibrary.org/obo/PO_0009008"/>
+        <disjointWith rdf:resource="http://purl.obolibrary.org/obo/PO_0025001"/>
+        <disjointWith rdf:resource="http://purl.obolibrary.org/obo/PO_0025007"/>
+        <disjointWith rdf:resource="http://purl.obolibrary.org/obo/PO_0025269"/>
+        <oboInOwl:hasOBONamespace>plant_anatomy</oboInOwl:hasOBONamespace>
+        <ns4:IAO_0000115>A plant structure (PO:0009011) that consists predominantly of similarly specialized plant cells (PO:0009002) of one or more types.</ns4:IAO_0000115>
+        <oboInOwl:hasBroadSynonym>tissue (broad)</oboInOwl:hasBroadSynonym>
+        <rdfs:comment>A portion of plant tissue may contain one or several types of cells that are organized in a specific spatial arrangement into a structural unit (which includes a mass of callus) and may include an intercellular matrix. May include other types of isolated cells, such as idioblasts.</rdfs:comment>
+        <oboInOwl:id>PO:0009007</oboInOwl:id>
+        <oboInOwl:hasDbXref>PO_GIT:59</oboInOwl:hasDbXref>
+        <oboInOwl:hasBroadSynonym>portion of tissue (broad)</oboInOwl:hasBroadSynonym>
+        <oboInOwl:hasExactSynonym>porci&amp;#243n de un tejido vegetal (Spanish, exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasRelatedSynonym>plant tissue (related)</oboInOwl:hasRelatedSynonym>
+        <oboInOwl:hasExactSynonym>植物組織の一部 (Japanese, exact)</oboInOwl:hasExactSynonym>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#TraitNet"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/po#reference"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0009008 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0009008">
+        <rdfs:label>plant organ</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0009011 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0009011">
+        <rdfs:label>plant structure</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025001 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025001">
+        <rdfs:label>cardinal organ part</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025007 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025007">
+        <rdfs:label>collective plant organ structure</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/PO_0025269 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/PO_0025269">
+        <rdfs:label>collective organ part structure</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

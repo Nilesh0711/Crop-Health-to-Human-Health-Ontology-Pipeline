@@ -73,6 +73,26 @@ def head_token_matches(w_source: str, w_wanted: str) -> bool:
     return False
 
 
+def _scientific_marks(value):
+    """Matching-only punctuation that must not disappear with word tokenization."""
+    value = unicodedata.normalize('NFKC', value).replace('−', '-').replace('–', '-').replace('‑', '-')
+    return re.findall(r'[+±<>=≤≥]|(?<=\d)\.(?=\d)|(?<=\d)-|-(?=\s*\d)', value)
+
+
+def _guarded_surface(source, proposed, start, end):
+    # Token offsets omit unary signs and trailing ionic charges. Include them
+    # for comparison and return the original signed/charged span, never a rewrite.
+    if source[start:start + 1].isdigit():
+        prefix = re.search(r'[+±−<>≤≥-]\s*$', source[:start])
+        if prefix:
+            start = prefix.start()
+    suffix = re.match(r'[+−-](?!\w)', source[end:])
+    if suffix:
+        end += suffix.end()
+    span = source[start:end]
+    return span if _scientific_marks(span) == _scientific_marks(proposed) else None
+
+
 def source_surface_mention(source_text: str, proposed_mention: str) -> str | None:
     """Return a verbatim source mention when its words occur consecutively.
 
@@ -91,9 +111,13 @@ def source_surface_mention(source_text: str, proposed_mention: str) -> str | Non
         available = [token.text for token in tokens]
         for index in range(len(available) - len(wanted) + 1):
             if available[index:index + len(wanted)] == wanted:
-                return source[tokens[index].start:tokens[index + len(wanted) - 1].end]
+                span = _guarded_surface(source, proposed_mention, tokens[index].start, tokens[index + len(wanted) - 1].end)
+                if span:
+                    return span
         for index in range(len(available) - len(wanted) + 1):
             sub = available[index:index + len(wanted)]
             if sub[:-1] == wanted[:-1] and head_token_matches(sub[-1], wanted[-1]):
-                return source[tokens[index].start:tokens[index + len(wanted) - 1].end]
+                span = _guarded_surface(source, proposed_mention, tokens[index].start, tokens[index + len(wanted) - 1].end)
+                if span:
+                    return span
     return None

@@ -247,7 +247,9 @@ def page_sentences(text: str) -> list[str]:
         lambda match: match.group(0).replace(".", SENTENCE_PERIOD_MARKER), repaired
     )
     sentences: list[str] = []
-    for item in re.split(r"\s*[•●▪]\s*", repaired):
+    # Keep explicit paragraph/list boundaries before collapsing line-wrap
+    # whitespace. Missing punctuation within a paragraph is not guessed.
+    for item in re.split(r"\n\s*\n|\s*[•●▪]\s*", repaired):
         compact = SPACE_RE.sub(" ", item).strip()
         if compact:
             sentences.extend(

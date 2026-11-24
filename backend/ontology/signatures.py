@@ -9,5 +9,6 @@ def claim_signature(candidate):
 
 
 def inventory_signature(root):
-    paths = sorted([*root.glob('*/candidates.jsonl'), *root.glob('*/ontology_grounding.jsonl')])
+    paths = sorted([*root.glob('*/candidates.jsonl'), *root.glob('*/ontology_grounding.jsonl'),
+                    *root.glob('*/extraction_contexts.jsonl')])
     return stable_hash(json.dumps([(str(p.relative_to(root)), p.stat().st_mtime_ns, p.stat().st_size) for p in paths]), 64)

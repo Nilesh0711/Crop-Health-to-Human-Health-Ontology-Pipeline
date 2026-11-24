@@ -1,0 +1,21 @@
+{
+  "version": "upstream-property-usage-v1",
+  "restrictions": {
+    "http://purl.obolibrary.org/obo/RO_0002410": {
+      "allowed_mappings": [
+        "broader",
+        "unresolved"
+      ],
+      "annotation_predicate": "http://purl.obolibrary.org/obo/IAO_0000232",
+      "annotation_value": "Do not use this relation directly. It is intended as a grouping for a diverse set of relations, all involving cause and effect."
+    },
+    "http://purl.obolibrary.org/obo/RO_0002595": {
+      "allowed_mappings": [
+        "broader",
+        "unresolved"
+      ],
+      "annotation_predicate": "http://purl.obolibrary.org/obo/IAO_0000116",
+      "annotation_value": "Do not use this relation directly. It is intended as a grouping for a diverse set of relations, all involving cause and effect."
+    }
+  }
+}

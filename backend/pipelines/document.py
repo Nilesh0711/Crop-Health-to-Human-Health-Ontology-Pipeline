@@ -5,13 +5,21 @@ from __future__ import annotations
 import json
 import time
 import threading
+from collections import Counter
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable
 from pypdf import PdfReader
 from backend.config.settings import ONTOLOGY_DIR, SCHEMA_VERSION, APPLICATION_VERSION, Settings
-from backend.config.pipeline import PIPELINE_MODE, PAUSED_MESSAGE, POST_GROUNDING_STAGES_PAUSED, active_task_models
-from backend.config.pipeline import ONTOLOGY_GROUNDING_PAUSED, GROUNDING_PAUSED_MESSAGE
+from backend.config.pipeline import (
+    GROUNDING_PAUSED_MESSAGE,
+    MANUAL_GROUNDING_ENABLED,
+    ONTOLOGY_GROUNDING_PAUSED,
+    PAUSED_MESSAGE,
+    PIPELINE_MODE,
+    POST_GROUNDING_STAGES_PAUSED,
+    active_task_models,
+)
 from backend.pipelines.unvalidated import publish_unvalidated_views, paused_metadata
 from backend.pipelines.checkpoints import resume_metadata, save_checkpoint
 from backend.shared.cancellation import check_cancelled
@@ -30,8 +38,13 @@ from backend.stages.pdf_parsing.quality import assess_text_quality
 from backend.stages.pdf_parsing.structure import inspect_pdf
 from backend.stages.pdf_parsing.layout import PARSING_POLICY, LEGACY_PARSING_POLICY
 from backend.stages.claim_extraction.extractor import extract_claims, refresh_candidate_citations
-from backend.stages.claim_extraction.targeting import TARGETING_VERSION
-from backend.stages.claim_extraction.contract import EXTRACTION_CONTRACT_VERSION
+from backend.stages.claim_extraction.targeting import TARGETING_VERSION, READING_CONTEXT_POLICY
+from backend.stages.claim_extraction.contract import (
+    CLOSED_EXTRACTION_CONTRACT_VERSION,
+    CLOSED_PREDICATE_SET_VERSION,
+    closed_predicate_whitelist_digest,
+)
+from backend.stages.claim_extraction.anchoring import ANCHORING_POLICY
 from backend.pipelines.ontology import run_grounding
 from backend.ontology.catalog import catalog as load_catalog
 from backend.stages.pdf_parsing.packets import (
@@ -65,6 +78,9 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
 
     settings = Settings()
     reference = load_catalog()
+    if not ONTOLOGY_GROUNDING_PAUSED:
+        from backend.ontology.inventory import open_inventory
+        open_inventory()  # Preflight before extraction model requests.
     mode = PIPELINE_MODE
     settings = replace(settings,
                        external_top_k=articles_per_pathway,
@@ -87,13 +103,23 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
         'max_pages': max_pages, 'claims_per_packet': claims_per_packet, 'extraction_complete': False,
         'extraction_mode': settings.extraction_mode, 'extraction_target_words': settings.extraction_target_words,
         'extraction_generation_budget': settings.extraction_min_output_budget, 'targeting_version': TARGETING_VERSION,
+        'reading_context_policy': READING_CONTEXT_POLICY,
+        'anchoring_policy': ANCHORING_POLICY,
         'parsing_policy':PARSING_POLICY}
     scope_signature = reference.profile['id'] + '|' + reference.profile['research_question']
     if resume and checkpoint.get('extraction_scope') not in (None, scope_signature):
         raise ValueError('The crop/research question changed; start a fresh extraction for the new scope')
     checkpoint.setdefault('extraction_scope', scope_signature if not resume else None)
     checkpoint['ontology_reference_signature'] = reference.signature
-    checkpoint['extraction_contract_version'] = EXTRACTION_CONTRACT_VERSION if not resume else checkpoint.get('extraction_contract_version')
+    checkpoint['extraction_contract_version'] = (
+        CLOSED_EXTRACTION_CONTRACT_VERSION if not resume else checkpoint.get('extraction_contract_version')
+    )
+    checkpoint['predicate_set_version'] = (
+        CLOSED_PREDICATE_SET_VERSION if not resume else checkpoint.get('predicate_set_version')
+    )
+    checkpoint['predicate_whitelist_sha256'] = (
+        closed_predicate_whitelist_digest() if not resume else checkpoint.get('predicate_whitelist_sha256')
+    )
     checkpoint['thinking'] = settings.task_thinking
     checkpoint.update(paused_metadata())
     checkpoint['knowledge_building_mode'] = mode
@@ -204,6 +230,9 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
                 scope_instructions=reference.extraction_instructions(),
                 extraction_mode=settings.extraction_mode, target_words=settings.extraction_target_words,
                 resume_cache_dir=output_dir if resume else None,
+                context_packets=packets,
+                closed_relations=True,
+                reference=reference,
             )
         finally:
             # Keep failed and not-started targets visible even when a primary
@@ -254,10 +283,16 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
         'pdf': pdf_path.name, 'pdf_sha256': file_hash(pdf_path),
         'completed_at': utc_now(), 'schema_version': SCHEMA_VERSION,
         'application_version': APPLICATION_VERSION,
-        'extraction_contract_version': EXTRACTION_CONTRACT_VERSION,
+        'extraction_contract_version': checkpoint.get('extraction_contract_version', CLOSED_EXTRACTION_CONTRACT_VERSION),
+        'predicate_set_version': checkpoint.get('predicate_set_version', CLOSED_PREDICATE_SET_VERSION),
+        'predicate_whitelist_sha256': checkpoint.get('predicate_whitelist_sha256', closed_predicate_whitelist_digest()),
         'run_status': 'completed_with_warnings' if failed_packets else 'completed',
         **paused_metadata(), 'resumed': resume,
         'extracted': len(candidates), 'schema_valid': len(structurally_valid),
+        'ready_to_inspect': sum(not bool(c.get('extraction_warnings')) for c in candidates),
+        'held_for_review': sum(bool(c.get('extraction_warnings')) for c in candidates),
+        'measured_observations': sum(bool(c.get('measured_comparison')) for c in candidates),
+        'predicate_counts': dict(Counter(c['predicate_alias'] for c in candidates if c.get('predicate_alias'))),
         'source_entailed': 0, 'source_unsupported': 0, 'source_needs_review': 0,
         'source_not_assessed': len(candidates),
         'source_project_scope': {'in_scope': 0, 'out_of_scope': 0,
@@ -276,6 +311,9 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
         'extraction_target_words': settings.extraction_target_words,
         'extraction_generation_budget': settings.extraction_min_output_budget,
         'targeting_version': checkpoint.get('targeting_version'),
+        'reading_context_policy': checkpoint.get('reading_context_policy'),
+        'anchoring_policy': checkpoint.get('anchoring_policy'),
+        'parsing_policy': checkpoint.get('parsing_policy'),
         'extraction_coverage': {'complete': not failed_packets, 'total_packets': len(packet_results),
                                 'completed_packets': completed_packets, 'failed_packets': failed_packets,
                                 'unit': 'targets' if settings.extraction_mode == 'target_context' else 'packets',
@@ -296,6 +334,25 @@ def run_pipeline(pdf_path: Path, max_pages: int, articles_per_pathway: int,
         'evaluation_sample': evaluation_path.name if evaluation_path else None, 'reasoning_paths': 0,
     }
     (output_dir / 'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
-    emit('success', (f"Finished: {len(candidates)} extracted claims. Use Run grounded claims for manual ontology grounding. Later stages remain paused."
-        if ONTOLOGY_GROUNDING_PAUSED else f"Finished: {len(candidates)} extracted claims; {provisional['counts']['grounded_mentions']} grounded endpoint mentions. Scientific validation was not run."))
+    ready_count = summary['ready_to_inspect']
+    held_count = summary['held_for_review']
+    if ONTOLOGY_GROUNDING_PAUSED and MANUAL_GROUNDING_ENABLED:
+        finished_msg = (
+            f"Finished: {len(candidates)} extracted claims ({ready_count} ready to inspect, {held_count} held for review). "
+            "Use Ground saved claims for entity-only grounding. Later stages remain paused."
+        )
+    elif ONTOLOGY_GROUNDING_PAUSED:
+        finished_msg = (
+            f"Finished: {len(candidates)} extracted claims ({ready_count} ready to inspect, {held_count} held for review). "
+            "Ontology grounding and later stages remain paused."
+        )
+    else:
+        finished_msg = (
+            f"Finished: {len(candidates)} extracted claims; "
+            f"{grounding_summary['classified_endpoint_mentions']} endpoint mentions classified (exact or broader); "
+            f"{grounding_summary['classified_claims']} assertions completely classified; "
+            f"{grounding_summary.get('complete_measured_comparisons', 0)}/{grounding_summary.get('measured_comparisons', 0)} "
+            "measured comparisons complete. Scientific validation was not run."
+        )
+    emit('success', finished_msg)
     return summary

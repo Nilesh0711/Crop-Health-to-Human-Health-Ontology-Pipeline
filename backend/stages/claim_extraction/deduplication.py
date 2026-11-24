@@ -25,9 +25,10 @@ def deduplicate_source_claims(candidates: list[dict[str, Any]]) -> tuple[list[di
         certainty = str(candidate.get("certainty") or "")
         key = (candidate.get("source_document_id"), candidate.get("source_pdf_sha256"),
                candidate.get("source_page"), normalized_phrase(candidate.get("source_evidence_span")),
-               _endpoint(candidate.get("subject")), candidate.get("relation"), _endpoint(candidate.get("object")),
+               _endpoint(candidate.get("subject")), candidate.get("relation"), candidate.get("predicate_alias"), candidate.get("proposed_relation_iri"), _endpoint(candidate.get("object")),
                candidate.get("subject_type"), candidate.get("object_type"), certainty,
                normalized_phrase(candidate.get('claim_text')),
+               json.dumps(candidate.get("measured_comparison"), sort_keys=True),
                json.dumps(candidate.get("qualifiers") or {}, sort_keys=True),
                normalized_phrase(candidate.get('subject_context')), normalized_phrase(candidate.get('object_context')),
                normalized_phrase(candidate.get("source_context")))

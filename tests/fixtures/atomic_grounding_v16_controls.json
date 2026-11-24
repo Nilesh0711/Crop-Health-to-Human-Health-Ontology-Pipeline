@@ -1,0 +1,18 @@
+{
+  "purpose":"Twelve separate development controls; scientific expectations require review. No runtime instructions or gold accuracy labels.",
+  "review_status":"pending",
+  "cases":[
+    {"id":"upstream-grouping-use", "source":"Treatment T caused Trait Q.", "expectation":"A grouping-only causal property may classify broader but can never be exact or formally asserted."},
+    {"id":"definition-comment-disagreement", "source":"Process T increased the rate of Process Q.", "expectation":"Read definition and comment separately; do not infer required execution from a rate increase."},
+    {"id":"encompassing-parent", "source":"Resource-use efficiency was measured in Crop C.", "expectation":"Test a supplied encompassing plant-trait definition before related or unresolved; never equate efficiency with uptake."},
+    {"id":"bearer-counterexample", "source":"Group A plants were selected for Trait Q.", "expectation":"Group A remains the organism/population, not the selection trait; a shared parent does not imply identity."},
+    {"id":"parallel-outcomes", "source":"Trait Q, Trait R and Trait S were increased by Treatment T by 8%, 12% and 15%, respectively.", "expectation":"Three independently asserted outcomes, correct passive roles and corresponding metrics."},
+    {"id":"parallel-locations", "source":"Treatment T increased Resource Q content in Organ A and Organ B.", "expectation":"Two organ-qualified outcomes, complete literal coordination anchors and shared treatment."},
+    {"id":"later-mechanism-clause", "source":"Group A allocated Compound Q to Organ O, thereby enhancing Trait R and facilitating increased Trait S.", "expectation":"The allocation mechanism supplies downstream causal subjects; later result verbs are checked, not just the first."},
+    {"id":"inverse-trend", "source":"As Factor T increased, Trait Q declined.", "expectation":"Trait Q declined, not Factor T; the trend alone does not assert causation."},
+    {"id":"treatment-code-maximum", "source":"Trait Q was highest under treatment Code K compared with Code L.", "expectation":"Trait Q remains the measured trait; codes are conditions/comparator, not quantities higher than a trait."},
+    {"id":"ability-and-destination", "source":"Group A has the ability to allocate Compound Q to Organ O.", "expectation":"Preserve ability, material endpoint and labelled destination; do not assert the event occurred."},
+    {"id":"non-significance", "source":"Treatment T increased Trait Q by 10%, but this increase was not statistically significant.", "expectation":"Retain observed direction and non-significance; no unqualified asserted causal relation."},
+    {"id":"joint-ratio-control", "source":"Combined Treatment T and Treatment U changed the root-to-shoot ratio.", "expectation":"Preserve the joint treatment and single ratio; do not invent independent treatment effects."}
+  ]
+}

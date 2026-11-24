@@ -7,7 +7,7 @@ import pytest
 
 from backend.config.settings import Settings
 from backend.config.pipeline import active_task_models
-from backend.providers.llm import OpenCodeClient, LLMServiceError
+from backend.providers.llm import OpenCodeClient, LLMServiceError, request_log_level
 from backend.providers.inference import InferenceError
 from backend.shared.cancellation import CancellationToken, cancellation_scope, current_token, PipelineStopped
 from backend.shared.storage import read_jsonl
@@ -108,6 +108,37 @@ def test_rate_limit_stops_new_batches_and_preserves_completed_checkpoints(tmp_pa
     monkeypatch.setattr(resumed._inference, 'chat', finish)
     rows = grounder.ground_claims(claims, tmp_path, reference, resumed, batch_size=1)
     assert len(rows) == 5 and set(remaining) == set('bcde')
+
+
+def test_invalid_batch_after_regeneration_retries_only_its_claims(tmp_path, reference, monkeypatch):
+    calls, observed = [], []
+    settings = Settings(ontology_grounding_output_format='json', json_regeneration_attempts=1)
+    client = OpenCodeClient(settings, task='pathway_assembly', on_request=observed.append)
+    shared = {'source_document_id': 'doc', 'source_packet_number': 1, 'source_evidence_sentence_numbers': [1]}
+    claims = [claim('saved'), *(claim(key, qualifiers={'condition': key}, **shared) for key in 'abc')]
+
+    def chat(model, system, user, schema, output_limit):
+        payload = json.loads(user)
+        conditions = tuple(item['qualifiers']['condition'] for item in payload['claims'].values())
+        calls.append(conditions)
+        valid = Grounder().chat_json('', user, response_check=lambda _: None)
+        if conditions == ('a', 'b', 'c'):
+            if calls.count(conditions) == 1:
+                return {'content': '', 'finish_reason': 'length', 'usage': {}}
+            valid['results'][1]['object']['term'] = 'T999999'
+        return {'content': json.dumps(valid), 'finish_reason': 'stop', 'usage': {},
+                'provider_request_id': '-'.join(conditions)}
+
+    monkeypatch.setattr(client._inference, 'chat', chat)
+    rows = grounder.ground_claims(claims, tmp_path, reference, client, batch_size=3, workers=1)
+    assert calls == [('Condition Q',), ('a', 'b', 'c'), ('a', 'b', 'c'), ('a',), ('b',), ('c',)]
+    assert [row['provider_request_id'] for row in rows] == ['Condition Q', 'a', 'b', 'c']
+    assert {row['group_signature'] for row in rows[1:]} == {grounder.group_signature(claims[1:])}
+    assert [m['recovery_action'] for m in observed if m['recovery_pending']] == ['response_regeneration', 'batch_split']
+    assert all(request_log_level(m) != 'error' for m in observed)
+    calls.clear()
+    assert grounder.ground_claims(claims, tmp_path, reference, client, batch_size=3, workers=1) == rows
+    assert not calls
 
 
 def test_stop_propagates_to_inflight_workers_and_prevents_further_dispatch():

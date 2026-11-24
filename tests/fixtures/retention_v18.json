@@ -1,0 +1,265 @@
+{
+  "purpose": "Development-only source findings, never runtime extraction rules. Multiple faithful formulations allowed.",
+  "findings": [
+    {
+      "id": "chea-01-finding-1",
+      "case_id": "chea-01",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-2a1144589ad799945ad57539"
+      ],
+      "sentence_ids": [
+        146
+      ],
+      "description": "acquisition efficiency affected",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-01-finding-2",
+      "case_id": "chea-01",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-2a1144589ad799945ad57539"
+      ],
+      "sentence_ids": [
+        146
+      ],
+      "description": "uptake efficiency affected",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-01-finding-3",
+      "case_id": "chea-01",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-2a1144589ad799945ad57539"
+      ],
+      "sentence_ids": [
+        146
+      ],
+      "description": "utilization efficiency affected",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-01-finding-4",
+      "case_id": "chea-01",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-2a1144589ad799945ad57539"
+      ],
+      "sentence_ids": [
+        146
+      ],
+      "description": "use efficiency affected",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-02-finding-1",
+      "case_id": "chea-02",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-c119c68e28c7c93fa9843fd6"
+      ],
+      "sentence_ids": [
+        67
+      ],
+      "description": "root biomass improved",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-02-finding-2",
+      "case_id": "chea-02",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-c119c68e28c7c93fa9843fd6"
+      ],
+      "sentence_ids": [
+        67
+      ],
+      "description": "shoot biomass improved",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-09-finding-1",
+      "case_id": "chea-09",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-4220e87957f94a7b14e19baa"
+      ],
+      "sentence_ids": [
+        11
+      ],
+      "description": "uptake affected",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-09-finding-2",
+      "case_id": "chea-09",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-4220e87957f94a7b14e19baa"
+      ],
+      "sentence_ids": [
+        11
+      ],
+      "description": "root morphology affected",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-09-finding-3",
+      "case_id": "chea-09",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-4220e87957f94a7b14e19baa"
+      ],
+      "sentence_ids": [
+        11
+      ],
+      "description": "root sugar concentration affected",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-09-finding-4",
+      "case_id": "chea-09",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-4220e87957f94a7b14e19baa"
+      ],
+      "sentence_ids": [
+        11
+      ],
+      "description": "root IAA concentration affected",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-09-finding-5",
+      "case_id": "chea-09",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-4220e87957f94a7b14e19baa"
+      ],
+      "sentence_ids": [
+        11
+      ],
+      "description": "acid phosphatase activity affected",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-10-finding-1",
+      "case_id": "chea-10",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-c28351732ccc7c8416ea85e6"
+      ],
+      "sentence_ids": [
+        56
+      ],
+      "description": "capacity to regulate primary root growth",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-10-finding-2",
+      "case_id": "chea-10",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-c28351732ccc7c8416ea85e6"
+      ],
+      "sentence_ids": [
+        56
+      ],
+      "description": "capacity to regulate root hair formation",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-11-finding-1",
+      "case_id": "chea-11",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-4220e87957f94a7b14e19baa"
+      ],
+      "sentence_ids": [
+        13
+      ],
+      "description": "acquisition efficiency improved by 10%",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-11-finding-2",
+      "case_id": "chea-11",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-4220e87957f94a7b14e19baa"
+      ],
+      "sentence_ids": [
+        13
+      ],
+      "description": "shoot phosphorus contents increased by 13?25%",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-11-finding-3",
+      "case_id": "chea-11",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-4220e87957f94a7b14e19baa"
+      ],
+      "sentence_ids": [
+        13
+      ],
+      "description": "root phosphorus contents increased by 4?13%",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-12-finding-1",
+      "case_id": "chea-12",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-24e83fdf06aa681f50c1d64e"
+      ],
+      "sentence_ids": [
+        25
+      ],
+      "description": "root length correlation in Milva",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-12-finding-2",
+      "case_id": "chea-12",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-24e83fdf06aa681f50c1d64e"
+      ],
+      "sentence_ids": [
+        25
+      ],
+      "description": "root surface area correlation in Milva",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-12-finding-3",
+      "case_id": "chea-12",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-24e83fdf06aa681f50c1d64e"
+      ],
+      "sentence_ids": [
+        25
+      ],
+      "description": "root length relationship not found in Lady Claire",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    },
+    {
+      "id": "chea-12-finding-4",
+      "case_id": "chea-12",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "target_ids": [
+        "target-24e83fdf06aa681f50c1d64e"
+      ],
+      "sentence_ids": [
+        25
+      ],
+      "description": "root surface area relationship not found in Lady Claire",
+      "source_pdf_sha256": "4d180123cee156374b5e66ebdb886011f97164d73da419548c778b5479f37302"
+    }
+  ]
+}

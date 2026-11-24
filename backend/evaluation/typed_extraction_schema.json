@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TypedExtractionResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claims"],
+  "properties": {
+    "claims": {
+      "type": "array",
+      "description": "List of source-supported atomic findings extracted from target sentences, or [] if the target sentences report no eligible finding.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject",
+          "subject_type",
+          "relation",
+          "object",
+          "object_type",
+          "assertion_status",
+          "qualifiers",
+          "subject_anchor",
+          "relation_anchor",
+          "object_anchor"
+        ],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "minLength": 1,
+            "description": "First source-worded endpoint copied as printed, keeping abbreviations unexpanded (e.g., 'LP' or 'P', never rewriting 'LP' into 'low phosphorus (LP)'). Keep genuine joint treatments and compound traits/ratios intact; split independently reported outcomes."
+          },
+          "subject_type": {
+            "type": "string",
+            "enum": [
+              "organism",
+              "plant part",
+              "trait or measurement",
+              "assay variable",
+              "chemical",
+              "condition or exposure",
+              "biological process",
+              "food",
+              "food composition",
+              "health outcome",
+              "other"
+            ],
+            "description": "Scientific role of the subject in this sentence (use 'assay variable' for named assay/protocol metrics, 'trait or measurement' for narrative phenotypic traits, and 'other' when unclear)."
+          },
+          "relation": {
+            "type": "string",
+            "minLength": 2,
+            "description": "Short source-faithful predicate linking subject to object while preserving reported direction, predicate strength ('affects' must stay 'affects', never 'improves'), negation, uncertainty, and comparison phrasing."
+          },
+          "object": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Second source-worded endpoint copied as printed, keeping abbreviations unexpanded and defining organs, states, efficiencies, or ratios intact. Never bundle independently reported outcomes into one object."
+          },
+          "object_type": {
+            "type": "string",
+            "enum": [
+              "organism",
+              "plant part",
+              "trait or measurement",
+              "assay variable",
+              "chemical",
+              "condition or exposure",
+              "biological process",
+              "food",
+              "food composition",
+              "health outcome",
+              "other"
+            ],
+            "description": "Scientific role of the object in this sentence (a substance, its supply/exposure, and a measured post-exposure trait have distinct types)."
+          },
+          "assertion_status": {
+            "type": "string",
+            "enum": ["affirmed", "negated", "uncertain", "non_significant"],
+            "description": "'affirmed': observed effect, difference, or explicit stability (e.g. 'remained constant'); 'negated': explicit absence or lack of reaction ('was not found', 'did not react'); 'non_significant': explicit statistical non-significance ('did not significantly change'); 'uncertain': hedged or speculative wording ('may', 'might', 'could', 'expected', 'suggests')."
+          },
+          "qualifiers": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Contextual details supporting this specific finding without erasing defining words from the endpoints. Use null for unstated keys.",
+            "properties": {
+              "crop_or_species": {"type": ["string", "null"], "description": "Source organism or crop name."},
+              "population": {"type": ["string", "null"], "description": "Cultivars, genotypes, or study groups associated with this finding."},
+              "condition": {"type": ["string", "null"], "description": "Experimental setting, treatment regime, growth medium, timepoint, or scope."},
+              "comparator": {"type": ["string", "null"], "description": "Baseline treatment, control, or comparison group paired with this finding."},
+              "metric": {"type": ["string", "null"], "description": "Quantitative value, count, percentage, or statistical magnitude belonging specifically to this finding."}
+            }
+          },
+          "support_sentence_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "integer", "minimum": 1},
+            "description": "Optional sorted ascending integer IDs of qualifier-supporting sentences not already cited in subject_anchor, relation_anchor, or object_anchor. Omit or use [] when the three anchors cover all cited sentences."
+          },
+          "subject_anchor": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sentence_id", "quote"],
+            "description": "Verbatim source provenance for subject.",
+            "properties": {
+              "sentence_id": {"type": "integer", "minimum": 1, "description": "Sentence ID containing the verbatim subject quote."},
+              "quote": {"type": "string", "minLength": 1, "description": "Verbatim span from sentence_id naming the subject (for shared-word coordinations, quote the full coordinated phrase)."}
+            }
+          },
+          "relation_anchor": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sentence_id", "quote"],
+            "description": "Verbatim source provenance for the predicate in a target sentence.",
+            "properties": {
+              "sentence_id": {"type": "integer", "minimum": 1, "description": "MUST be one of the sentences labeled 'target' (never a 'neighbor'-only sentence)."},
+              "quote": {"type": "string", "minLength": 1, "description": "Shortest contiguous verbatim span from target sentence_id establishing the predicate, its polarity, uncertainty, and non-significance (may enclose intervening qualifiers for split predicates)."}
+            }
+          },
+          "object_anchor": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sentence_id", "quote"],
+            "description": "Verbatim source provenance for object.",
+            "properties": {
+              "sentence_id": {"type": "integer", "minimum": 1, "description": "Sentence ID containing the verbatim object quote."},
+              "quote": {"type": "string", "minLength": 1, "description": "Verbatim span from sentence_id naming the object (for shared-word coordinations, quote the full coordinated phrase)."}
+            }
+          }
+        }
+      }
+    }
+  }
+}

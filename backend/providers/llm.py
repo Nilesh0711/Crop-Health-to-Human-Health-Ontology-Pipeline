@@ -33,6 +33,10 @@ class LLMServiceError(LLMError):
     """A provider access/configuration failure must stop a run, not label claims."""
 
 
+class LLMResponseError(LLMError):
+    """A caller can retry an invalid response with a smaller input."""
+
+
 class _ResponseRecoveryFailure(LLMError):
     def __init__(self, content, error, kind, *, response_schema=None, response_adjustments=None):
         super().__init__(str(error))
@@ -96,16 +100,22 @@ def format_request_metrics(metrics: dict[str, Any]) -> str:
     """Use provider token counts, with request latency as an explicit denominator."""
     status = metrics['status']
     if metrics.get('recovery_pending'):
-        status = ('regenerating response (recovery 1/1)' if metrics.get('recovery_action') == 'response_regeneration'
-                  else 'repairing response formatting (recovery 1/1)')
+        status = {
+            'response_regeneration': 'regenerating response (recovery 1/1)',
+            'format_repair': 'repairing response formatting (recovery 1/1)',
+            'batch_split': 'retrying with smaller batches',
+        }.get(metrics.get('recovery_action'), status)
     prefix = (f"OpenCode {metrics['model']} request #{metrics['request_id']}: "
               f"{status}; {metrics['elapsed_seconds']:.2f}s")
     if metrics.get("task"):
         prefix += f"; {metrics['task']}"
     if metrics.get("error"):
         prefix += f"; {metrics['error']}"
-    if metrics.get('response_format_adjustments'):
-        prefix += '; JSON formatting corrected; evidence checks still apply'
+    if adjustments := metrics.get('response_format_adjustments'):
+        if any(a.get('kind') == 'identical_duplicate_relation_anchor' for a in adjustments):
+            prefix += '; identical duplicate relation anchor removed; evidence checks still apply'
+        else:
+            prefix += '; JSON formatting corrected; evidence checks still apply'
     if metrics.get('purpose') == 'format_repair':
         prefix += '; bounded same-model formatting repair (no scientific reassessment)'
     if metrics.get('purpose') == 'response_regeneration':
@@ -233,10 +243,13 @@ class OpenCodeClient:
         with self._metrics_lock:
             if self._service_error:
                 raise LLMServiceError(self._service_error)
+        split_on_invalid = getattr(self._thread_request, 'context', {}).get('split_on_invalid_response')
         try:
             return self._chat_api_once(system, user, max_tokens, json_schema, request_label, selector, response_check,
                                        answer_token_hint=answer_token_hint)
         except (LLMError, OSError, ValueError) as exc:
+            if split_on_invalid and isinstance(exc, _ResponseRecoveryFailure):
+                raise LLMResponseError(str(exc)) from exc
             stage = (getattr(self._thread_request, 'metrics', None) or {}).get('stage')
             name = 'ontology grounding' if stage == 'ontology_grounding' else self.task or 'LLM'
             message = f"{name} model {selector} failed: {exc}"
@@ -259,6 +272,7 @@ class OpenCodeClient:
         with self._metrics_lock:
             if self._service_error:
                 raise LLMServiceError(self._service_error)
+        split_on_invalid = getattr(self._thread_request, 'context', {}).get('split_on_invalid_response')
         def parse_text(content):
             try:
                 if not isinstance(content, str) or not content.strip():
@@ -287,6 +301,8 @@ class OpenCodeClient:
                 return self._api_attempt(retry, user, None, limit, request_label, selector, 2,
                                          'response_regeneration', parse_text, output_format='text')
         except (LLMError, OSError, ValueError) as exc:
+            if split_on_invalid and isinstance(exc, _ResponseRecoveryFailure):
+                raise LLMResponseError(str(exc)) from exc
             stage = (getattr(self._thread_request, 'metrics', None) or {}).get('stage')
             name = 'ontology grounding' if stage == 'ontology_grounding' else self.task or 'LLM'
             message = f'{name} model {selector} failed: {exc}'
@@ -309,9 +325,12 @@ class OpenCodeClient:
         return str(destination)
 
     def _chat_api_once(self, system, user, max_tokens, schema, label, model, response_check=None, *, answer_token_hint=None):
+        claim_schema = (schema or {}).get('properties', {}).get('claims', {}).get('items', {})
+        bounded_extraction = self.task == 'extraction' and 'predicate_alias' in claim_schema.get('properties', {})
+
         def parse_answer(content):
             try:
-                parsed, adjustments = parse_json_object(content, schema)
+                parsed, adjustments = parse_json_object(content, schema, allow_identical_claim_anchors=bounded_extraction)
             except IncompleteResponseError as exc:
                 raise _ResponseRecoveryFailure(content, exc, 'response_regeneration') from exc
             except (SchemaValidationError, ResponseStructureError) as exc:
@@ -447,13 +466,17 @@ class OpenCodeClient:
                     'Include every required field and supplied item, keep explanations concise, '
                     'and return complete JSON. Do not seek a more favorable verdict.')
                 if self.task == 'extraction' and isinstance(failure.parse_error, SchemaValidationError):
+                    relation_rule = ('Each finding must have exactly one of predicate_alias or measured_comparison. '
+                                     'Omit a finding when neither applies. Write relation_anchor once per finding. '
+                                     if bounded_extraction else
+                                     'Relation names are open; retain relevant unmapped meanings rather than substituting a different concept. ')
                     retry_instructions += (
                         '\nThe extraction qualifier keys are exhaustive: crop_or_species, population, condition, comparator, metric. '
                         'Combine multiple applicable details in the corresponding string, rather than adding keys. '
                         'Preserve source-stated restrictions in an appropriate declared field or endpoint; do not silently discard them. '
                         '\nPreserve the actual scientific entity identities, source wording, modality and conditions. '
                         'Select a precise relation that faithfully represents the supplied statement. '
-                        'Relation names are open; retain relevant unmapped meanings rather than substituting a different concept. '
+                        f'{relation_rule}'
                         'Do not add entity-type or certainty classifications absent from the extraction schema. '
                         'Keep the other eligible direct edges. This is regeneration, not a local label correction.')
                 regeneration_limit = (output_limit if isinstance(failure.parse_error, (SchemaValidationError, ResponseStructureError, EvidenceSelectionError))
@@ -544,6 +567,8 @@ class OpenCodeClient:
                 validate_schema(parsed, exc.response_schema if exc.response_schema is not None else schema)
                 status = 'evidence_needs_review'
                 return parsed
+            if not recovery_pending and progress.get('split_on_invalid_response'):
+                recovery_pending, recovery_action = True, 'batch_split'
             raise
         except (StructuredOutputError, LLMError) as exc:
             error = str(exc)
@@ -559,7 +584,10 @@ class OpenCodeClient:
                     'content': response.get('content'), 'finish_reason': response.get('finish_reason'),
                     'provider_request_id': response.get('provider_request_id'),
                     'accepted_response': parsed if status == 'ok' else None,
-                    'extraction_contract_version': getattr(self._thread_request, 'context', {}).get('extraction_contract_version'),
+                    **{key: getattr(self._thread_request, 'context', {}).get(key) for key in (
+                        'extraction_contract_version', 'targeting_version', 'reading_context_policy',
+                        'parsing_policy', 'anchoring_policy', 'extraction_mode',
+                        'predicate_set_version', 'closed_predicate_whitelist_sha256')},
                     'review_response': parsed if status == 'evidence_needs_review' else None,
                     'format_adjustments': adjustments})
             usage = normalize_usage(response.get('usage', {}))
@@ -607,6 +635,8 @@ class OpenCodeClient:
                                                 if recovery_action == 'response_regeneration' else
                                                 'Invalid JSON formatting; requesting same-model edits (1/1)'
                                                 if recovery_action == 'format_repair' else
+                                                'Response invalid; retrying with smaller batches'
+                                                if recovery_action == 'batch_split' else
                                                 'Evidence selection unresolved; saved for review and continuing without accepting invalid proof'
                                                 if status == 'evidence_needs_review' else
                                                 'Recovery completed successfully' if metrics['recovery_completed'] else

@@ -1,0 +1,655 @@
+{
+  "purpose": "Fixed development sample; never imported by runtime prompts or heuristics. Revised LLM outputs deliberately pending; no paid calls run.",
+  "baseline_backup": "C:\\Nilesh-DOS\\MTP\\crop_to_human_health_antology\\archive\\backup\\atomic_grounding_20261116T143115Z",
+  "baseline_metrics": {
+    "Chea_2024_Potato_Phosphorus_Nutrition": {
+      "claims": 308,
+      "eligible": 214,
+      "relation_unresolved": 157,
+      "request_records": 410,
+      "note": "Historical records may include resumes/retries; not a controlled per-case latency baseline.",
+      "request_statuses": {
+        "ok": 409,
+        "schema_error": 1
+      },
+      "median_request_seconds": 19.879,
+      "summed_request_seconds": 9895.693,
+      "elapsed_interpretation": "Summed requests overlap under concurrency; not wall-clock run latency.",
+      "review_holds": 2
+    },
+    "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus": {
+      "claims": 49,
+      "eligible": 3,
+      "relation_unresolved": 37,
+      "request_records": 53,
+      "note": "Historical records may include resumes/retries; not a controlled per-case latency baseline.",
+      "request_statuses": {
+        "cancelled": 1,
+        "ok": 52
+      },
+      "median_request_seconds": 3.728,
+      "summed_request_seconds": 233.962,
+      "elapsed_interpretation": "Summed requests overlap under concurrency; not wall-clock run latency.",
+      "review_holds": 0
+    }
+  },
+  "cases": [
+    {
+      "case_id": "Chea_2024_Potato_Phosphorus_Nutrition:coordinated",
+      "category": "coordinated",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "candidate_id": "candidate-f37ac470d642f4c7d705d4d0d3da3656",
+      "source": {
+        "source_evidence_span": "Results The findings illustrated Milva’s ability to efficiently allocate P and sugars to its roots under low P levels, thereby enhancing biomass and facilitating increased P uptake and PUE.",
+        "source_page": 1,
+        "source_evidence_sentence_numbers": [
+          9
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "Milva",
+        "relation": "efficiently allocates to its roots",
+        "object": "phosphorus",
+        "qualifiers": {
+          "crop_or_species": "potato",
+          "population": "table potato cultivar Milva",
+          "condition": "low phosphorus levels"
+        },
+        "extraction_contract_version": 11
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "http://purl.obolibrary.org/obo/NCBITaxon_4113",
+          "label": "Solanum tuberosum",
+          "mapping": "broader",
+          "denotation": "particular",
+          "reason": "Solanum tuberosum is broader, dropping the named cultivar Milva identity."
+        },
+        "object": {
+          "iri": "http://purl.obolibrary.org/obo/CHEBI_28659",
+          "label": "phosphorus atom",
+          "mapping": "exact",
+          "denotation": "concept",
+          "reason": "The source P expands to phosphorus, matching the phosphorus atom class."
+        },
+        "relation": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": null,
+          "reason": "No supplied relation exactly captures allocation or partitioning of phosphorus to roots."
+        }
+      },
+      "baseline_eligible": true,
+      "development_review": "Keep allocation distinct from cultivar identity; separate independently stated substances and retain the destination as explicit context.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Chea_2024_Potato_Phosphorus_Nutrition:comparison",
+      "category": "comparison",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "candidate_id": "candidate-8117f0d060fbbbc190561f688e0e05a0",
+      "source": {
+        "source_evidence_span": "Additionally, B. subtilis displayed higher efficacy in mitigating P deficiency in Lady Claire compared to Milva, particularly under low P levels (P0.5 and P2).",
+        "source_page": 1,
+        "source_evidence_sentence_numbers": [
+          14
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "Bacillus subtilis",
+        "relation": "displayed higher efficacy in mitigating",
+        "object": "phosphorus deficiency",
+        "qualifiers": {
+          "crop_or_species": "potato",
+          "population": "Lady Claire",
+          "condition": "low phosphorus levels (P0.5 and P2)",
+          "comparator": "Milva"
+        },
+        "extraction_contract_version": 11
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "http://purl.obolibrary.org/obo/NCBITaxon_1423",
+          "label": "Bacillus subtilis",
+          "mapping": "exact",
+          "denotation": "concept",
+          "reason": "B. subtilis expands to the species Bacillus subtilis, matching the class exactly."
+        },
+        "object": {
+          "iri": "http://purl.obolibrary.org/obo/TO_0000102",
+          "label": "phosphorus response",
+          "mapping": "related",
+          "denotation": "state",
+          "reason": "Class denotes a phosphorus response trait, not the phosphorus deficiency state."
+        },
+        "relation": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": null,
+          "reason": "Comparative efficacy wording is not a direct causal or regulation predicate."
+        }
+      },
+      "baseline_eligible": false,
+      "development_review": "Retain the comparative efficacy and cultivar contrast; do not rewrite the observation as an unconditional causal effect.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Chea_2024_Potato_Phosphorus_Nutrition:conditions",
+      "category": "conditions",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "candidate_id": "candidate-6c4a3ee52b9ea8db09995cb79c873605",
+      "source": {
+        "source_evidence_span": "Conversely, Lady Claire exhibited lower P assimilation efficiency under low P levels but demonstrated improved efficiency under high P availability.",
+        "source_page": 1,
+        "source_evidence_sentence_numbers": [
+          10
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "Lady Claire",
+        "relation": "exhibited lower",
+        "object": "phosphorus assimilation efficiency",
+        "qualifiers": {
+          "crop_or_species": "potato",
+          "population": "Lady Claire",
+          "condition": "low phosphorus levels"
+        },
+        "extraction_contract_version": 11
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "http://purl.obolibrary.org/obo/NCBITaxon_4113",
+          "label": "Solanum tuberosum",
+          "mapping": "broader",
+          "denotation": "concept",
+          "reason": "Lady Claire is a named potato cultivar, so the species class is broader."
+        },
+        "object": {
+          "iri": "http://purl.obolibrary.org/obo/PATO_0001470",
+          "label": "ratio",
+          "mapping": "broader",
+          "denotation": "concept",
+          "reason": "Phosphorus assimilation efficiency is a derived ratio trait with no precomposed class."
+        },
+        "relation": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": null,
+          "reason": "Comparative 'exhibited lower' lacks an exact supplied relation property."
+        }
+      },
+      "baseline_eligible": true,
+      "development_review": "Keep low and high supply findings separate; retain assimilation efficiency as the trait, not phosphorus alone.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Chea_2024_Potato_Phosphorus_Nutrition:non_significance",
+      "category": "non_significance",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "candidate_id": "candidate-25a4a5d7754b8daa1cafd62657bf7db3",
+      "source": {
+        "source_evidence_span": "However, it is noteworthy that the shoot DM of Milva did not exhibit a significant increase beyond P5, and root DM of Lady Claire remained constant beyond P2.",
+        "source_page": 5,
+        "source_evidence_sentence_numbers": [
+          134
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "phosphorus level beyond P5",
+        "relation": "did not exhibit a significant increase",
+        "object": "shoot dry matter of Milva",
+        "qualifiers": {
+          "crop_or_species": "potato",
+          "population": "Milva",
+          "comparator": "P5",
+          "metric": "not significant"
+        },
+        "extraction_contract_version": 11
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "http://purl.obolibrary.org/obo/PECO_0007397",
+          "label": "phosphorus nutrient exposure",
+          "mapping": "broader",
+          "denotation": "particular",
+          "reason": "Class covers phosphorus exposure but not the beyond-P5 level threshold."
+        },
+        "object": {
+          "iri": "http://purl.obolibrary.org/obo/TO_0000552",
+          "label": "shoot dry weight",
+          "mapping": "broader",
+          "denotation": "particular",
+          "reason": "Class names shoot dry weight but omits the Milva cultivar qualifier."
+        },
+        "relation": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": null,
+          "reason": "Non-significant increase wording is not a positive or causal relation."
+        }
+      },
+      "baseline_eligible": true,
+      "development_review": "Preserve lack of statistical significance, the dose boundary and cultivar; this is not proof of zero effect.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Chea_2024_Potato_Phosphorus_Nutrition:hedging",
+      "category": "hedging",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "candidate_id": "candidate-25b20af5d6c6a31eb99d653ba6892171",
+      "source": {
+        "source_evidence_span": "While applying soluble P fertilizers can alleviate defi - ciency, their overuse may lead to excessive P availability and environmental risks [ 4, 5] and contribute to P loss through runoff causing surface water eutrophication [ 6] and increased methane emissions [ 7].",
+        "source_page": 2,
+        "source_evidence_sentence_numbers": [
+          20
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "soluble phosphorus fertilizers",
+        "relation": "can alleviate",
+        "object": "phosphorus deficiency",
+        "qualifiers": {
+          "crop_or_species": "plant",
+          "condition": "application of soluble phosphorus fertilizers"
+        },
+        "extraction_contract_version": 11
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "http://purl.obolibrary.org/obo/PECO_0007397",
+          "label": "phosphorus nutrient exposure",
+          "mapping": "broader",
+          "denotation": "concept",
+          "reason": "Generic soluble phosphate fertilizer treatment is encompassed by the phosphorus exposure class."
+        },
+        "object": {
+          "iri": "http://purl.obolibrary.org/obo/TO_0000102",
+          "label": "phosphorus response",
+          "mapping": "related",
+          "denotation": "state",
+          "reason": "Phosphorus deficiency is a status state; the closest supplied class is the phosphorus response trait."
+        },
+        "relation": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": null,
+          "reason": "Hedged 'can alleviate' modality cannot be preserved by any supplied causal property."
+        }
+      },
+      "baseline_eligible": false,
+      "development_review": "Retain can and deficiency; do not convert a possible effect into an asserted ontology fact.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Chea_2024_Potato_Phosphorus_Nutrition:outcome_metrics",
+      "category": "outcome_metrics",
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "candidate_id": "candidate-68c8481dee4cc6defab31611bd32c082",
+      "source": {
+        "source_evidence_span": "Inoculation with B. subtilis improved P acquisition efficiency by 10% under low phosphorus levels (P0.5 and P2), particularly in Lady Claire, where shoot and root phosphorus contents increased by 13–25% and 4–13%, respectively.",
+        "source_page": 1,
+        "source_evidence_sentence_numbers": [
+          13
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "Bacillus subtilis inoculation",
+        "relation": "improved",
+        "object": "phosphorus acquisition efficiency",
+        "qualifiers": {
+          "crop_or_species": "potato",
+          "condition": "low phosphorus levels (P0.5 and P2)",
+          "metric": "10%"
+        },
+        "extraction_contract_version": 11
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "http://purl.obolibrary.org/obo/PECO_0007246",
+          "label": "bacterial plant exposure",
+          "mapping": "broader",
+          "denotation": "particular",
+          "reason": "Inoculation event with B. subtilis matches bacterial plant exposure but drops species identity."
+        },
+        "object": {
+          "iri": "http://purl.obolibrary.org/obo/TO_0000511",
+          "label": "phosphorus uptake",
+          "mapping": "broader",
+          "denotation": "concept",
+          "reason": "P acquisition efficiency is a derived efficiency encompassed by phosphorus uptake trait."
+        },
+        "relation": {
+          "iri": "http://purl.obolibrary.org/obo/RO_0002304",
+          "label": "causally upstream of, positive effect",
+          "mapping": "exact",
+          "denotation": null,
+          "reason": "Improved expresses a positive effect matched by positive causal upstream relation."
+        }
+      },
+      "baseline_eligible": true,
+      "development_review": "Keep inoculation distinct from the bacterium; pair acquisition efficiency with 10%, shoot content with 13?25%, and root content with 4?13%. Preserve applicable cultivar context.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus:coordinated",
+      "category": "coordinated",
+      "document": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus",
+      "candidate_id": "candidate-fd7e45468ad098c31be7e60bc33e3dfb",
+      "source": {
+        "source_evidence_span": "Background Phosphorus (P) is an essential macronutrient required for plant metabolism and growth.",
+        "source_page": 1,
+        "source_evidence_sentence_numbers": [
+          5
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "Phosphorus",
+        "relation": "is required for",
+        "object": "plant metabolism and growth",
+        "qualifiers": {
+          "crop_or_species": "plant"
+        },
+        "extraction_contract_version": 8
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "http://purl.obolibrary.org/obo/CHEBI_28659",
+          "label": "phosphorus atom",
+          "mapping": "exact",
+          "denotation": "concept",
+          "reason": "Phosphorus element maps to phosphorus atom substance class."
+        },
+        "object": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": "concept",
+          "reason": "Bundled metabolism and growth is not a single supplied growth concept."
+        },
+        "relation": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": null,
+          "reason": "'Required for' is a nutritional requirement, not an increase/decrease or causal effect."
+        }
+      },
+      "baseline_eligible": false,
+      "development_review": "Check independently stated metabolism and growth requirements; do not turn a requirement into a causal increase.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus:comparison",
+      "category": "comparison",
+      "document": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus",
+      "candidate_id": "candidate-4ba9c62ed5c841e23283f9e60015ad4e",
+      "source": {
+        "source_evidence_span": "Compared to other crops, potato (Solanum tuberosum L.) has a relatively poor P acquisition efficiency.",
+        "source_page": 1,
+        "source_evidence_sentence_numbers": [
+          7
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "Phosphorus acquisition efficiency",
+        "relation": "is lower than",
+        "object": "Phosphorus acquisition efficiency",
+        "subject_context": "potato (Solanum tuberosum L.)",
+        "object_context": "other crops",
+        "qualifiers": {
+          "crop_or_species": "Solanum tuberosum"
+        },
+        "extraction_contract_version": 8
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "urn:soil-crop-health:PhosphorusAcquisitionEfficiency",
+          "label": "phosphorus acquisition efficiency",
+          "mapping": "exact",
+          "denotation": "concept",
+          "reason": "Potato P acquisition efficiency matches the project phosphorus acquisition efficiency trait."
+        },
+        "object": {
+          "iri": "urn:soil-crop-health:PhosphorusAcquisitionEfficiency",
+          "label": "phosphorus acquisition efficiency",
+          "mapping": "exact",
+          "denotation": "concept",
+          "reason": "Same generic P acquisition efficiency trait, though bearer is other crops."
+        },
+        "relation": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": null,
+          "reason": "Symmetric comparison of a trait across crops, not a factor raising or lowering an outcome."
+        }
+      },
+      "baseline_eligible": false,
+      "development_review": "Keep the compared potato population and other-crop baseline; avoid identical unqualified endpoints.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus:restricted_quantity",
+      "category": "restricted_quantity",
+      "document": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus",
+      "candidate_id": "candidate-e629d8fa95cf5acc169ee200c3559431",
+      "source": {
+        "source_evidence_span": "Results Only one out of 22 RSA‐traits showed a significant increase under low‐P conditions.",
+        "source_page": 1,
+        "source_evidence_sentence_numbers": [
+          11
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "low-Phosphorus conditions",
+        "relation": "increases",
+        "object": "root‐system architecture-traits",
+        "object_context": "potato",
+        "qualifiers": {
+          "crop_or_species": "Solanum tuberosum",
+          "condition": "low-Phosphorus conditions",
+          "metric": "one out of 22 root‐system architecture-traits showed a significant increase"
+        },
+        "extraction_contract_version": 8
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "http://purl.obolibrary.org/obo/PECO_0001046",
+          "label": "limited phosphate exposure",
+          "mapping": "exact",
+          "denotation": "state",
+          "reason": "Low-P growth condition is an experimental low-phosphate exposure, not a plant deficiency state."
+        },
+        "object": {
+          "iri": "http://purl.obolibrary.org/obo/TO_0000043",
+          "label": "root morphology trait",
+          "mapping": "broader",
+          "denotation": "concept",
+          "reason": "RSA-traits denote root-system architecture traits, broader than generic root morphology trait."
+        },
+        "relation": {
+          "iri": "urn:soil-crop-health:increases",
+          "label": "increases",
+          "mapping": "exact",
+          "denotation": null,
+          "reason": "Low-P condition raising one RSA trait is a treatment-to-outcome increase."
+        }
+      },
+      "baseline_eligible": false,
+      "development_review": "Only one of 22 traits increased. Retain that restriction and do not invent the unnamed trait or generalize to all traits.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus:different_responses",
+      "category": "different_responses",
+      "document": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus",
+      "candidate_id": "candidate-acef891c05f90a1463a6736964f10d18",
+      "source": {
+        "source_evidence_span": "Genotypes with both small and large root systems reacted to low‐P conditions by in‐ or decreasing their relative root‐system size to medium, whereas genotypes with an intermediate root system size showed little to no changes.",
+        "source_page": 1,
+        "source_evidence_sentence_numbers": [
+          15
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "low-Phosphorus conditions",
+        "relation": "decreases",
+        "object": "relative root-system size",
+        "object_context": "genotypes with large root systems",
+        "qualifiers": {
+          "crop_or_species": "Solanum tuberosum",
+          "condition": "low-Phosphorus conditions"
+        },
+        "extraction_contract_version": 8
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "http://purl.obolibrary.org/obo/PECO_0001046",
+          "label": "limited phosphate exposure",
+          "mapping": "exact",
+          "denotation": "state",
+          "reason": "Low-P growth condition is a phosphate-limitation exposure state, not a generic nutrient."
+        },
+        "object": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": "state",
+          "reason": "Relative root-system size is a context-bearing root-system size state, not a generic morphology class."
+        },
+        "relation": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": null,
+          "reason": "Source reports in- or decreasing relative size, a bidirectional response not a single decrease."
+        }
+      },
+      "baseline_eligible": false,
+      "development_review": "Do not apply a decrease to every genotype. Preserve the distinct genotype response groups and little-to-no-change finding.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus:hedging",
+      "category": "hedging",
+      "document": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus",
+      "candidate_id": "candidate-245a00e2cd93e040e515fe60ee840d17",
+      "source": {
+        "source_evidence_span": "Metabolization of P sources by microorganisms can also affect P availabil - ity [12].",
+        "source_page": 2,
+        "source_evidence_sentence_numbers": [
+          26
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "microorganisms",
+        "relation": "affects",
+        "object": "Phosphorus availability",
+        "qualifiers": {
+          "condition": "metabolization of Phosphorus sources by microorganisms"
+        },
+        "extraction_contract_version": 8
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": null,
+          "label": null,
+          "mapping": "unresolved",
+          "denotation": "concept",
+          "reason": "Microorganisms is a generic organism group; no supplied class denotes microorganisms as a whole."
+        },
+        "object": {
+          "iri": "urn:soil-crop-health:SoilPhosphorusAvailability",
+          "label": "soil phosphorus availability",
+          "mapping": "exact",
+          "denotation": "state",
+          "reason": "Phosphorus availability is a soil nutrient availability state, matching the pre-composed availability trait."
+        },
+        "relation": {
+          "iri": "urn:soil-crop-health:affects",
+          "label": "affects",
+          "mapping": "exact",
+          "denotation": null,
+          "reason": "Hedged 'can affect' reports an unspecified effect, matching the affects predicate."
+        }
+      },
+      "baseline_eligible": false,
+      "development_review": "The source says metabolization can affect availability. Preserve the process subject and hedge rather than substituting organisms with an asserted effect.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    },
+    {
+      "case_id": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus:defining_state",
+      "category": "defining_state",
+      "document": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus",
+      "candidate_id": "candidate-eba357915ddab6e058f5c6b3f3c54b89",
+      "source": {
+        "source_evidence_span": "This indicates an overall negative effect of P scarcity on potato root growth.",
+        "source_page": 1,
+        "source_evidence_sentence_numbers": [
+          12
+        ]
+      },
+      "baseline_extraction": {
+        "subject": "Phosphorus scarcity",
+        "relation": "decreases",
+        "object": "potato root growth",
+        "qualifiers": {
+          "crop_or_species": "Solanum tuberosum",
+          "condition": "low-Phosphorus conditions"
+        },
+        "extraction_contract_version": 8
+      },
+      "baseline_grounding": {
+        "subject": {
+          "iri": "urn:soil-crop-health:PhosphorusDeficiency",
+          "label": "phosphorus deficiency",
+          "mapping": "exact",
+          "denotation": "state",
+          "reason": "P scarcity is a physiological phosphorus limitation state, not an experimental low-phosphate exposure."
+        },
+        "object": {
+          "iri": "urn:soil-crop-health:RootGrowth",
+          "label": "root growth",
+          "mapping": "broader",
+          "denotation": "concept",
+          "reason": "Potato root growth is root growth in Solanum tuberosum; generic root growth class is broader."
+        },
+        "relation": {
+          "iri": "urn:soil-crop-health:decreases",
+          "label": "decreases",
+          "mapping": "exact",
+          "denotation": null,
+          "reason": "Negative effect of P scarcity on root growth matches decreases predicate."
+        }
+      },
+      "baseline_eligible": false,
+      "development_review": "Keep phosphorus scarcity as a state distinct from phosphorus; retain potato root growth as the outcome.",
+      "review_status": "source-text development review; not independent scientific gold",
+      "revised_result": null
+    }
+  ],
+  "revised_metrics": {
+    "status": "not_run",
+    "calls": 0,
+    "latency_seconds": null,
+    "incorrect_assertions": null,
+    "incorrect_exact_mappings": null,
+    "reason": "No paid run was authorized as part of this implementation. Offline tests check integrity, not model accuracy."
+  }
+}

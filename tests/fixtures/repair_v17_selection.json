@@ -1,0 +1,148 @@
+{
+  "documents": [
+    {
+      "document": "Chea_2024_Potato_Phosphorus_Nutrition",
+      "run": "ontology/Chea_2024_Potato_Phosphorus_Nutrition",
+      "partition": "development",
+      "cases": [
+        {
+          "case_id": "chea-01",
+          "records": [
+            68,
+            69,
+            70,
+            71
+          ],
+          "expectations": "Independent efficiency outcomes; correct passive direction; compatible parent without efficiency-to-uptake crossing."
+        },
+        {
+          "case_id": "chea-02",
+          "records": [
+            200
+          ],
+          "expectations": "Independent root and shoot biomass; correct conditions and uncertainty."
+        },
+        {
+          "case_id": "chea-03",
+          "records": [
+            103,
+            104,
+            105
+          ],
+          "expectations": "Independent anatomical locations; retain comparisons and complete anchors."
+        },
+        {
+          "case_id": "chea-04",
+          "records": [
+            3,
+            4,
+            5
+          ],
+          "expectations": "Stated allocation mechanism instead of cultivar as downstream cause; retain ability or hold."
+        },
+        {
+          "case_id": "chea-05",
+          "records": [
+            129
+          ],
+          "expectations": "Governing allocation action, not the preceding despite clause, as cause; otherwise hold."
+        },
+        {
+          "case_id": "chea-06",
+          "records": [
+            61,
+            62
+          ],
+          "expectations": "Concentration quality as endpoint; values and units in metric; correct cultivar pairing."
+        },
+        {
+          "case_id": "chea-07",
+          "records": [
+            57
+          ],
+          "expectations": "Time in condition, measured trait as endpoint; hold pure temporal endpoints."
+        },
+        {
+          "case_id": "chea-08",
+          "records": [
+            74,
+            75,
+            76,
+            77
+          ],
+          "expectations": "Preserve inverse direction, efficiency meanings and treatment maxima; no code-to-trait comparison."
+        },
+        {
+          "case_id": "chea-09",
+          "records": [
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          "expectations": "Concentration quality must remain distinct from exposure event despite experimental manipulation."
+        },
+        {
+          "case_id": "chea-10",
+          "records": [
+            176,
+            177
+          ],
+          "expectations": "Preserve capacity and inherited uncertainty through downstream clauses."
+        },
+        {
+          "case_id": "chea-11",
+          "records": [],
+          "expectations": "Preserve plural shoot phosphorus contents and the complete coordination anchor; no singularisation.",
+          "rejected_object": "shoot phosphorus content"
+        },
+        {
+          "case_id": "chea-12",
+          "records": [
+            92,
+            93,
+            94,
+            95
+          ],
+          "expectations": "Retain positive correlations, negative findings and correct cultivar; no inferred causation."
+        }
+      ]
+    },
+    {
+      "document": "Kirchgesser_2023_Potato_Root_Architecture_Phosphorus",
+      "run": "archive/backup/atomic_grounding_20261116T143115Z/runs/Kirchgesser_2023_Potato_Root_Architecture_Phosphorus",
+      "partition": "reserved",
+      "cases": [
+        {
+          "case_id": "kirchgesser-01",
+          "records": [
+            6
+          ],
+          "expectations": "Preserve only one of 22; do not generalise."
+        },
+        {
+          "case_id": "kirchgesser-02",
+          "records": [
+            13
+          ],
+          "expectations": "Preserve verbatim phosphate forms and charges; no scientific rewriting."
+        },
+        {
+          "case_id": "kirchgesser-03",
+          "records": [
+            19
+          ],
+          "expectations": "Preserve the qualified microbial mechanism and its conditions."
+        },
+        {
+          "case_id": "kirchgesser-04",
+          "records": [
+            21
+          ],
+          "expectations": "Preserve joint phosphorus application and low mobility; no separate causal effects."
+        }
+      ]
+    }
+  ]
+}

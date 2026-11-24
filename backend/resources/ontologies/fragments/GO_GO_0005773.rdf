@@ -1,0 +1,139 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:go="http://purl.obolibrary.org/obo/go#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_candida"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_yeast"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_euk_cellular_processes_ribbon"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_plant_ribbon"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_generic"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_pir"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_drosophila"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_mouse"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_plant"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_agr"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_chembl"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#goslim_flybase_ribbon"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000050 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000050">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>part of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0005737 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0005737">
+        <rdfs:label>cytoplasm</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0005773 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0005773">
+        <rdfs:label>vacuole</rdfs:label>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0043231"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000050"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/GO_0005737"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <oboInOwl:hasDbXref>Wikipedia:Vacuole</oboInOwl:hasDbXref>
+        <oboInOwl:hasRelatedSynonym>vacuolar carboxypeptidase Y</oboInOwl:hasRelatedSynonym>
+        <ns4:IAO_0000115>A closed structure, found only in eukaryotic cells, that is completely surrounded by unit membrane and contains liquid material. Cells contain one or several vacuoles, that may have different functions from each other. Vacuoles have a diverse array of functions. They can act as a storage organelle for nutrients or waste products, as a degradative compartment, as a cost-effective way of increasing cell size, and as a homeostatic regulator controlling both turgor pressure and pH of the cytosol.</ns4:IAO_0000115>
+        <oboInOwl:hasOBONamespace>cellular_component</oboInOwl:hasOBONamespace>
+        <oboInOwl:id>GO:0005773</oboInOwl:id>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_agr"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_candida"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_chembl"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_drosophila"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_euk_cellular_processes_ribbon"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_flybase_ribbon"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_generic"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_mouse"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_pir"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_plant"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_plant_ribbon"/>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#goslim_yeast"/>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0043231 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0043231">
+        <rdfs:label>intracellular membrane-bounded organelle</rdfs:label>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

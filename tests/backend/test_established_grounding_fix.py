@@ -27,8 +27,8 @@ from tests.backend.test_extraction_targets import packet, row
 
 def test_only_upstream_scientific_terms_and_annotations():
     ref = catalog()
-    assert len(ref.profile['allowed_object_properties']) == 19
-    assert len(ref.profile['allowed_classes']) == 211
+    assert len(ref.profile['allowed_object_properties']) == 101
+    assert len(ref.profile['allowed_classes']) == 212
     assert all(ref.terms[i]['origin'] == 'established_ontology'
                for i in ref.profile['allowed_classes'] + ref.profile['allowed_object_properties'])
     local = Graph().parse(RESOURCE_DIR / 'application.ttl', format='turtle')

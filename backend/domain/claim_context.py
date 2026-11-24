@@ -7,20 +7,47 @@ from backend.domain.alignment import exact_in
 
 
 def local_evidence_context(sentences: list[dict[str, Any]], numbers: list[int], window: int = 2) -> str:
-    """Retain the selected section plus at most two neighboring sentences per side.
+    """Retain each cited cluster's section plus at most two neighboring sentences per side.
 
-    Never pull an antecedent across a detected section boundary. Sentence IDs
-    remain local to the extraction packet and selected proof remains separate.
+    Never pull an antecedent across a detected section boundary or copy long
+    unrelated spans between distant non-adjacent citations. Sentence IDs remain
+    local to the extraction packet and selected proof remains separate.
     """
-    start, end = min(numbers) - 1, max(numbers)
-    heading = str(sentences[start].get("section_heading") or "")
-    left, right = start, end
-    while left > max(0, start - window) and sentences[left - 1].get("section_heading", "") == heading:
-        left -= 1
-    while right < min(len(sentences), end + window) and sentences[right].get("section_heading", "") == heading:
-        right += 1
-    prefix = f"[LOCAL SECTION HEADING] {heading}.\n" if heading else ""
-    return prefix + "\n".join(f"[{index + 1}] {sentences[index]['text']}" for index in range(left, right))
+    sorted_nums = sorted(set(numbers))
+    if not sorted_nums:
+        return ""
+    clusters: list[list[int]] = [[sorted_nums[0]]]
+    for num in sorted_nums[1:]:
+        prev = clusters[-1][-1]
+        same_heading = (
+            str(sentences[num - 1].get("section_heading") or "")
+            == str(sentences[prev - 1].get("section_heading") or "")
+        )
+        if same_heading and num - prev <= 2 * window:
+            clusters[-1].append(num)
+        else:
+            clusters.append([num])
+
+    lines: list[str] = []
+    seen_indices: set[int] = set()
+    last_heading: str | None = None
+    for cluster in clusters:
+        start, end = cluster[0] - 1, cluster[-1]
+        heading = str(sentences[start].get("section_heading") or "")
+        left, right = start, end
+        while left > max(0, start - window) and sentences[left - 1].get("section_heading", "") == heading:
+            left -= 1
+        while right < min(len(sentences), end + window) and sentences[right].get("section_heading", "") == heading:
+            right += 1
+        indices = [index for index in range(left, right) if index not in seen_indices]
+        if not indices:
+            continue
+        seen_indices.update(indices)
+        if heading and heading != last_heading:
+            lines.append(f"[LOCAL SECTION HEADING] {heading}.")
+        last_heading = heading
+        lines.extend(f"[{index + 1}] {sentences[index]['text']}" for index in indices)
+    return "\n".join(lines)
 
 
 def claim_description(item: dict[str, Any]) -> tuple[str, str]:

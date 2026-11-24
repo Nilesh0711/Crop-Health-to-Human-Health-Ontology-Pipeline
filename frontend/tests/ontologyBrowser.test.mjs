@@ -22,14 +22,19 @@ test('ontology browser offers hierarchy categories without a graph or dashboard 
     const { default: App } = await server.ssrLoadModule('/src/ontology/OntologyApp.jsx')
     const html = renderToStaticMarkup(React.createElement(App))
     assert.match(html, /Classes/)
-    assert.match(html, /Object properties/)
-    assert.match(html, /Data properties/)
+    assert.match(html, /Object properties \(12\)/)
+    assert.doesNotMatch(html, /Data properties/)
     assert.match(html, /Name, synonym or identifier/)
+    assert.match(html, /Entity registry/)
+    assert.match(html, /Relation registry/)
     assert.match(html, /Mapping review/)
     assert.match(html, /Reasoning/)
     assert.match(html, /Appendix/)
     assert.doesNotMatch(html, />Tester</)
-    assert.match(html, /Source fidelity and external validation are paused/)
+    assert.match(html, /Reference Ontologies/)
+    assert.match(html, /Established reference ontologies \(22\)/)
+    assert.doesNotMatch(html, /Linked assertions and source evidence|Browse reference properties|Show extraction properties/)
+    assert.doesNotMatch(html, /Ontology browser|Source fidelity and external validation are paused/)
     assert.doesNotMatch(html, /<canvas|cytoscape|network-metrics|overview-card|Show graph/)
     const { Link } = await server.ssrLoadModule('/src/ontology/useData.jsx')
     assert.doesNotMatch(renderToStaticMarkup(React.createElement(Link, { iri: 'javascript:alert(1)' })), /href=/)
@@ -42,9 +47,10 @@ test('published viewer hides execution and settings but preserves saved results'
   try {
     const { default: Runs } = await server.ssrLoadModule('/src/ontology/Runs.jsx')
     const html = renderToStaticMarkup(React.createElement(Runs, {
-      pdfs: [], health: { capabilities: { execute: false, read_only: true } }, onRefresh() {},
+      pdfs: [{ id: 'paper', title: 'Published paper', status: 'completed' }],
+      health: { capabilities: { execute: false, read_only: true } }, onRefresh() {},
     }))
     assert.doesNotMatch(html, /Run pipeline|New extraction and grounding|Ground saved claims|Extraction and model settings|type="file"/)
-    assert.match(html, /Source fidelity and external scientific validation stay paused/)
+    assert.match(html, /<details class="run-claims"><summary>Claims<\/summary>/)
   } finally { await server.close() }
 })

@@ -214,7 +214,7 @@ export function RunSetup({ health, options, onOptions, open, onToggle }) {
         ['articles_per_pathway', 'Search papers per neighboring pair', 1, 30, 'All usable attached citations are additional'],
       ].filter(([key]) => !paused || !['neighbor_max_pairs', 'articles_per_pathway'].includes(key)).map(([key, label, min, max, hint]) => <label key={key}>{label}<input type="number" min={min} max={max} value={options[key]}
         onChange={event => onOptions({ ...options, [key]: Number(event.target.value) })} /><small>{hint}</small></label>)}
-      <div className="settings-section-title"><h3>Assigned models</h3><p>Each task uses its configured primary model. Thinking defaults to Off for extraction and On for ontology grounding; other stages default Off.</p></div>
+      <div className="settings-section-title"><h3>Assigned models</h3><p>Each task uses its configured primary model. Thinking defaults to On for extraction and ontology grounding.</p></div>
       {THINKING_STAGES.filter(([key]) => !paused || key in tasks).map(([key, label]) => {
         const enabled = options.thinking?.[key] ?? defaultThinking()[key]
         const minimumReasoning = key === 'external' && ((phases.synthesis || tasks.external) === 'opencode-go/muse-spark-1.3-contributor')

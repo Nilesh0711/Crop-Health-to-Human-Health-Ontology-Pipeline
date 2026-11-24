@@ -3,7 +3,7 @@ import { useData, encoded, getTermUrl, Notice, Pagination } from './useData.jsx'
 
 export default function Entities({ revision, onTerm }) {
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('grounded')
+  const [status, setStatus] = useState('classified')
   const [offset, setOffset] = useState(0)
   const [lastCounts, setLastCounts] = useState(null)
   const data = useData(`/ontology/entities?unique=true&q=${encoded(query)}&status=${status}&offset=${offset}&limit=20`, revision)
@@ -18,9 +18,6 @@ export default function Entities({ revision, onTerm }) {
   return (
     <section className="ontology-panel">
       <h2>Entity registry</h2>
-      <p>
-        Unique entities extracted across source documents with their ontology alignments. Mappings are retained even when parts of a claim are unresolved.
-      </p>
       <div className="ontology-toolbar">
         <input
           aria-label="Search entity mentions"
@@ -33,6 +30,7 @@ export default function Entities({ revision, onTerm }) {
           value={status}
           onChange={e => { setStatus(e.target.value); setOffset(0) }}
         >
+          <option value="classified">All classified — exact or broader ({count('classified')})</option>
           <option value="grounded">Exact concept matches ({count('grounded')})</option>
           <option value="classification">Broader classifications ({count('classification')})</option>
           <option value="review">Related / narrower — review ({count('review')})</option>
@@ -50,7 +48,7 @@ export default function Entities({ revision, onTerm }) {
 
       {data.data && (
         <p className="muted">
-          {data.data.total || 0} unique entities in view · {data.data.counts?.grounded_mentions || 0} total grounded mentions
+          {data.data.total || 0} unique entities in view · {data.data.counts?.classified_endpoint_mentions || 0} classified endpoint mentions (exact or broader)
         </p>
       )}
 
@@ -124,9 +122,7 @@ export default function Entities({ revision, onTerm }) {
         </table>
       </div>
 
-      {data.data && !data.data.total && (
-        <p>No matching entities. New results appear after grounding under the current profile.</p>
-      )}
+      {data.data && !data.data.total && <p>No matching entities.</p>}
       {data.data && <Pagination {...data.data} onChange={setOffset} />}
     </section>
   )

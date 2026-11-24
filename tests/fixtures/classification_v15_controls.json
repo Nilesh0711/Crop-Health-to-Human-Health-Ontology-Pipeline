@@ -1,0 +1,18 @@
+{
+  "purpose": "Additional abstract development controls; not independent scientific labels or measured model outcomes.",
+  "review_status": "pending",
+  "primary_sample": "atomic_grounding_v14_review.json",
+  "relation_review_outcomes": ["justified_exact", "justified_broader", "justified_unresolved", "incorrect_mapping", "inconsistent_interpretation"],
+  "cases": [
+    {"id": "plant-trait-parent", "source": "A plant-specific efficiency trait was measured in Crop C.", "focus": "entity", "candidate": "TO:0000387", "proposed_expectation": "broader only if the supplied plant-trait definition encompasses this measurement; never a process by name overlap"},
+    {"id": "generic-causal-parent", "source": "Treatment T caused an increase in Trait Q.", "focus": "relation", "candidate": "RO:0002410", "proposed_expectation": "justified_broader only if the full generic causal definition and endpoint requirements apply; preserve increase"},
+    {"id": "unsigned-correlation", "source": "Trait Q was positively statistically correlated with Trait R.", "focus": "relation", "candidate": "RO:0002610", "proposed_expectation": "justified_broader when the supplied correlation definition applies; retain positive direction"},
+    {"id": "bearer-quality-comparison", "source": "Group A plants had higher Trait Q than Group B plants.", "focus": "relation", "proposed_expectation": "a supplied bearer-quality property is broader only if both endpoints and complete definition fit; preserve Group B as comparator"},
+    {"id": "modal-causation", "source": "Treatment T may increase Trait Q.", "focus": "relation", "proposed_expectation": "justified_unresolved for properties asserting causation; keep may"},
+    {"id": "vacuole", "source": "The vacuole contains Compound T.", "focus": "entity", "candidate": "GO:0005773", "proposed_expectation": "check exact vacuole equivalence against the supplied definition"},
+    {"id": "independent-passive-outcomes", "source": "Trait Q and Trait R were independently increased by Treatment T by 8% and 12%, respectively.", "focus": "extraction", "proposed_expectation": "two Treatment T to trait claims; metrics 8% and 12%; no reversed roles"},
+    {"id": "joint-treatment", "source": "The combined application of Treatment T and Treatment U increased Trait Q.", "focus": "extraction", "proposed_expectation": "preserve the joint treatment; do not infer individual treatment effects"},
+    {"id": "inverse-trend", "source": "Trait Q declined as Factor T increased.", "focus": "extraction and relation", "proposed_expectation": "retain which variable declined; no unsupported causal property"},
+    {"id": "mechanism-not-population", "source": "In Group A, allocation of Resource R to Organ O increased biomass.", "focus": "extraction", "proposed_expectation": "allocation is the stated mechanism; Group A is population context, not causal substitute"}
+  ]
+}

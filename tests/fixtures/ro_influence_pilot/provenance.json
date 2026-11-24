@@ -1,0 +1,12 @@
+[
+  {
+    "file": "pilot_RO_0002559.rdf",
+    "sha256": "2c2c93f3682e4a7a9c08985b97fa4f25ebe2757d975c998f13c85a0960453df2",
+    "source": "https://ontobee.org/ontology/rdf/RO?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2FRO_0002559"
+  },
+  {
+    "file": "pilot_RO_0002566.rdf",
+    "sha256": "e5ae1a12d4429d393dc8ca8b30d72d569e8b01ef07cacb521111dc1d98b2c32e",
+    "source": "https://ontobee.org/ontology/rdf/RO?iri=http%3A%2F%2Fpurl.obolibrary.org%2Fobo%2FRO_0002566"
+  }
+]

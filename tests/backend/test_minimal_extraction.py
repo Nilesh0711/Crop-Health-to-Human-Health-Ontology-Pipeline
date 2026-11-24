@@ -21,7 +21,7 @@ def test_provisional_types_are_preserved_as_hints_without_a_type_whitelist(tmp_p
     result, rejected, _ = extract_fixture(tmp_path, Client(), mode='whole_packet')
     assert not rejected and len(result) == 1
     item = result[0]
-    assert item['schema_error'] is None and item['extraction_contract_version'] == EXTRACTION_CONTRACT_VERSION == 11
+    assert item['schema_error'] is None and item['extraction_contract_version'] == EXTRACTION_CONTRACT_VERSION == 20
     assert item['extraction_type_hints'] == {'subject': 'grain material', 'object': 'chemical entity'}
     assert 'subject_type' not in item and 'object_type' not in item and 'claim_text' not in item
     payload, _ = request_packet(result, ConceptIndex(Catalog(RESOURCE_DIR)))

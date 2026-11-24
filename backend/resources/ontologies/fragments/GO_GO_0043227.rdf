@@ -1,0 +1,130 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:go="http://purl.obolibrary.org/obo/go#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns4="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasOBONamespace"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasExactSynonym"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#hasDbXref"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#inSubset"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000233"/>
+    <AnnotationProperty rdf:about="http://www.geneontology.org/formats/oboInOwl#id"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/go#gocheck_do_not_annotate"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000051 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000051">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label>has part</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0016020 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0016020">
+        <rdfs:label>membrane</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0043226 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0043226">
+        <rdfs:label>organelle</rdfs:label>
+    </Class>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/GO_0043227 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/GO_0043227">
+        <rdfs:label>membrane-bounded organelle</rdfs:label>
+        <equivalentClass>
+            <Class>
+                <intersectionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://purl.obolibrary.org/obo/GO_0043226"/>
+                    <Restriction>
+                        <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                        <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/GO_0016020"/>
+                    </Restriction>
+                </intersectionOf>
+            </Class>
+        </equivalentClass>
+        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/GO_0043226"/>
+        <rdfs:subClassOf>
+            <Restriction>
+                <onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+                <someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/GO_0016020"/>
+            </Restriction>
+        </rdfs:subClassOf>
+        <ns4:IAO_0000233 rdf:datatype="http://www.w3.org/2001/XMLSchema#anyURI">https://github.com/geneontology/go-ontology/issues/28153</ns4:IAO_0000233>
+        <oboInOwl:hasExactSynonym>membrane-enclosed organelle</oboInOwl:hasExactSynonym>
+        <ns4:IAO_0000115>Organized structure of distinctive morphology and function, bounded by a single or double lipid bilayer membrane. Includes the nucleus, mitochondria, plastids, vacuoles, and vesicles. Excludes the plasma membrane.</ns4:IAO_0000115>
+        <oboInOwl:hasDbXref>NIF_Subcellular:sao414196390</oboInOwl:hasDbXref>
+        <oboInOwl:id>GO:0043227</oboInOwl:id>
+        <oboInOwl:hasOBONamespace>cellular_component</oboInOwl:hasOBONamespace>
+        <oboInOwl:inSubset rdf:resource="http://purl.obolibrary.org/obo/go#gocheck_do_not_annotate"/>
+    </Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

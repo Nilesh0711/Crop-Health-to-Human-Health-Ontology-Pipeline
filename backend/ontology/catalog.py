@@ -17,10 +17,13 @@ from rdflib.namespace import RDF, RDFS, OWL, XSD
 
 from backend.config.paths import BACKEND_DIR
 from backend.shared.storage import stable_hash
+from backend.ontology.usage import usage_metadata, USAGE_POLICY, ANNOTATION_POLICY
 
 RESOURCE_DIR = BACKEND_DIR / 'resources' / 'ontologies'
 LOCAL = 'urn:soil-crop-health:'
 DEFINITION = URIRef('http://purl.obolibrary.org/obo/IAO_0000115')
+USAGE_NOTE = URIRef('http://purl.obolibrary.org/obo/IAO_0000232')
+UNIQUE_LABEL = URIRef('http://purl.obolibrary.org/obo/IAO_0000589')
 SYNONYMS = [URIRef('http://www.geneontology.org/formats/oboInOwl#' + name)
             for name in ('hasExactSynonym', 'hasRelatedSynonym', 'hasBroadSynonym', 'hasNarrowSynonym')]
 KINDS = {OWL.Class: 'class', RDFS.Class: 'class', OWL.ObjectProperty: 'object_property',
@@ -57,6 +60,7 @@ class Catalog:
         self.manifest = json.loads((self.directory / 'manifest.json').read_text(encoding='utf-8'))
         self.graph = Graph()
         preferred = {}
+        annotations = defaultdict(list)
         self.axiom_sources = defaultdict(list)
         fingerprints = []
         for source in self.manifest['modules']:
@@ -74,14 +78,32 @@ class Catalog:
                 iri = source['requested_iri']
                 uri = URIRef(iri)
                 preferred[iri] = {'label': _literal(parsed, uri, RDFS.label),
-                    'definition': _literal(parsed, uri, DEFINITION) or _literal(parsed, uri, RDFS.comment)}
+                    'definition': _literal(parsed, uri, DEFINITION)}
             for s, p, o in parsed:
+                if isinstance(s, URIRef) and p in {DEFINITION, USAGE_NOTE, UNIQUE_LABEL, RDFS.comment} and isinstance(o, Literal):
+                    annotations[str(s)].append({'predicate': str(p), 'value': str(o), 'language': o.language,
+                        'source': source['source'], 'sha256': digest})
                 if isinstance(s, URIRef) and isinstance(o, URIRef):
                     self.axiom_sources[(str(s), str(p), str(o))].append({'source': source['source'], 'sha256': digest})
             self.graph += parsed
             fingerprints.append(digest)
         mapping_profile = {k: v for k, v in self.profile.items() if k != 'biological_rules'}
-        self.signature = stable_hash(json.dumps({'modules': fingerprints, 'profile': mapping_profile, 'annotation_policy': 'upstream-only-v1'}, sort_keys=True), 64)
+        custom_usage_path = self.directory / 'property_usage.json'
+        if self.directory.resolve() != RESOURCE_DIR.resolve() and custom_usage_path.exists():
+            self.usage = json.loads(custom_usage_path.read_text(encoding='utf-8'))
+        else:
+            self.usage = usage_metadata()
+        if self.usage['version'] != USAGE_POLICY:
+            raise ValueError('Unsupported property usage policy')
+        check_unselected = self.directory.resolve() == RESOURCE_DIR.resolve() or custom_usage_path.exists()
+        for iri, restriction in self.usage['restrictions'].items():
+            if iri not in self.profile['allowed_object_properties'] and (
+                    not check_unselected or (URIRef(iri), RDF.type, OWL.ObjectProperty) not in self.graph):
+                continue
+            if (URIRef(iri), URIRef(restriction['annotation_predicate']), Literal(restriction['annotation_value'])) not in self.graph:
+                raise ValueError(f'Property usage restriction has no matching upstream annotation: {iri}')
+        self.signature = stable_hash(json.dumps({'modules': fingerprints, 'profile': mapping_profile,
+            'annotation_policy': ANNOTATION_POLICY, 'property_usage': self.usage}, sort_keys=True), 64)
         self.rules_signature = stable_hash(json.dumps(self.profile.get('biological_rules', []), sort_keys=True), 64)
         self.terms = {}
         for uri, rdf_type in self.graph.subject_objects(RDF.type):
@@ -95,7 +117,7 @@ class Catalog:
             parents = sorted(str(v) for v in self.graph.objects(uri, parent_predicate) if isinstance(v, URIRef))
             self.terms[iri] = {'iri': iri, 'label': preferred.get(iri, {}).get('label') or _literal(self.graph, uri, RDFS.label) or iri.rsplit('/', 1)[-1],
                 'id': iri.rsplit('/', 1)[-1].replace('_', ':') if '/obo/' in iri else iri,
-                'kind': kind, 'definition': preferred.get(iri, {}).get('definition') or _literal(self.graph, uri, DEFINITION) or _literal(self.graph, uri, RDFS.comment),
+                'kind': kind, 'definition': preferred.get(iri, {}).get('definition') or _literal(self.graph, uri, DEFINITION),
                 'synonyms': sorted({_clean_synonym(v) for predicate in SYNONYMS for v in self.graph.objects(uri, predicate) if _clean_synonym(v)}),
                 'exact_synonyms': sorted({_clean_synonym(v) for v in self.graph.objects(uri, SYNONYMS[0]) if _clean_synonym(v)}),
                 'related_synonyms': sorted({_clean_synonym(v) for v in self.graph.objects(uri, SYNONYMS[1]) if _clean_synonym(v)}),
@@ -110,6 +132,54 @@ class Catalog:
                 'selectable': iri in self.profile['allowed_classes'] or iri in self.profile['allowed_object_properties']
                               or iri in self.profile.get('allowed_data_properties', []),
                 'sources': [m['source'] for m in self.manifest['modules'] if iri in m.get('term_iris', [])]}
+            term = self.terms[iri]
+            restriction = self.usage['restrictions'].get(iri) if (check_unselected or iri in self.profile['allowed_object_properties']) else None
+            restricted_notes = {restriction['annotation_value']} if restriction and restriction.get('annotation_value') else set()
+            term['usage_notes'] = sorted({str(v) for v in self.graph.objects(uri, USAGE_NOTE)
+                                         if isinstance(v, Literal) and v.language in (None, 'en')} | restricted_notes)
+            term['comments'] = sorted({str(v) for v in self.graph.objects(uri, RDFS.comment)
+                                      if isinstance(v, Literal) and v.language in (None, 'en')})
+            term['obo_unique_labels'] = sorted({str(v) for v in self.graph.objects(uri, UNIQUE_LABEL)
+                                               if isinstance(v, Literal) and v.language in (None, 'en')})
+            term['inverse_of'] = sorted({str(v) for v in self.graph.objects(uri, OWL.inverseOf) if isinstance(v, URIRef)}
+                                       | {str(v) for v in self.graph.subjects(OWL.inverseOf, uri) if isinstance(v, URIRef)})
+            term['inverse_provenance'] = [dict(subject=left, predicate=str(OWL.inverseOf), object=right, **source)
+                for peer in term['inverse_of'] for left, right in ((iri, peer), (peer, iri))
+                for source in self.axiom_sources.get((left, str(OWL.inverseOf), right), [])]
+            term['annotation_provenance'] = sorted(annotations[iri], key=lambda a: (a['predicate'], a['value'], a['source']))
+            if kind == 'object_property':
+                term['allowed_mappings'] = self.usage['restrictions'].get(iri, {}).get('allowed_mappings', ['exact', 'broader', 'unresolved'])
+                term['direct_use_allowed'] = 'exact' in term['allowed_mappings']
+        for iri, term in self.terms.items():
+            if term['kind'] != 'object_property':
+                continue
+            frontier, visited, ancestors, provenance, seen_edges = [iri], {iri}, [], [], set()
+            while frontier:
+                child = frontier.pop(0)
+                for parent in self.terms.get(child, {}).get('parents', []):
+                    for source in self.axiom_sources.get((child, str(RDFS.subPropertyOf), parent), []):
+                        edge_key = (child, parent, source.get('file'), source.get('source'))
+                        if edge_key not in seen_edges:
+                            seen_edges.add(edge_key)
+                            provenance.append({'subject': child, 'predicate': str(RDFS.subPropertyOf), 'object': parent, **source})
+                    if parent not in visited:
+                        visited.add(parent)
+                        ancestors.append(parent)
+                        frontier.append(parent)
+            term['parent_properties'] = []
+            for anc_iri in ancestors:
+                anc = self.terms.get(anc_iri)
+                if not anc:
+                    continue
+                item = {'iri': anc_iri, 'id': anc['id'], 'label': anc['label'],
+                        'allowed_mappings': anc['allowed_mappings'], 'direct_use_allowed': anc['direct_use_allowed']}
+                if anc.get('definition'):
+                    item['definition'] = anc['definition']
+                for field in ('usage_notes', 'comments', 'obo_unique_labels', 'domain', 'range'):
+                    if anc.get(field):
+                        item[field] = list(anc[field])
+                term['parent_properties'].append(item)
+            term['subproperty_provenance'] = provenance
         for iri in self.profile['allowed_classes'] + self.profile['allowed_object_properties']:
             term = self.terms.get(iri)
             if (not iri.startswith('http://purl.obolibrary.org/obo/') or term is None

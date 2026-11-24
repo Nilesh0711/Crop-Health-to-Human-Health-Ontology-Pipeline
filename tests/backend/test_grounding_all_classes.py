@@ -9,20 +9,20 @@ def test_every_endpoint_receives_all_approved_classes_and_properties():
     reference = Catalog(RESOURCE_DIR)
     packet, _ = request_packet([claim('a'), claim('b', subject='unseen expression')], reference)
     expected = set(reference.profile['allowed_classes'])
-    assert len(expected) == 211
+    assert len(expected) == 212
     _, _, term_iris, _, relation_iris = catalog_term_map(reference)
     assert set(term_iris.values()) == expected
-    assert set(relation_iris.values()) == set(reference.profile['allowed_object_properties'])
+    assert set(relation_iris.values()) == set(reference.profile['allowed_object_properties']) - set(reference.profile['retrieval_object_properties'])
     assert set(packet['terms']) == set(term_iris)
     assert set(packet['relations']) == set(relation_iris)
     for source in packet['claims'].values():
         assert 'subject_candidates' not in source and 'object_candidates' not in source
     for term in packet['terms'].values():
         assert 'label' in term
-        assert term.keys() <= {'label', 'definition', 'exact_synonyms', 'related_synonyms', 'parents'}
+        assert term.keys() <= {'label', 'definition', 'exact_synonyms', 'related_synonyms', 'parents', 'upper_types'}
     for rel in packet['relations'].values():
         assert 'label' in rel
-        assert rel.keys() <= {'label', 'definition', 'domain', 'range'}
+        assert rel.keys() <= {'label', 'definition', 'domain', 'range', 'usage_notes', 'comments', 'allowed_mappings', 'inverse_of', 'inverse_provenance', 'obo_unique_labels', 'parent_properties', 'subproperty_provenance'}
     assert Settings().ontology_grounding_output_format == 'json'
 
 
@@ -40,12 +40,13 @@ def test_full_vocabulary_grounding_does_not_use_embeddings(tmp_path):
 def test_class_expansion_preserves_relation_scope_and_chemical_distinctions():
     from backend.ontology.bootstrap import SEEDS
     reference = Catalog(RESOURCE_DIR)
-    assert reference.profile['version'] == 10
-    assert set(reference.profile['allowed_object_properties']) == {'http://purl.obolibrary.org/obo/' + name for name in
+    assert reference.profile['version'] == 16
+    assert set(reference.profile['allowed_object_properties']) - set(reference.profile['retrieval_object_properties']) == {'http://purl.obolibrary.org/obo/' + name for name in
          ('BFO_0000050', 'BFO_0000051', 'RO_0000086', 'RO_0000052', 'RO_0001025',
           'RO_0000056', 'RO_0000057', 'RO_0002020', 'RO_0002233', 'RO_0002234',
            'RO_0002411', 'RO_0002304', 'RO_0002305', 'RO_0002211', 'RO_0002213',
-           'RO_0002212', 'RO_0002410', 'RO_0003000', 'RO_0002610')}
+           'RO_0002212', 'RO_0002410', 'RO_0003000', 'RO_0002610',
+           'RO_0002215', 'RO_0002596', 'RO_0002566', 'RO_0002559', 'RO_0019001', 'RO_0003302')}
     assert len(reference.profile['allowed_data_properties']) == 9
     assert reference.profile['biological_rules'] == []
     for iri in reference.profile['allowed_classes']:

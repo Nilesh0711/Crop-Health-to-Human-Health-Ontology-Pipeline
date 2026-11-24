@@ -165,11 +165,12 @@ def test_resume_rejects_old_context_policy_without_modifying_its_checkpoint(tmp_
     from pathlib import Path
     from backend.config.settings import SCHEMA_VERSION
     from backend.pipelines.checkpoints import resume_metadata
+    from backend.stages.pdf_parsing.layout import PARSING_POLICY
     settings = Settings()
     checkpoint = {'schema_version': SCHEMA_VERSION, 'pdf_sha256': 'fixture-hash',
         'task_models': settings.task_models, 'max_pages': 0, 'claims_per_packet': 0,
         'extraction_mode': 'target_context', 'extraction_target_words': 800,
-        'targeting_version': 2, 'thinking': settings.task_thinking}
+        'targeting_version': 2, 'thinking': settings.task_thinking, 'parsing_policy': PARSING_POLICY}
     path = tmp_path / 'pipeline_checkpoint.json'
     path.write_text(json.dumps(checkpoint), encoding='utf-8')
     before = path.read_bytes()
@@ -334,3 +335,92 @@ def test_anaphoric_passage_yields_both_direct_edges_without_a_transitive_shortcu
     assert 'claim_text' not in candidates[1]
     assert 'Fusarium head blight' in candidates[1]['source_reading_context']
     assert candidates[1]['qualifiers']['condition'] == 'Fusarium head blight infection'
+
+
+def test_methods_measurement_basis_and_missing_context_review():
+    from backend.domain.extraction_review import extraction_warnings
+
+    rows = [
+        row(1, heading='2 Materials and methods', paragraph='m1',
+            text='Macrominerals were expressed in terms of mg/g on a tuber dry weight (DW) basis.'),
+        row(2, heading='2 Materials and methods', paragraph='m2',
+            text='To assess environments (Dalhart 2019, Dalhart 2020, and Springlake 2020) and raw potato tubers, ANOVA was conducted.'),
+        row(3, heading='3 Results', paragraph='r1', text='Background paragraph one without mineral metrics.'),
+        row(4, heading='3 Results', paragraph='r2', text='Background paragraph two without mineral metrics.'),
+        row(5, heading='3 Results', paragraph='r3', text='Background paragraph three without mineral metrics.'),
+        row(6, heading='3 Results', paragraph='r4',
+            text='The P content was significantly higher in Dalhart (3.99 mg/g) than in Springlake (2.93 mg/g).'),
+        row(7, heading='3 Results', paragraph='r5', text='Additional result sentence seven.'),
+    ]
+    targets = build_extraction_targets([packet(rows)], target_words=25)
+    results_target = next(t for t in targets if 6 in t['target_sentence_numbers'])
+    assert 1 in results_target['reading_context_sentence_numbers']
+    assert 2 in results_target['reading_context_sentence_numbers']
+    methods_target = next(t for t in targets if 1 in t['target_sentence_numbers'])
+    assert methods_target['reading_context_sentence_numbers'] == [2, 3] or 2 in methods_target['target_sentence_numbers']
+
+    held = {
+        'subject': 'phosphorus content',
+        'relation': 'was significantly higher in',
+        'object': 'Dalhart',
+        'qualifiers': {'condition': 'growing location', 'comparator': 'Springlake', 'metric': '3.99 mg/g vs 2.93 mg/g'},
+        'source_evidence_span': rows[5]['text'],
+        'source_local_context': 'Dalhart and Springlake in 2020.\n' + rows[5]['text'],
+        'source_reading_context': f"[1] [page 1] {rows[0]['text']}",
+    }
+    assert any(w['code'] == 'possible_missing_measurement_context' for w in extraction_warnings(held))
+
+    preserved = {
+        **held,
+        'source_evidence_sentence_numbers': [1, 5, 6],
+        'source_evidence_fragments': [rows[0], {'sentence_number': 5, 'text': 'Dalhart and Springlake in 2020.'}, rows[5]],
+        'source_evidence_span': f"{rows[0]['text']} Dalhart and Springlake in 2020. {rows[5]['text']}",
+        'qualifiers': {
+            'crop_or_species': 'potato',
+            'condition': 'potato tubers; dry weight (DW) basis; growing location in 2020',
+            'comparator': 'Springlake',
+            'metric': '3.99 mg/g DW vs 2.93 mg/g DW',
+        },
+    }
+    assert not extraction_warnings(preserved)
+
+
+def test_cache_loader_rejects_old_reading_context_policy(tmp_path):
+    import json
+    from backend.stages.claim_extraction.anchoring import ANCHORING_POLICY
+    from backend.stages.claim_extraction.contract import EXTRACTION_CONTRACT_VERSION
+    from backend.stages.claim_extraction.extractor import _load_cached_packet_claims
+    from backend.stages.claim_extraction.targeting import READING_CONTEXT_POLICY, TARGETING_VERSION
+    from backend.stages.pdf_parsing.layout import PARSING_POLICY
+
+    assert READING_CONTEXT_POLICY == 'bounded-sentence-supporting-evidence-v6'
+    old_tid = 'target-111111111111111111111111'
+    new_tid = 'target-222222222222222222222222'
+    base = {
+        'output_contract_version': EXTRACTION_CONTRACT_VERSION,
+        'extraction_contract_version': EXTRACTION_CONTRACT_VERSION,
+        'status': 'completed',
+        'extraction_mode': 'target_context',
+        'targeting_version': TARGETING_VERSION,
+        'parsing_policy': PARSING_POLICY,
+        'anchoring_policy': ANCHORING_POLICY,
+    }
+    (tmp_path / 'extraction_packets.jsonl').write_text(
+        json.dumps({**base, 'target_id': old_tid, 'reading_context_policy': 'bounded-sentence-supporting-evidence-v4'}) + '\n'
+        + json.dumps({**base, 'target_id': new_tid, 'reading_context_policy': READING_CONTEXT_POLICY}) + '\n',
+        encoding='utf-8',
+    )
+    resp_dir = tmp_path / 'model_responses'
+    resp_dir.mkdir()
+    (resp_dir / 'old.json').write_text(json.dumps({
+        **base, 'status': 'ok', 'reading_context_policy': 'bounded-sentence-supporting-evidence-v4',
+        'task': f'extraction target 1/2 ({old_tid}; packet 1)', 'accepted_response': {'claims': []},
+    }), encoding='utf-8')
+    (resp_dir / 'new.json').write_text(json.dumps({
+        **base, 'status': 'ok', 'reading_context_policy': READING_CONTEXT_POLICY,
+        'task': f'extraction target 2/2 ({new_tid}; packet 1)', 'accepted_response': {'claims': []},
+    }), encoding='utf-8')
+
+    cached = _load_cached_packet_claims(tmp_path, 'target_context')
+    assert old_tid not in cached
+    assert new_tid in cached

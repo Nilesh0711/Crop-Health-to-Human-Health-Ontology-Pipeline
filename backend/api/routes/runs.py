@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from fastapi import APIRouter
-from backend.api.contracts import RunOptions, SourceReviewOptions
+from backend.api.contracts import GroundingOptions, RunOptions, SourceReviewOptions
 import threading
 import uuid
 from dataclasses import replace
@@ -17,6 +17,7 @@ from backend.shared.cancellation import CancellationToken
 from backend.config.pipeline import VALIDATION_STAGES_PAUSED, PAUSED_MESSAGE, active_task_models
 from backend.config.pipeline import ONTOLOGY_GROUNDING_PAUSED, GROUNDING_PAUSED_MESSAGE
 from backend.config.pipeline import MANUAL_GROUNDING_ENABLED
+from backend.pipelines.pathways import saved_grounding_claims
 
 
 class RunsRoutes:
@@ -135,6 +136,7 @@ class RunsRoutes:
             raise HTTPException(status_code=400, detail=f"Required OpenCode model is unavailable: {', '.join(missing)}")
         with self.workspace._lock:
             if (getattr(self.workspace, '_grounding_tester_tokens', {})
+                    or getattr(self.workspace, '_single_stage_tokens', {})
                     or any(job["status"] in ACTIVE_STATUSES for job in self.workspace._jobs.values())):
                 raise HTTPException(status_code=409, detail="A pipeline is already running. Wait for it to finish.")
             job_id = uuid.uuid4().hex
@@ -188,6 +190,7 @@ class RunsRoutes:
         output = self.workspace._output_dir(pdf)
         with self.workspace._lock:
             if (getattr(self.workspace, '_grounding_tester_tokens', {})
+                    or getattr(self.workspace, '_single_stage_tokens', {})
                     or any(job['status'] in ACTIVE_STATUSES for job in self.workspace._jobs.values())):
                 raise HTTPException(status_code=409, detail='Wait for the current pipeline or claim action to finish')
             candidate = next((c for c in read_jsonl(output / 'candidates.jsonl') if c['candidate_id'] == candidate_id), None)
@@ -226,23 +229,22 @@ class RunsRoutes:
                 raise HTTPException(status_code=404, detail="Job not found")
             return self.workspace._job_snapshot(job)
 
-    def start_grounding(self, pdf_id: str, options: RunOptions | None = None):
+    def start_grounding(self, pdf_id: str, options: GroundingOptions | None = None):
         if not MANUAL_GROUNDING_ENABLED:
-            raise HTTPException(status_code=409, detail=GROUNDING_PAUSED_MESSAGE)
+            raise HTTPException(status_code=409, detail='Manual ontology grounding is paused.')
         pdf = self.workspace._pdf_path(pdf_id)
         with self.workspace._lock:
             if (getattr(self.workspace, '_grounding_tester_tokens', {})
+                    or getattr(self.workspace, '_single_stage_tokens', {})
                     or any(job['status'] in ACTIVE_STATUSES for job in self.workspace._jobs.values())):
                 raise HTTPException(status_code=409, detail='Wait for the current pipeline to finish')
             output = self.workspace._output_dir(pdf)
-            checkpoint = self.workspace._read_json(output / 'pipeline_checkpoint.json', {})
-            if not checkpoint.get('extraction_complete') or not read_jsonl(output / 'candidates.jsonl'):
-                raise HTTPException(status_code=409, detail='Complete extraction for this PDF before running ontology grounding.')
-            coverage = read_jsonl(output / 'extraction_packets.jsonl')
-            if any(r.get('status') not in {'completed', 'cached'} for r in coverage):
-                raise HTTPException(status_code=409, detail='Extraction has incomplete regions. Finish extraction before grounding saved claims.')
+            options = options or GroundingOptions()
+            try:
+                saved_grounding_claims(output)
+            except ValueError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
             job_id = uuid.uuid4().hex
-            options = options or RunOptions()
             job = dict(id=job_id, pdf_id=pdf_id, pdf_path=str(pdf), status='queued', action='ground_claims',
                        logs=read_jsonl(self.workspace._output_dir(pdf) / 'run_log.jsonl'), options=options.model_dump(),
                        started_at=datetime.now(timezone.utc).isoformat(timespec='seconds'),

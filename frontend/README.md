@@ -1,9 +1,13 @@
 # Frontend
 
-The React/Vite/Cytoscape application supports the local research workspace and
-the published read-only viewer. The current pipeline is v50 and validates neighboring claims and their local connections. See [the active protocol](../docs/protocols/neighboring_claim_validation.md).
+The React/Vite app serves the local research workspace and the published
+read-only viewer. The active entry point is `src/ontology/OntologyApp.jsx`.
+In Runs, open **Claims** and expand a finding to see its qualifiers, source
+passage and any review warnings. Appendix opens on the active extraction
+example. **Ground saved claims** in Runs processes the endpoints of all unheld
+findings from a compatible extraction. Pathway validation and merging are paused.
 
-Assessment cards separate scientific findings from execution completeness, show
+Historical assessment cards separate scientific findings from execution completeness, show
 partial wording support and contextual evidence, and display original/proposed
 corrections with proof links. Proposals do not edit claims or admit a pending pair
 to the supported graph. Older-contract findings remain visible as needing refresh.
@@ -31,6 +35,12 @@ results viewer can serve the same build on port 8011 for local preview.
 
 ## Ownership
 
+The active workflow lives in `src/ontology/`. `Runs.jsx` owns the paper list,
+run controls and saved claim review. `Appendix.jsx` shows the generated contract
+examples, and `src/lib/staticApi.js` reads the published data.
+
+The earlier workspace and neighboring-claim results use the following modules.
+
 | Location | Responsibility |
 | --- | --- |
 | `src/main.jsx` | React initialization and stylesheet imports |
@@ -52,7 +62,7 @@ The old `light.css` layer is merged into `base.css`. The existing workspace URLs
 and sidebar storage key remain compatible. Named exports from `App.jsx` preserve
 saved-view consumers while presentation helpers live in their owning modules.
 
-## Research findings
+## Historical research findings
 
 **Network & pathways** replaces the separate Graph and Paths tabs. Older
 `#graph` and `#paths` links open this unified view.

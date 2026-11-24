@@ -7,7 +7,7 @@ from backend.config.settings import Settings
 
 class ThinkingOptions(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    extraction: StrictBool = False
+    extraction: StrictBool = True
     source: StrictBool = False
     query: StrictBool = False
     external: StrictBool = False
@@ -27,6 +27,11 @@ class RunOptions(BaseModel):
     extraction_generation_budget: int = Field(
         default_factory=lambda: Settings().extraction_min_output_budget, ge=8192, le=50000,
         description='Initial generation allowance shared by reasoning and the final answer')
+
+class GroundingOptions(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    thinking: ThinkingOptions = Field(default_factory=ThinkingOptions)
+
 
 class SourceReviewOptions(BaseModel):
     model_config = ConfigDict(extra='forbid')

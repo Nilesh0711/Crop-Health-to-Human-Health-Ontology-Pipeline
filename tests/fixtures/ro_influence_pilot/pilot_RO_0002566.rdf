@@ -1,0 +1,169 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.w3.org/2002/07/owl#"
+     xml:base="http://www.w3.org/2002/07/owl"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:ns2="http://purl.obolibrary.org/obo/"
+     xmlns:foaf="http://xmlns.com/foaf/0.1/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/">
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000117"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000119"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000589"/>
+    <AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Datatypes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0002233 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0002233">
+        <rdfs:label xml:lang="en">has input</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0002327 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0002327">
+        <rdfs:label xml:lang="en">enables</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0002333 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0002333">
+        <rdfs:label xml:lang="en">enabled by</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0002411 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0002411">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+        <rdfs:label xml:lang="en">causally upstream of</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0002506 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0002506">
+        <rdfs:label>causal relation between entities</rdfs:label>
+    </ObjectProperty>
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/RO_0002566 -->
+
+    <ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0002566">
+        <rdfs:label>causally influences</rdfs:label>
+        <ns2:IAO_0000589>causally influences (entity-centric)</ns2:IAO_0000589>
+        <ns2:IAO_0000115>The entity or characteristic A is causally upstream of the entity or characteristic B, A having an effect on B. An entity corresponds to any biological type of entity as long as a mass is measurable. A characteristic corresponds to a particular specificity of an entity (e.g., phenotype, shape, size).</ns2:IAO_0000115>
+        <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000002"/>
+        <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000002"/>
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/RO_0002506"/>
+        <ns2:IAO_0000119 rdf:resource="http://purl.obolibrary.org/obo/ro/docs/causal-relations"/>
+        <ns2:IAO_0000117 rdf:resource="https://orcid.org/0000-0002-6601-2165"/>
+        <ns2:IAO_0000117 rdf:resource="https://orcid.org/0000-0003-4639-4431"/>
+        <propertyChainAxiom rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://purl.obolibrary.org/obo/RO_0002327"/>
+            <rdf:Description rdf:about="http://purl.obolibrary.org/obo/RO_0002411"/>
+            <rdf:Description rdf:about="http://purl.obolibrary.org/obo/RO_0002333"/>
+        </propertyChainAxiom>
+        <propertyChainAxiom rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://purl.obolibrary.org/obo/RO_0002327"/>
+            <rdf:Description rdf:about="http://purl.obolibrary.org/obo/RO_0002411"/>
+            <rdf:Description rdf:about="http://purl.obolibrary.org/obo/RO_0002233"/>
+        </propertyChainAxiom>
+    </ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/BFO_0000002 -->
+
+    <Class rdf:about="http://purl.obolibrary.org/obo/BFO_0000002">
+        <rdfs:label xml:lang="en">continuant</rdfs:label>
+    </Class>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- https://orcid.org/0000-0002-6601-2165 -->
+
+    <NamedIndividual rdf:about="https://orcid.org/0000-0002-6601-2165">
+        <rdfs:label>Christopher J. Mungall</rdfs:label>
+    </NamedIndividual>
+    
+
+
+    <!-- https://orcid.org/0000-0003-4639-4431 -->
+
+    <NamedIndividual rdf:about="https://orcid.org/0000-0003-4639-4431">
+        <rdfs:label>Vasundra Touré</rdfs:label>
+    </NamedIndividual>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.2.4.1806) http://owlapi.sourceforge.net -->
+
+
+

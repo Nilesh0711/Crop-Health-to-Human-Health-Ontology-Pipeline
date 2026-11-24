@@ -5,10 +5,14 @@ readable; no skipped stage may be recorded as a successful scientific check.
 """
 
 PIPELINE_MODE = 'ontology_grounded'
-ONTOLOGY_GROUNDING_PAUSED = False
+ONTOLOGY_GROUNDING_PAUSED = True
 MANUAL_GROUNDING_ENABLED = True
-GROUNDING_PAUSED_MESSAGE = ('Automatic ontology grounding is paused while atomic extraction is reviewed. '
-    'The pipeline stops after extraction. Use Run grounded claims to assess saved extraction explicitly.')
+GROUNDING_PAUSED_MESSAGE = (
+    'The pipeline stops after extraction. Use Ground saved claims in Runs for entity-only grounding.'
+    if MANUAL_GROUNDING_ENABLED else
+    'Ontology grounding is paused while bounded extraction is reviewed. '
+    'Pathway merging and later stages remain paused; the pipeline stops after extraction.'
+)
 VALIDATION_STAGES_PAUSED = True
 POST_GROUNDING_STAGES_PAUSED = True
 POST_GROUNDING_PAUSED_MESSAGE = ('The pipeline stops after ontology grounding. Pathway assembly, '

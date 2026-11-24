@@ -5,8 +5,15 @@ from backend.config.settings import SCHEMA_VERSION
 from backend.config.pipeline import VALIDATION_STAGES_PAUSED
 from backend.shared.artifacts import save_json
 from backend.shared.storage import file_hash, read_jsonl, stable_hash
-from backend.stages.claim_extraction.targeting import TARGETING_VERSION
-from backend.stages.claim_extraction.contract import valid_relation_wording
+from backend.stages.claim_extraction.targeting import TARGETING_VERSION, READING_CONTEXT_POLICY
+from backend.stages.claim_extraction.contract import (
+    CLOSED_EXTRACTION_CONTRACT_VERSION,
+    CLOSED_PREDICATE_SET_VERSION,
+    CLOSED_PREDICATES,
+    EXTRACTION_CONTRACT_VERSION,
+    valid_relation_wording,
+)
+from backend.stages.claim_extraction.anchoring import ANCHORING_POLICY
 
 
 def read_metadata(output):
@@ -80,7 +87,13 @@ def resume_metadata(output, pdf, settings, max_pages, claims_per_packet, *, extr
         metadata.update(thinking=summary.get('thinking') or {task: True for task in settings.task_models}, extraction_mode=summary.get('extraction_mode', 'whole_packet'),
                         extraction_target_words=summary.get('extraction_target_words'),
                         extraction_generation_budget=summary.get('extraction_generation_budget'),
-                        targeting_version=summary.get('targeting_version', TARGETING_VERSION))
+                        targeting_version=summary.get('targeting_version'),
+                        extraction_contract_version=summary.get('extraction_contract_version'),
+                        predicate_set_version=summary.get('predicate_set_version'),
+                        predicate_whitelist_sha256=summary.get('predicate_whitelist_sha256'),
+                        reading_context_policy=summary.get('reading_context_policy'),
+                        anchoring_policy=summary.get('anchoring_policy'),
+                        parsing_policy=summary.get('parsing_policy'))
     # Downstream synthesis/audit and assembly assignments do not change the
     # completed extraction. Their own scientific fingerprints invalidate reuse.
     downstream = {'pathway_assembly','external'}
@@ -93,8 +106,8 @@ def resume_metadata(output, pdf, settings, max_pages, claims_per_packet, *, extr
         raise ValueError('Checkpoint PDF, pipeline version or selected models changed; start a new run')
     if metadata.get('max_pages') != max_pages:
         raise ValueError('Resume requires the original page selection')
-    from backend.stages.pdf_parsing.layout import PARSING_POLICY, LEGACY_PARSING_POLICY
-    if metadata.get('parsing_policy',LEGACY_PARSING_POLICY) not in {PARSING_POLICY,LEGACY_PARSING_POLICY}:
+    from backend.stages.pdf_parsing.layout import PARSING_POLICY
+    if metadata.get('parsing_policy') != PARSING_POLICY:
         raise ValueError('Saved PDF parsing policy is unavailable; use a fresh extraction')
     if metadata.get('claims_per_packet') not in (None, claims_per_packet):
         raise ValueError('Resume requires the original extraction claim limit per packet')
@@ -108,6 +121,15 @@ def resume_metadata(output, pdf, settings, max_pages, claims_per_packet, *, extr
             raise ValueError('Extraction targeting version changed; start a new run')
         if target_words is not None and metadata.get('extraction_target_words') != target_words:
             raise ValueError('Resume requires the original extraction target size')
+    expected_contract = (
+        CLOSED_EXTRACTION_CONTRACT_VERSION if metadata.get('predicate_set_version') else EXTRACTION_CONTRACT_VERSION
+    )
+    if (metadata.get('extraction_contract_version') != expected_contract
+            or metadata.get('targeting_version') != TARGETING_VERSION
+            or metadata.get('anchoring_policy') != ANCHORING_POLICY
+            or metadata.get('reading_context_policy') != READING_CONTEXT_POLICY
+            or metadata.get('predicate_set_version') not in (None, CLOSED_PREDICATE_SET_VERSION)):
+        raise ValueError('Extraction contract or reading-context policy changed; start a fresh extraction')
     if not metadata.get('extraction_complete') or not (output / 'candidates.jsonl').is_file():
         packets = read_jsonl(output / 'extraction_packets.jsonl')
         completed = [p for p in packets if p.get('status') == 'completed']
@@ -136,6 +158,13 @@ def resume_metadata(output, pdf, settings, max_pages, claims_per_packet, *, extr
         raise ValueError('Saved candidates do not have complete matching PDF provenance')
     if any(not valid_relation_wording(row['relation']) for row in candidates):
         raise ValueError('Saved extraction contains incomplete relation labels; start a new run to extract complete predicates')
+    if metadata.get('predicate_set_version') == CLOSED_PREDICATE_SET_VERSION and any(
+        not row.get('schema_error') and not (
+            (row.get('predicate_alias') in CLOSED_PREDICATES and not row.get('measured_comparison'))
+            or (row.get('measured_comparison') and 'predicate_alias' not in row and 'proposed_relation_iri' not in row)
+        ) for row in candidates
+    ):
+        raise ValueError('Saved closed-relation extraction contains invalid predicate aliases; start a new run')
     return metadata
 
 

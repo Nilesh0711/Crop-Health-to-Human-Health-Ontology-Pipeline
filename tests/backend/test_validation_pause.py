@@ -89,7 +89,7 @@ def test_health_requires_only_active_models(monkeypatch):
     assert health['model_ready']
     assert set(health['pipeline']['task_models']) == {'extraction'}
     assert health['pipeline']['stage_status']['ontology_grounding'] == 'manual'
-    assert health['pipeline']['manual_grounding']['enabled']
+    assert health['pipeline']['manual_grounding']['enabled'] is True
     assert health['validation']['enabled'] is False
     assert health['pipeline']['stage_status']['project_scope'] == 'paused'
 
@@ -129,7 +129,8 @@ def test_document_run_and_resume_never_create_validation_clients(tmp_path, monke
     def extract(*args, **kwargs):
         extraction_calls.append(True)
         kwargs['packet_results'].append({'packet_number': 1, 'status': 'completed'})
-        extracted = claim(subject='phosphate', relation='increases', object='root length',
+        extracted = claim(subject='root', relation='part of', predicate_alias='P7', object='root system',
+                          source_evidence_span='The root is part of the root system.',
                           source_pdf_sha256=file_hash(pdf), source_document_id='paper')
         for key in ('subject_type', 'object_type', 'certainty'):
             extracted.pop(key, None)

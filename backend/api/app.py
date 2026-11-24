@@ -31,6 +31,7 @@ from backend.shared.jobs import ACTIVE_STATUSES, save_job, read_job, interrupt_j
 from backend.shared.cancellation import CancellationToken, PipelineStopped, cancellation_scope, check_cancelled
 from backend.pipelines.pathways import assemble_saved_pathways
 from backend.pipelines.ontology import rebuild as rebuild_ontology
+from backend.stages.claim_extraction.contract import CLOSED_EXTRACTION_CONTRACT_VERSION, SAVED_CLOSED_EXTRACTION_VERSIONS
 from backend.stages.pathway_assembly.assembly import read_assembly
 from backend.stages.source_validation.abbreviations import SOURCE_VALIDATION_POLICY
 from backend.stages.source_validation.summary import source_assessment_counts
@@ -212,7 +213,8 @@ def _run_worker(job_id: str, options: RunOptions) -> None:
             label = f'Redoing external validation of all selected assembled pathways for {pdf.name}; saved extraction is retained'
         _emit(job_id, "stage", label)
         if _jobs[job_id].get('action') in {'assemble_pathways', 'ground_claims'}:
-            result = assemble_saved_pathways(ONTOLOGY_DIR, _output_dir(pdf), lambda level,message:_emit(job_id, level, message), thinking=options.thinking.model_dump())
+            result = assemble_saved_pathways(ONTOLOGY_DIR, _output_dir(pdf), lambda level,message:_emit(job_id, level, message),
+                                             thinking=options.thinking.model_dump())
         elif _jobs[job_id].get('action'):
             result = run_claim_action(pdf, _output_dir(pdf), _jobs[job_id]['candidate_id'],
                                       _jobs[job_id]['action'], options.articles_per_pathway,
@@ -309,7 +311,9 @@ def health() -> dict[str, Any]:
                          "model_policy": "primary_only",
                          "task_models": active_models,
                          "manual_grounding": {"enabled": MANUAL_GROUNDING_ENABLED, "model": settings.pathway_assembly_model,
-                                              "ready": ready['pathway_assembly']},
+                                              "ready": ready['pathway_assembly'],
+                                              "extraction_contract_version": CLOSED_EXTRACTION_CONTRACT_VERSION,
+                                              "compatible_extraction_versions": SAVED_CLOSED_EXTRACTION_VERSIONS},
                          "external_phase_models": settings.external_phase_models,
                          "external_phase_ready": phase_ready,
                          "external_top_chunks": settings.external_top_chunks,
@@ -398,6 +402,8 @@ from backend.api.routes.ontology import create_router as create_ontology_router
 app.include_router(create_ontology_router(sys.modules[__name__]))
 from backend.api.routes.grounding_tester import create_router as create_grounding_tester_router
 app.include_router(create_grounding_tester_router(sys.modules[__name__]))
+from backend.api.routes.single_stage import create_router as create_single_stage_router
+app.include_router(create_single_stage_router(sys.modules[__name__]))
 
 dist = FRONTEND_DIST_DIR
 if dist.exists():

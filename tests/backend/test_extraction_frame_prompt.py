@@ -11,11 +11,14 @@ def test_schema_and_prompt_put_each_endpoint_next_to_its_context_before_relation
     assert {'subject_anchor', 'object_anchor'} <= set(schema['properties'])
     assert set(schema['required']) == {'subject', 'object', 'relation', 'qualifiers', 'evidence_sentence_ids'}
     prompt = build_extraction_prompt(0, 'target_context')
-    assert 'subject and object must differ' in prompt
-    assert 'table/figure titles' in prompt
-    assert 'qualifiers.comparator' in prompt
-    assert 'Never put numbers/percentages' in schema['properties']['relation']['description']
-    assert Settings().task_thinking['extraction'] is False  # Comparison does not change defaults.
+    assert 'Both endpoints must differ' in prompt
+    assert 'bare markers and headings are not findings' in prompt
+    assert 'comparator: baseline or compared group' in prompt
+    description = schema['properties']['relation']['description']
+    assert 'numbers in qualifiers.metric' in description
+    assert 'endpoint_context' not in description
+    assert 'qualifiers.comparator' in description and 'qualifiers.population' in description
+    assert Settings().task_thinking['extraction'] is True
 
 
 def test_schema_does_not_require_key_order_or_reject_legitimate_multiword_predicates():

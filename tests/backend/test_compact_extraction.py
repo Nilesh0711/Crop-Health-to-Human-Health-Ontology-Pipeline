@@ -19,6 +19,9 @@ from backend.stages.ontology_grounding.grounder import request_packet
 from backend.stages.ontology_grounding.retrieval import ConceptIndex
 from tests.backend.test_extraction_targets import claim, extract_fixture
 from tests.backend.test_ontology_grounding import claim as saved_claim
+from backend.stages.claim_extraction.targeting import TARGETING_VERSION, READING_CONTEXT_POLICY
+from backend.stages.claim_extraction.anchoring import ANCHORING_POLICY
+from backend.stages.pdf_parsing.layout import PARSING_POLICY
 
 
 def test_model_output_requests_only_five_required_fields_with_optional_types():
@@ -26,7 +29,7 @@ def test_model_output_requests_only_five_required_fields_with_optional_types():
     validate_schema({'claims': [item]}, EXTRACTION_RESPONSE_SCHEMA)
     record = EXTRACTION_RESPONSE_SCHEMA['properties']['claims']['items']
     assert set(record['required']) == {'subject','relation','object','qualifiers','evidence_sentence_ids'}
-    assert set(record['properties']) == set(record['required']) | {'subject_type', 'object_type', 'subject_anchor', 'object_anchor'}
+    assert set(record['properties']) == set(record['required']) | {'subject_type', 'object_type', 'subject_anchor', 'object_anchor', 'measured_comparison'}
     assert 'may' in item['relation']
     assert 'claim_text' not in record['properties']
 
@@ -43,24 +46,24 @@ def test_compact_prompt_has_one_active_vocabulary_and_no_grounding_catalogue():
     assert len(prompt + json.dumps(EXTRACTION_RESPONSE_SCHEMA)) < 21000
 
 
-def test_extraction_prompt_uses_rules_without_few_shot_examples():
+def test_extraction_prompt_uses_bounded_abstract_instructions():
     prompt = EXTRACTION_PROMPT.read_text(encoding='utf-8')
     assert '<example_source>' not in prompt and '<example_output>' not in prompt
     assert 'FEW-SHOT' not in prompt
     assert 'evidence_sentence_ids' in prompt
-    assert 'Never turn A→B→C into A→C' in prompt and 'subject and object must differ' in prompt
+    assert 'Never turn a multi-link route into a direct effect' in prompt and 'Both endpoints must differ' in prompt
 
 
-def test_hybrid_thinking_defaults_with_explicit_extraction_on_supported():
+def test_production_thinking_defaults_and_explicit_extraction_override():
     from backend.api.contracts import RunOptions
-    expected = {task: task == 'pathway_assembly' for task in Settings().task_models}
+    expected = {task: task in {'extraction', 'pathway_assembly'} for task in Settings().task_models}
     assert Settings().task_thinking == expected
     assert RunOptions().thinking.model_dump() == expected
-    assert RunOptions(thinking={'extraction': True}).thinking.extraction is True
-    assert Settings(thinking={'extraction': True}).task_thinking['extraction'] is True
+    assert RunOptions(thinking={'extraction': False}).thinking.extraction is False
+    assert Settings(thinking={'extraction': False}).task_thinking['extraction'] is False
 
 
-@pytest.mark.parametrize('task,enabled', [('extraction', False), ('pathway_assembly', True)])
+@pytest.mark.parametrize('task,enabled', [('extraction', True), ('pathway_assembly', True)])
 def test_hybrid_defaults_reach_provider_payload_without_network(monkeypatch, task, enabled):
     from backend.providers.inference import InferenceHTTP
     payloads, metrics = [], []
@@ -143,7 +146,10 @@ def test_completed_bad_extraction_cannot_resume(tmp_path):
     settings = Settings()
     save_checkpoint(tmp_path, {'schema_version': SCHEMA_VERSION, 'pdf_sha256': file_hash(pdf),
         'task_models': settings.task_models, 'thinking': settings.task_thinking, 'max_pages': 0,
-        'claims_per_packet': 0, 'extraction_mode': 'whole_packet', 'extraction_complete': True})
+        'claims_per_packet': 0, 'extraction_mode': 'whole_packet', 'extraction_complete': True,
+        'extraction_contract_version': EXTRACTION_CONTRACT_VERSION, 'targeting_version': TARGETING_VERSION,
+        'reading_context_policy': READING_CONTEXT_POLICY, 'parsing_policy': PARSING_POLICY,
+        'anchoring_policy': ANCHORING_POLICY})
     save_rows(tmp_path / 'candidates.jsonl', [{'candidate_id': 'one', 'subject': 'Material M',
         'relation': 'c', 'object': 'Trait Q', 'schema_error': None, 'source_pdf_sha256': file_hash(pdf)}])
     with pytest.raises(ValueError, match='incomplete relation labels; start a new run'):
@@ -176,7 +182,14 @@ def test_cache_requires_current_output_contract_including_empty_results(tmp_path
                                   'accepted_response': {'claims': []}}), encoding='utf-8')
     assert _load_cached_packet_claims(tmp_path, 'whole_packet') == {}
     save_rows(tmp_path / 'extraction_packets.jsonl', [{'status': 'completed', 'packet_number': 1,
-              'output_contract_version': EXTRACTION_CONTRACT_VERSION}])
+              'output_contract_version': EXTRACTION_CONTRACT_VERSION, 'targeting_version': TARGETING_VERSION,
+              'reading_context_policy': READING_CONTEXT_POLICY, 'parsing_policy': PARSING_POLICY,
+              'anchoring_policy': ANCHORING_POLICY, 'extraction_mode': 'whole_packet'}])
+    assert _load_cached_packet_claims(tmp_path, 'whole_packet') == {}
+    content = json.loads(archive.read_text(encoding='utf-8'))
+    content.update(targeting_version=TARGETING_VERSION, reading_context_policy=READING_CONTEXT_POLICY,
+                   parsing_policy=PARSING_POLICY, anchoring_policy=ANCHORING_POLICY, extraction_mode='whole_packet')
+    archive.write_text(json.dumps(content), encoding='utf-8')
     assert _load_cached_packet_claims(tmp_path, 'whole_packet') == {'packet_1': []}
     old = claim([2]); old.update(subject_type='Crop', object_type='Contaminant', certainty='conditional')
     archive.write_text(json.dumps({'status': 'ok', 'extraction_contract_version': EXTRACTION_CONTRACT_VERSION, 'task': 'extraction packet 1/1',

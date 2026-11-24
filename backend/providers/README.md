@@ -55,10 +55,11 @@ are preserved by recovery. This application setting is not a
 claim about the provider's maximum limit and does not guarantee completion.
 
 1. Make the scientific request with its selected model and original evidence.
-2. Parse the supplied JSON strictly. No local correction is attempted, including
-   removal of Markdown/prose or automatic movement of an annotation brace.
+2. Parse the supplied JSON strictly. Bounded extraction can collapse identical
+   string copies of a finding's `relation_anchor`. The raw response and the
+   affected field path remain archived. Schema and source checks still apply.
 3. If response content is missing (empty/token-truncated answer, unfinished value,
-   schema violation, duplicate JSON properties, or missing required proof/item coverage), regenerate ONCE
+   schema violation, ambiguous duplicate JSON properties, or missing required proof/item coverage), regenerate ONCE
    with the same model, original input, evidence selection and schema. The old
    partial answer is not reconstructed or used as new scientific evidence.
    A missing closing brace after complete values is a syntax issue instead.

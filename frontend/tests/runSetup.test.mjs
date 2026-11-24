@@ -47,15 +47,15 @@ try {
     options: current, onOptions: () => {}, open: true, onToggle: () => {},
   }))
   const { defaultThinking, resumeWithThinking } = await server.ssrLoadModule('/src/lib/thinking.js')
-  assert.ok(Object.entries(defaultThinking()).every(([key, value]) => value === (key === 'pathway_assembly')))
+  assert.ok(Object.entries(defaultThinking()).every(([key, value]) => value === ['extraction', 'pathway_assembly'].includes(key)))
   const resumed = resumeWithThinking({max_pages:2, extraction_mode:'whole_packet', thinking:defaultThinking()}, {thinking:{external:false}})
   assert.equal(resumed.max_pages, 2)
   assert.equal(resumed.thinking.external, false)
-  assert.equal(resumed.thinking.extraction, false)
+  assert.equal(resumed.thinking.extraction, true)
   const target = render(options)
   assert.equal((target.match(/role="switch"/g) || []).length, 5)
-  assert.equal((target.match(/aria-checked="false"/g) || []).length, 4)
-  assert.match(target, /Thinking defaults to Off for extraction and On for ontology grounding/)
+  assert.equal((target.match(/aria-checked="false"/g) || []).length, 3)
+  assert.match(target, /Thinking defaults to On for extraction and ontology grounding/)
   assert.match(target, /Per-paper judgement model/)
   assert.match(target, /Cross-paper synthesis model/)
   assert.match(target, /DeepSeek Flash judges each paper/)
@@ -70,11 +70,11 @@ try {
     const group = target.match(new RegExp(`<div class="assigned-model" role="group" aria-label="${label} model settings">(.*?)</div>`))?.[1]
     assert.ok(group, `Missing combined model/thinking group for ${label}`)
     assert.ok(group.includes(taskModels[key]))
-    assert.ok(group.includes(`aria-label="${label} thinking" aria-checked="${key === 'pathway_assembly'}"`))
+    assert.ok(group.includes(`aria-label="${label} thinking" aria-checked="${['extraction', 'pathway_assembly'].includes(key)}"`))
   }
   const onMarkup = render({...options, thinking:{external:true}})
   assert.match(onMarkup, /aria-label="External judgement thinking" aria-checked="true"/)
-  assert.equal((onMarkup.match(/aria-checked="false"/g) || []).length, 3)
+  assert.equal((onMarkup.match(/aria-checked="false"/g) || []).length, 2)
 
   assert.match(target, /<option(?=[^>]*value="target_context")(?=[^>]*selected)[^>]*>/)
   assert.match(target, /Target size \(words\)/)

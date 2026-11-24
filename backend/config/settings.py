@@ -46,15 +46,15 @@ class Settings:
     """Runtime configuration for hosted LLMs and local specialist models."""
 
     thinking: dict[str, bool] = field(default_factory=lambda: {
-        task: task == 'pathway_assembly' for task in TASK_DEFAULT_MODELS})
+        task: task in {'extraction', 'pathway_assembly'} for task in TASK_DEFAULT_MODELS})
     extraction_model: str = os.getenv("EXTRACTION_MODEL", DEFAULT_EXTRACTION_MODEL)
     source_model: str = os.getenv('OPEN_CODE_SOURCE_MODEL', TASK_DEFAULT_MODELS['source'])
     query_model: str = os.getenv('OPEN_CODE_QUERY_MODEL', TASK_DEFAULT_MODELS['query'])
     external_model: str = os.getenv('OPEN_CODE_EXTERNAL_MODEL', DEFAULT_EXTERNAL_MODEL)
     external_paper_model: str = os.getenv('OPEN_CODE_EXTERNAL_PAPER_MODEL', DEFAULT_SOURCE_MODEL)
     pathway_assembly_model: str = os.getenv('OPEN_CODE_PATHWAY_ASSEMBLY_MODEL', TASK_DEFAULT_MODELS['pathway_assembly'])
-    ontology_grounding_batch_size: int = int(os.getenv('ONTOLOGY_GROUNDING_BATCH_SIZE', '3'))
-    ontology_grounding_workers: int = int(os.getenv('ONTOLOGY_GROUNDING_WORKERS', '5'))
+    ontology_grounding_batch_size: int = 1
+    ontology_grounding_workers: int = 5
     ontology_grounding_timeout_seconds: int = int(os.getenv('ONTOLOGY_GROUNDING_TIMEOUT_SECONDS', '600'))
     ontology_grounding_output_format: str = os.getenv('ONTOLOGY_GROUNDING_OUTPUT_FORMAT', 'json')
     pathway_assembly_batch_size: int = int(os.getenv('PATHWAY_ASSEMBLY_BATCH_SIZE', '24'))

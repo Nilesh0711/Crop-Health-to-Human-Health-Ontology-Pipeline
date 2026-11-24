@@ -7,15 +7,23 @@ from rdflib.namespace import RDF, RDFS, XSD
 
 from backend.ontology.catalog import catalog as load_catalog, LOCAL
 from backend.ontology.signatures import inventory_signature
+from backend.ontology.inventory_policy import inventory_stale
+from backend.ontology.inventory import open_inventory
 from backend.ontology.registry import entity_registry
+from backend.ontology.policies import ENTITY_GROUNDING_POLICY
 from backend.stages.ontology_grounding.grounder import ground_claims, claim_signature, GROUNDING_POLICY
-from backend.stages.ontology_grounding.grouping import evidence_groups, group_signature
+from backend.stages.ontology_grounding.grouping import evidence_groups, group_signature, CONSISTENCY_POLICY
+from backend.stages.ontology_grounding.source_context import definition_context_stale
 from backend.stages.ontology_reasoning.engine import reason
+from backend.stages.ontology_reasoning.merging import build_merged_chains
 from backend.shared.artifacts import save_json
-from backend.shared.storage import read_jsonl, stable_hash, utc_now
+from backend.shared.storage import read_jsonl, stable_hash, utc_now, file_hash
 from backend.shared.cancellation import check_cancelled
-from backend.stages.claim_extraction.contract import valid_relation_wording
+from backend.stages.claim_extraction.contract import uses_entity_only_grounding, valid_relation_wording
 from backend.config.pipeline import POST_GROUNDING_STAGES_PAUSED, POST_GROUNDING_PAUSED_MESSAGE, stage_status
+from backend.domain.extraction_review import refresh_eligibility, ELIGIBILITY_POLICY
+from backend.domain.classification import classification_counts, comparison_complete, CLASSIFICATION_POLICY
+from backend.ontology.usage import direct_property_allowed
 
 DIRECTORY = '.ontology_grounding'
 
@@ -24,6 +32,7 @@ def current_assertions(root, reference):
     rows, stale = [], []
     for path in sorted(root.glob('*/ontology_grounding.jsonl')):
         candidates = {c['candidate_id']: c for c in read_jsonl(path.parent / 'candidates.jsonl')}
+        context_file_hash = file_hash(path.parent / 'extraction_contexts.jsonl')
         group_signatures = {}
         for row in read_jsonl(path):
             candidate = candidates.get(row['candidate_id'])
@@ -34,12 +43,18 @@ def current_assertions(root, reference):
                     for group in evidence_groups(valid, maximum) for c in group}
             if (candidate is None or candidate.get('schema_error') or candidate.get('superseded_by')
                     or row.get('catalog_signature') != reference.signature
-                    or row.get('policy') != GROUNDING_POLICY
+                    or inventory_stale(row) or row.get('policy') not in {GROUNDING_POLICY, ENTITY_GROUNDING_POLICY}
+                    or definition_context_stale(row)
+                    or row.get('definition_file_sha256') is not None
+                    and row['definition_file_sha256'] != context_file_hash
+                    or row.get('eligibility_policy') != ELIGIBILITY_POLICY
+                    or row.get('consistency_policy') != CONSISTENCY_POLICY
+                    or row.get('classification_policy') != CLASSIFICATION_POLICY
                     or row.get('group_signature') != group_signatures[maximum].get(row['candidate_id'])
                     or row.get('claim_signature') != claim_signature(candidate)):
                 stale.append({'candidate_id': row['candidate_id'], 'document_key': path.parent.name})
             else:
-                rows.append(row)
+                rows.append(refresh_eligibility(row, reference))
     return rows, stale
 
 
@@ -73,7 +88,8 @@ def rebuild(root, reference=None):
         'source_inventory': inventory_signature(root), 'profile': reference.profile,
         'assertions': rows, 'stale_assertions': stale,
         'entities': registry,
-        'counts': {'claims': len(rows), 'entities': len(registry),
+        'merged_chains': build_merged_chains(rows, reference),
+        'counts': {**classification_counts(rows, reference), 'claims': len(rows), 'entities': len(registry),
                    'mapped_claims': sum(r['assembly_eligible'] for r in rows),
                    'grounded_entities': sum(e['status'] == 'grounded' for e in registry),
                    'grounded_mentions': sum(len(e['occurrences']) for e in registry if e['status'] == 'grounded'),
@@ -132,28 +148,31 @@ def export_rdf(path, reference, rows):
             if b['mapping'] == 'exact' and b['iri']:
                 graph.add((occurrence, URIRef(LOCAL + 'denotesConcept'), URIRef(b['iri'])))
         relation = row['bindings']['relation']
-        if relation['mapping'] == 'exact' and relation['iri']:
+        if relation['mapping'] == 'exact' and relation['iri'] and direct_property_allowed(relation['iri']):
             graph.add((identifier, RDF.predicate, URIRef(relation['iri'])))
     temporary = path.with_suffix('.ttl.tmp')
     graph.serialize(destination=str(temporary), format='turtle')
     temporary.replace(path)
 
 
-def run_grounding(root, output, candidates, client, settings, emit, *, reference=None, encoder=None):
+def run_grounding(root, output, candidates, client, settings, emit, *, reference=None, encoder=None,
+                  preserve_unselected=False):
     if any(not valid_relation_wording(c.get('relation')) for c in candidates):
         raise ValueError('Saved extraction contains incomplete relation labels; start a new run to extract complete predicates')
     reference = reference or load_catalog()
-    emit('stage', 'Grounding potato soil-nutrition claims against frozen established ontology definitions')
+    entity_only = bool(candidates) and all(uses_entity_only_grounding(claim) for claim in candidates)
+    emit('stage', 'Grounding saved subject and object mentions with fixed predicates' if entity_only else
+         'Grounding potato soil-nutrition claims against frozen established ontology definitions')
     emit('info', f'Ontology grounding uses {client.model}; primary model only; '
          f'{getattr(client.settings, "request_timeout_seconds", settings.ontology_grounding_timeout_seconds)}s timeout; '
-         f'{settings.ontology_grounding_batch_size} claims per batch; '
-         f'up to {settings.ontology_grounding_workers} requests in parallel; '
+         'one claim per request; up to 5 requests in parallel; '
          f'output={settings.ontology_grounding_output_format}')
-    emit('info', f'All {len(reference.profile["allowed_classes"])} approved classes and '
-         f'{len(reference.profile["allowed_object_properties"])} relationship properties are supplied; no class shortlisting')
+    inventory = open_inventory()
+    emit('info', 'Lexical search supplies up to 14 candidates per endpoint. Each claim retains its extracted predicate.'
+         if entity_only else f'Lexical search supplies up to 14 class choices per endpoint and 10 relation choices per claim '
+         f'from {len(reference.profile["allowed_object_properties"])} searchable properties.')
     rows = ground_claims(candidates, output, reference, client, encoder=encoder,
-                        batch_size=getattr(settings, 'ontology_grounding_batch_size', 1),
-                        workers=settings.ontology_grounding_workers, emit=emit)
+                        batch_size=1, workers=5, emit=emit, inventory=inventory, preserve_unselected=preserve_unselected)
     check_cancelled()
     if POST_GROUNDING_STAGES_PAUSED:
         emit('info', POST_GROUNDING_PAUSED_MESSAGE)
@@ -161,9 +180,11 @@ def run_grounding(root, output, candidates, client, settings, emit, *, reference
         emit('stage', 'Reasoning over imported named axioms and reviewed context-guarded rules')
     state, reasoning = rebuild(root, reference)
     local_registry = entity_registry(rows)
-    summary = {'scope': dict(Counter(r['scope'] for r in rows)), 'claims': len(rows),
+    summary = {**classification_counts(rows, reference), 'classification_policy': CLASSIFICATION_POLICY,
+               'scope': dict(Counter(r['scope'] for r in rows)), 'claims': len(rows),
                'mapped_claims': sum(r['assembly_eligible'] for r in rows),
-               'needs_review': sum(not r['assembly_eligible'] and r['scope'] != 'out_of_scope' for r in rows),
+               'needs_review': sum(not r['assembly_eligible'] and r['scope'] != 'out_of_scope'
+                                   and not comparison_complete(r) for r in rows),
                'catalog_signature': reference.signature, 'profile_id': reference.profile['id'],
                'grounded_entities': sum(e['status'] == 'grounded' for e in local_registry),
                'grounded_mentions': sum(len(e['occurrences']) for e in local_registry if e['status'] == 'grounded'),
@@ -173,8 +194,11 @@ def run_grounding(root, output, candidates, client, settings, emit, *, reference
                'reasoning': reasoning['counts'], 'reasoning_coverage': reasoning['coverage'],
                'post_grounding_stages_paused': POST_GROUNDING_STAGES_PAUSED,
                'stage_status': stage_status()}
+    if entity_only:
+        summary['mode'] = 'entity_only'
     save_json(output / 'ontology_grounding_summary.json', summary)
-    emit('success', f'Grounding complete: {summary["grounded_mentions"]} endpoint mentions grounded independently; '
-         f'{summary["mapped_claims"]}/{len(rows)} complete claims have exact in-scope mappings; '
-         f'{summary["needs_review"]} need review. Scientific validation remains paused.')
+    emit('success', f'Classification complete: {summary["classified_endpoint_mentions"]} endpoint mentions and '
+         f'{summary["classified_relation_mentions"]} relations classified (exact or broader); '
+         f'{summary["classified_claims"]}/{len(rows)} claims completely classified; '
+         f'{summary["classification_review_claims"]} require classification review. Scientific validation remains paused.')
     return state, summary

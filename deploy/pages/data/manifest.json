@@ -1,49 +1,169 @@
 {
   "format": "static-pages-viewer-v1",
-  "created_at": "2026-11-11T17:12:03.938241+00:00",
+  "created_at": "2026-11-24T15:45:16.069168+00:00",
   "documents": {
+    "77f710eb77a00465": {
+      "claims": "pdfs/77f710eb77a00465/claims.json",
+      "logs": "pdfs/77f710eb77a00465/logs.json"
+    },
+    "8f713b9953b9ef93": {
+      "claims": "pdfs/8f713b9953b9ef93/claims.json",
+      "logs": "pdfs/8f713b9953b9ef93/logs.json"
+    },
+    "28e5bb337e3db7e6": {
+      "claims": "pdfs/28e5bb337e3db7e6/claims.json",
+      "logs": "pdfs/28e5bb337e3db7e6/logs.json"
+    },
+    "73fa1b9068e5f881": {
+      "claims": "pdfs/73fa1b9068e5f881/claims.json",
+      "logs": "pdfs/73fa1b9068e5f881/logs.json"
+    },
     "4310b7ae2d54eecc": {
       "claims": "pdfs/4310b7ae2d54eecc/claims.json",
       "logs": "pdfs/4310b7ae2d54eecc/logs.json"
+    },
+    "56818085db77fe8e": {
+      "claims": "pdfs/56818085db77fe8e/claims.json",
+      "logs": "pdfs/56818085db77fe8e/logs.json"
+    },
+    "cf96813b868c16c3": {
+      "claims": "pdfs/cf96813b868c16c3/claims.json",
+      "logs": "pdfs/cf96813b868c16c3/logs.json"
+    },
+    "fa5ed79eef2f8740": {
+      "claims": "pdfs/fa5ed79eef2f8740/claims.json",
+      "logs": "pdfs/fa5ed79eef2f8740/logs.json"
+    },
+    "b792dc41cf6ee189": {
+      "claims": "pdfs/b792dc41cf6ee189/claims.json",
+      "logs": "pdfs/b792dc41cf6ee189/logs.json"
+    },
+    "52ec8864c4da1501": {
+      "claims": "pdfs/52ec8864c4da1501/claims.json",
+      "logs": "pdfs/52ec8864c4da1501/logs.json"
+    },
+    "47bc916cde7746eb": {
+      "claims": "pdfs/47bc916cde7746eb/claims.json",
+      "logs": "pdfs/47bc916cde7746eb/logs.json"
     }
   },
   "files": {
+    "pdfs/77f710eb77a00465/claims.json": {
+      "size": 23,
+      "sha256": "dd7a6f2ba4c3c5e342e83ced4d35043d1bb72db4dbfb336bdf9146f09185efc5"
+    },
+    "pdfs/77f710eb77a00465/logs.json": {
+      "size": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pdfs/8f713b9953b9ef93/claims.json": {
+      "size": 2361,
+      "sha256": "d7cb9a91aa021a2fa13e44b4fc930c0c6db8dc7eeacf4da080bb1335e88ab5f2"
+    },
+    "pdfs/8f713b9953b9ef93/logs.json": {
+      "size": 4212,
+      "sha256": "74145e95d5923643ece8de35f7414f6af0a48164bdda58871dfd8d634b55dadf"
+    },
+    "pdfs/28e5bb337e3db7e6/claims.json": {
+      "size": 23,
+      "sha256": "dd7a6f2ba4c3c5e342e83ced4d35043d1bb72db4dbfb336bdf9146f09185efc5"
+    },
+    "pdfs/28e5bb337e3db7e6/logs.json": {
+      "size": 3197,
+      "sha256": "2aeb298594614f671dbd86914485e5c8b6f1195cf87635898481e9ad1a7a73e2"
+    },
+    "pdfs/73fa1b9068e5f881/claims.json": {
+      "size": 58722,
+      "sha256": "c3ebd25a98d85ff784747fcb16692e5348c859902388fb5b1dc872bdfa195338"
+    },
+    "pdfs/73fa1b9068e5f881/logs.json": {
+      "size": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
     "pdfs/4310b7ae2d54eecc/claims.json": {
-      "size": 395266,
-      "sha256": "b65150d8ee2ffb4a35bd7cd80a3729c0450955361786a533933e83f8a5414127"
+      "size": 95602,
+      "sha256": "829747b70a75fc0836a6146a8e598a18d7e2377deb688e4625e748260f54c7c7"
     },
     "pdfs/4310b7ae2d54eecc/logs.json": {
-      "size": 58628,
-      "sha256": "fc4c9437354f291c301d44a4335998822e5e1ea7586547921cfd57a9ebfff001"
+      "size": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pdfs/56818085db77fe8e/claims.json": {
+      "size": 15756,
+      "sha256": "c86a88915a352273ea6a76e332b6a2da2ebdd31b1cb828094f2b957732f777a8"
+    },
+    "pdfs/56818085db77fe8e/logs.json": {
+      "size": 13082,
+      "sha256": "2dcd07025284c744110b55a96d369e042a780946d43ad6d510f80435cd73f150"
+    },
+    "pdfs/cf96813b868c16c3/claims.json": {
+      "size": 41685,
+      "sha256": "7528b88f48c0b9ee458894693e9891897103c04d928ef90c784f45336e8a833b"
+    },
+    "pdfs/cf96813b868c16c3/logs.json": {
+      "size": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pdfs/fa5ed79eef2f8740/claims.json": {
+      "size": 26328,
+      "sha256": "3241f8c9db6cbb3b67eb9c8a4a0b26c25f8ddbb9498d4782d01f3c85f12267eb"
+    },
+    "pdfs/fa5ed79eef2f8740/logs.json": {
+      "size": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pdfs/b792dc41cf6ee189/claims.json": {
+      "size": 144699,
+      "sha256": "fc9bfbc56725940100159e324f67aed8116006b720d16413a85282b11671b353"
+    },
+    "pdfs/b792dc41cf6ee189/logs.json": {
+      "size": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pdfs/52ec8864c4da1501/claims.json": {
+      "size": 4584,
+      "sha256": "cd30c27e4754b915ef3d9c133190a7ace9e0ae1f9bf62632d74ebeae3ee2e9f3"
+    },
+    "pdfs/52ec8864c4da1501/logs.json": {
+      "size": 5321,
+      "sha256": "a69d821895479cddde12acb197c7f345ad66b1e1ea2bddbb7ba41d5806b6cf26"
+    },
+    "pdfs/47bc916cde7746eb/claims.json": {
+      "size": 2494,
+      "sha256": "4911292f7a548d603afa7ce85f7a33d2b28fff64007604bc3cfe2ddcfe08b390"
+    },
+    "pdfs/47bc916cde7746eb/logs.json": {
+      "size": 3353,
+      "sha256": "82f9e9525e37eb64c81aa442017501fd1edc10d43ccad4f2ca6839694f98eea6"
     },
     "pdfs.json": {
-      "size": 17340,
-      "sha256": "952bcc9980e6d989434012e64f29cad8af21cd5173002bc836d58611a39a4c61"
+      "size": 222662,
+      "sha256": "a8c7f9ca16700ae8aa73872827bff9a86849df230c0484af1abc83ace2593d97"
     },
     "ontology-status.json": {
-      "size": 46347,
-      "sha256": "34a63592fa6ac53b83c083d309a03e2a7be1e1efacc2cbcb16909c9c7ee84f27"
+      "size": 54753,
+      "sha256": "55d0ffc93fa00535f6f09eb75d5baa4ab6a6a0180e46ecbe6262540768bf421c"
     },
     "ontology-catalog.json": {
-      "size": 458882,
-      "sha256": "7fe4a3dd4ca70c987bc4ac2348aa5575fa35c712241ed8dafe3058d736a40b9a"
+      "size": 1907152,
+      "sha256": "ad77be252744d37ff495d260ac437fab3efbe022346db2a3b042d9ce7ae4dbdb"
     },
     "ontology-assertions.json": {
-      "size": 686707,
-      "sha256": "d5f063213797f1d9f1cae2e2bffe9071583e377b5af9b3de5199a88dcdbb70e1"
+      "size": 1442601,
+      "sha256": "7368432866ea31240c71ed6d5492255d7f7995d657d32d5678b6ce9e2e719030"
     },
     "ontology-entities.json": {
-      "size": 333740,
-      "sha256": "f3a670b85adf24f1b471a28c26f7af07b69fd42b8f671710ef03f969b32babeb"
+      "size": 264859,
+      "sha256": "7f9817cb3f9e4785be1803d1fad31d50c56368054167803792df737e20d4210a"
     },
     "ontology-reasoning.json": {
-      "size": 316,
-      "sha256": "ae06090b0ea79b4ecf8681c3767ea994543d6a2aa62b8257b181c07a8d2bfef4"
+      "size": 519486,
+      "sha256": "79e1dc6c5d1d625e96a9a54a339b77d13f16acf0e29e972d18f830265baba7eb"
     },
     "health.json": {
-      "size": 1012,
-      "sha256": "24dd6d32997f2e3e331cdac6a3f2358c51a4b2b61763ca54601dd71a74182584"
+      "size": 1016,
+      "sha256": "261a4df678a8ac380284f633d0d3ab4bb3015327cac5fb46d560489ea6179060"
     }
   },
-  "snapshot_id": "3ea97d8200b46b07c7e68ea1"
+  "snapshot_id": "47cc37c1bed752c104891824"
 }

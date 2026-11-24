@@ -1,0 +1,30 @@
+{
+  "run": "784d83848d4c4bab9be77e054cbc04a7",
+  "pdf_sha256": "4a87265be6179466759db12c8a2fa6c9fa8d0af09cf14bdc89fd37542ede222f",
+  "endpoints": [
+    {"claim": "03d7b4efc000ae9a01f60dff7665758f", "role": "subject", "acceptable": {"NCBITaxon:4113": "exact"}, "review": "The subject explicitly names the species."},
+    {"claim": "03d7b4efc000ae9a01f60dff7665758f", "role": "object", "acceptable": {"PATO:0001029": "broader", "TO:0000387": "broader"}, "review": "An efficiency or plant-trait parent preserves the distinction from phosphorus uptake."},
+    {"claim": "0399bffe65fa9134a072a32c0b3e5de8", "role": "subject", "acceptable": {}, "review_candidates": ["PECO:0007397"], "review": "Experimental nutrient exposure is worth checking, but the background sentence only asserts optimal supply. A chemical entity changes the meaning."},
+    {"claim": "96b77d64247a6b4192e8cc84cccfd73c", "role": "object", "acceptable": {"TO:0001166": "exact"}, "review": "Quality of starch is the measured quality concept."},
+    {"claim": "26b99d0d46234f628d0e43b6c1898555", "role": "object", "acceptable": {"GO:0040007": "broader"}, "review": "Growth is a broader process covering root growth."},
+    {"claim": "04864b9b3d474e67f3d0899b0b2198ee", "role": "object", "acceptable": {"PATO:0000599": "exact"}, "review": "The source explicitly reports decreased network width."},
+    {"claim": "3135652f77a45d9e56d4b3047aa190ee", "role": "object", "acceptable": {}, "review": "Medium is a category assigned by this study. Classifying it as a general increased-size trait would discard the category definition."},
+    {"claim": "277026f6e5977aefd92742cc391c8f09", "role": "subject", "acceptable": {"PECO:0007397": "broader"}, "review": "Low phosphorus is an experimental exposure regimen here. The broader class leaves the level in the claim."},
+    {"claim": "277026f6e5977aefd92742cc391c8f09", "role": "object", "acceptable": {"TO:0000227": "exact"}, "review": "The measured root length stays distinct from root surface area."},
+    {"claim": "fea5fcfc9d9cc25c5402402c45b0bdc6", "role": "object", "acceptable": {"PATO:0001323": "broader"}, "review": "Area is broader than root surface area. Root cross-sectional area measures a different feature."},
+    {"claim": "d9ebd72e30c53c3fe49ad73c0c6dfa70", "role": "object", "acceptable": {"TO:0000078": "exact", "PATO:0000125": "broader"}, "review": "The dry root mass measurement supports the root dry-weight candidate. Mass is usable only as a broader classification."},
+    {"claim": "7fe919246282b780bcca720762d279d0", "role": "subject", "acceptable": {}, "review_candidates": ["PECO:0007397", "PECO:0001046"], "review": "Check whether the shortage denotes the experimental exposure and whether the cited evidence specifies phosphate. Preserve the restriction."},
+    {"claim": "7fe919246282b780bcca720762d279d0", "role": "object", "acceptable": {"PATO:0001470": "broader"}, "review": "A generic ratio is defensible. A length-to-length ratio would require evidence for the measurement basis."},
+    {"claim": "a316c70583b5651b5cff5f2e5e4100f6", "role": "subject", "acceptable": {"PO:0025025": "broader"}, "review": "The study describes a specific category of root systems. The hierarchy does not identify the studied category itself."},
+    {"claim": "a316c70583b5651b5cff5f2e5e4100f6", "role": "object", "acceptable": {"PO:0020121": "broader"}, "review": "The class denotes lateral roots and the source retains the restrictive quantity."},
+    {"claim": "d2181ed3ba01e39cff9e1f8a53edf037", "role": "subject", "acceptable": {"TO:0000511": "broader"}, "review": "The specific uptake observation is for the small rooting type."},
+    {"claim": "f896b2bde23ea81f94286d18bde6517e", "role": "subject", "acceptable": {"NCBITaxon:4113": "broader"}, "review": "The named cultivar is a member of the species. Preserve the cultivar context."},
+    {"claim": "fd299767dfce1bfc21de8887185336e7", "role": "object", "acceptable": {"TO:0000985": "broader"}, "review": "Total root length is a root-system morphology trait. The definition of length of a root does not establish identity with total system length."}
+  ],
+  "relations": [
+    {"claim": "463817b6c2b5f78d1b7d7241eba4b345", "expected": "unresolved", "review": "A significant difference between treatment groups is not a reported correlation."},
+    {"claim": "f905c7783ddd535ca8ec0b7fa881ba85", "expected": "unresolved", "review": "Significance of the genotype-by-treatment interaction does not assert a correlation."},
+    {"claim": "7fe919246282b780bcca720762d279d0", "expected": "unresolved", "review": "Preserve the reported non-significant result."},
+    {"claim": "0399bffe65fa9134a072a32c0b3e5de8", "expected": "unresolved", "review": "The source uses affects without asserting the conditions of a specific approved causal property."}
+  ]
+}

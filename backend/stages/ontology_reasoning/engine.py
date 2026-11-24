@@ -13,6 +13,7 @@ from rdflib.namespace import RDF, RDFS, OWL
 
 from backend.shared.storage import stable_hash, utc_now
 from backend.shared.cancellation import check_cancelled
+from backend.domain.extraction_review import assertion_eligible
 
 SUBCLASS, SUBPROPERTY, TYPE = map(str, (RDFS.subClassOf, RDFS.subPropertyOf, RDF.type))
 FORMAL = {str(RDFS.subClassOf), str(RDFS.subPropertyOf), str(OWL.equivalentClass),
@@ -45,6 +46,7 @@ def validate_rule(rule, catalog):
 def reason(catalog, assertions, *, max_facts=20000):
     facts, keys = {}, {}
     unsupported = defaultdict(int)
+    skipped_assertions = []
     def add(s, p, o, *, context='', rule=None, premises=(), source=None, scientific='ontology_axiom', conditions=None):
         key = (str(s), str(p), str(o), context)
         if key in keys:
@@ -83,6 +85,11 @@ def reason(catalog, assertions, *, max_facts=20000):
                     source={'candidate_id': row['candidate_id'], 'document_key': row['document_key'], 'role': role},
                     scientific='provisional_mapping_not_source_validated')
         if row.get('assembly_eligible'):
+            predicate = bindings.get('relation', {}).get('iri')
+            if not assertion_eligible(row) or predicate not in catalog.profile['allowed_object_properties']:
+                skipped_assertions.append({'candidate_id': row['candidate_id'],
+                    'document_key': row['document_key'], 'reason': 'missing_unapproved_or_ineligible_predicate'})
+                continue
             add('urn:soil-crop-health:' + bindings['subject']['entity_id'], bindings['relation']['iri'],
                 'urn:soil-crop-health:' + bindings['object']['entity_id'], context=context,
                 source={'candidate_id': row['candidate_id'], 'document_key': row['document_key'],
@@ -191,7 +198,8 @@ def reason(catalog, assertions, *, max_facts=20000):
         'coverage': {'supported_fragment': ['named_subclass', 'named_equivalence', 'named_subproperty',
                      'instance_classification', 'inverse_property', 'domain_range_typing'],
                      'unsupported_axiom_counts': dict(unsupported), 'complete_owl_consistency': False,
-                     'ontology_scope': catalog.manifest.get('coverage'), 'biological_rules_enabled': len(biological_rules)},
+                     'ontology_scope': catalog.manifest.get('coverage'), 'biological_rules_enabled': len(biological_rules),
+                     'skipped_assertions': skipped_assertions},
         'counts': {'asserted': sum(f['kind'] == 'asserted' for f in facts.values()),
                    'derived': sum(f['kind'] == 'derived' for f in facts.values()), 'issues': len(issues)},
         'scientific_validation': 'paused', 'whole_pathway_causation': 'not_established'}

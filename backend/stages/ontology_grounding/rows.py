@@ -1,9 +1,15 @@
 """Five-column grounding records; parse delimiters without guessing or repair."""
 from backend.providers.structured_output import SchemaValidationError
-from backend.stages.ontology_grounding.contract import GROUNDING_INSTRUCTIONS, check_response
+from backend.stages.ontology_grounding.contract import (
+    ENTITY_GROUNDING_INSTRUCTIONS,
+    GROUNDING_INSTRUCTIONS,
+    check_response,
+)
 
-VERSION = 'grounding-tsv-v1'
+VERSION = 'grounding-tsv-v2'
+ENTITY_VERSION = 'entity-grounding-tsv-v1'
 ROLES = ('scope', 'subject', 'object', 'relation')
+ENTITY_ROLES = ('scope', 'subject', 'object')
 FORMAT = '''
 OUTPUT: plain tab-separated records, exactly five columns per line:
 record_id<TAB>kind<TAB>decision<TAB>target<TAB>reason
@@ -14,7 +20,7 @@ For EACH supplied claim ID, return exactly FOUR records:
 - <claim_id>.subject : kind=concept/particular/state; decision=exact/broader/narrower/related/unresolved;
   target=one of that subject's supplied T identifiers, or - when unresolved.
 - <claim_id>.object : same fields, using only that object's supplied T identifiers.
-- <claim_id>.relation : kind=relation; decision=exact/unresolved;
+- <claim_id>.relation : kind=relation; decision=exact/broader/unresolved;
   target=one supplied R identifier, or - when unresolved.
 The dash - means no target. It is required exactly when the decision is unresolved, and for scope.
 Reasons must be nonempty short prose on ONE line, at most 600 characters; no tabs or line breaks.
@@ -25,24 +31,55 @@ IDs are supplied by the application; copy each required record ID exactly once. 
 Unresolved or needs_review are valid decisions; never force a mapping to complete an assertion.
 '''
 SYSTEM = GROUNDING_INSTRUCTIONS + FORMAT
+ENTITY_FORMAT = '''
+OUTPUT: plain tab-separated records, exactly five columns per line:
+record_id<TAB>kind<TAB>decision<TAB>target<TAB>reason
+Use literal TAB characters between columns and a newline between records. No header, JSON,
+Markdown, quotes around fields, blank lines, extra columns or explanatory text outside the records.
+For EACH supplied claim ID, return exactly THREE records (NEVER emit a .relation record):
+- <claim_id>.scope : kind=scope; decision=in_scope/out_of_scope/needs_review; target=-.
+- <claim_id>.subject : kind=concept/particular/state; decision=exact/broader/narrower/related/unresolved;
+  target=one of that subject's supplied T identifiers, or - when unresolved.
+- <claim_id>.object : same fields, using only that object's supplied T identifiers.
+The dash - means no target. It is required exactly when the decision is unresolved, and for scope.
+Reasons must be nonempty short prose on ONE line, at most 600 characters; no tabs or line breaks.
+Every record has EXACTLY FOUR TAB delimiters and FIVE fields. Kind is mandatory even when unresolved.
+Unresolved means no aligned target; it does not remove the independent concept/particular/state decision.
+Do not echo the <TAB> marker; use actual tab delimiters. Preserve punctuation normally inside reasons.
+IDs are supplied by the application; copy each required record ID exactly once. Stop after the last record.
+Unresolved or needs_review are valid decisions; never force a mapping to complete an assertion.
+'''
+ENTITY_SYSTEM = ENTITY_GROUNDING_INSTRUCTIONS + ENTITY_FORMAT
 
 
 def required_ids(payload):
-    return [f'{key}.{role}' for key in payload['claims'] for role in ROLES]
+    roles = ENTITY_ROLES if payload.get('entity_only') else ROLES
+    return [f'{key}.{role}' for key in payload['claims'] for role in roles]
 
 
 def instructions(payload):
+    entity_only = bool(payload.get('entity_only'))
     templates = []
     for key in payload['claims']:
         templates.extend([
             '\t'.join([key + '.scope', 'scope', '<scope_decision>', '-', '<scope_reason>']),
             '\t'.join([key + '.subject', '<entity_kind>', '<mapping>', '<subject_target_or_dash>', '<reason>']),
             '\t'.join([key + '.object', '<entity_kind>', '<mapping>', '<object_target_or_dash>', '<reason>']),
-            '\t'.join([key + '.relation', 'relation', '<relation_mapping>', '<relation_target_or_dash>', '<reason>']),
         ])
-    return SYSTEM + ('\nRequired five-field record templates, one per line. Replace every angle-bracket placeholder '
-                     'with your decision; preserve the fixed IDs, scope/relation kind markers and TAB delimiters. '
-                     'Do not output the angle brackets or omit an unresolved entity kind.\n') + '\n'.join(templates)
+        if not entity_only:
+            templates.append(
+                '\t'.join([key + '.relation', 'relation', '<relation_mapping>', '<relation_target_or_dash>', '<reason>'])
+            )
+    header = (
+        '\nRequired five-field record templates, one per line. Replace every angle-bracket placeholder '
+        'with your decision; preserve the fixed IDs, scope kind marker and TAB delimiters. '
+        'Do not output the angle brackets or omit an unresolved entity kind.\n'
+        if entity_only else
+        '\nRequired five-field record templates, one per line. Replace every angle-bracket placeholder '
+        'with your decision; preserve the fixed IDs, scope/relation kind markers and TAB delimiters. '
+        'Do not output the angle brackets or omit an unresolved entity kind.\n'
+    )
+    return (ENTITY_SYSTEM if entity_only else SYSTEM) + header + '\n'.join(templates)
 
 
 def parse_rows(content, payload):
@@ -84,10 +121,11 @@ def parse_rows(content, payload):
     if records.keys() != expected:
         raise SchemaValidationError(f'Grounding rows: missing required record IDs {sorted(expected - records.keys())}')
     answer = {'results': []}
+    roles = ('subject', 'object') if payload.get('entity_only') else ('subject', 'object', 'relation')
     for key in payload['claims']:
         scope = records[f'{key}.scope']
         row = {'claim_id': key, 'scope': scope[1], 'scope_reason': scope[3]}
-        for role in ('subject', 'object', 'relation'):
+        for role in roles:
             kind, decision, target, reason = records[f'{key}.{role}']
             row[role] = {'reason': reason, 'mapping': decision, 'term': None if target == '-' else target}
             if role != 'relation':

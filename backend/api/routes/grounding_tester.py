@@ -86,7 +86,9 @@ class GroundingTester:
     def start(self, options, *, frozen=None, baseline=None):
         reference = catalog()
         with self.workspace._lock, self.lock:
-            if any(j.get('status') in ACTIVE_STATUSES for j in self.workspace._jobs.values()) or self.tokens:
+            if (any(j.get('status') in ACTIVE_STATUSES for j in self.workspace._jobs.values())
+                    or self.tokens
+                    or getattr(self.workspace, '_single_stage_tokens', {})):
                 raise HTTPException(409, 'Finish or stop the active run/test before starting a test')
             if frozen is None:
                 directory, candidates = self.source(options.pdf_id)

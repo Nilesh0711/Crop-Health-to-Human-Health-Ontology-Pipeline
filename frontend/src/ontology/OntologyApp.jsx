@@ -5,10 +5,19 @@ import MappingReview from './MappingReview.jsx'
 import Reasoning from './Reasoning.jsx'
 import Runs from './Runs.jsx'
 import Entities from './Entities.jsx'
+import Relations from './Relations.jsx'
 import Appendix from './Appendix.jsx'
 
+const views = [
+  ['browse', 'Ontology'], ['entities', 'Entity registry'], ['relations', 'Relation registry'],
+  ['review', 'Mapping review'], ['reasoning', 'Reasoning'], ['runs', 'Runs'], ['appendix', 'Appendix'],
+]
+
 export default function OntologyApp() {
-  const [view, setView] = useState(() => typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('view') || 'browse') : 'browse')
+  const [view, setView] = useState(() => {
+    const initial = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('view') : null
+    return views.some(([key]) => key === initial) ? initial : 'browse'
+  })
   const [selected, setSelected] = useState(() => typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('term') : null)
   const [revision, setRevision] = useState(0)
   const [utilityRevision, setUtilityRevision] = useState(0)
@@ -24,15 +33,13 @@ export default function OntologyApp() {
     window.history.replaceState(null, '', url)
   }, [selected, view])
   return <div className="ontology-app">
-    <header><div><h1>Reasoning with Food Knowledge Graphs</h1><p>Potato · soil nutrients and crop nutrition</p></div>
-      <span className="muted">{health.data?.pipeline?.version || 'Ontology browser'}</span></header>
-    <nav aria-label="Application views">{[['browse', 'Ontology'], ['entities', 'Entity registry'], ['review', 'Mapping review'], ['reasoning', 'Reasoning'], ['runs', 'Runs'], ['appendix', 'Appendix']].map(([key, title]) =>
+    <header><div><h1>Reasoning with Food Knowledge Graphs</h1><p>Soil, potato phosphorus, dietary phosphate &amp; human health</p></div></header>
+    <nav aria-label="Application views">{views.map(([key, title]) =>
       <button key={key} className={view === key ? 'active' : ''} aria-current={view === key ? 'page' : undefined} onClick={() => setView(key)}>{title}</button>)}</nav>
     <Notice error={status.error} />
-    {status.data?.stage_status?.ontology_grounding === 'paused' && <p className="ontology-warning">Ontology grounding is paused. New runs stop after extraction; saved mappings are historical results.</p>}
-    {status.data?.stage_status?.ontology_grounding === 'manual' && <p className="muted">Grounding is manual: extract first, then use Run grounded claims in Runs when ready. Pathway assembly and scientific validation remain paused.</p>}
     {view === 'browse' && <TermBrowser selected={selected} onSelect={select} revision={revision} status={status.data} />}
     {view === 'entities' && <Entities revision={revision} />}
+    {view === 'relations' && <Relations revision={revision} />}
     {view === 'review' && <MappingReview revision={revision} onRefresh={refresh} pdfs={papers.data || []} canReview={health.data?.capabilities?.execute === true} />}
     {view === 'reasoning' && <Reasoning revision={revision} />}
     {view === 'appendix' && <Appendix />}

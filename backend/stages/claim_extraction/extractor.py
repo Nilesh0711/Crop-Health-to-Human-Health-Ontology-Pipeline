@@ -6,7 +6,9 @@ import json
 import re
 import time
 import concurrent.futures
-from backend.shared.cancellation import check_cancelled
+from copy import deepcopy
+from functools import partial
+from backend.shared.cancellation import check_cancelled, submit_work
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,16 +18,22 @@ from backend.providers.llm import LLMServiceError, OpenCodeClient
 from backend.providers.response_repair import validate_schema
 from backend.shared.storage import file_hash, stable_hash, read_jsonl
 from backend.domain.claim_context import local_evidence_context
-from backend.domain.abbreviations import packet_definitions, relevant_definitions, expand_claim_names, abbreviation_source_anchor
-from backend.domain.extraction_review import extraction_warnings
+from backend.domain.abbreviations import packet_definitions, relevant_definitions, expand_claim_names
+from backend.stages.claim_extraction.anchoring import endpoint_anchor, anchor_diagnostic, ANCHORING_POLICY
+from backend.domain.extraction_review import NON_SIGNIFICANCE, SIGNIFICANCE, closed_relation_source_cue, extraction_warnings
 from backend.stages.claim_extraction.prompt import build_extraction_prompt
 from backend.stages.claim_extraction.targeting import (
     build_extraction_targets, targeted_prompt, check_target_evidence, TARGETING_VERSION, READING_CONTEXT_POLICY,
 )
 from backend.domain.ontology import schema_error
 from backend.shared.text import anchored_quote, normalized, source_surface_mention
+from backend.stages.pdf_parsing.layout import PARSING_POLICY
 from backend.stages.claim_extraction.contract import (
     ASSOCIATIVE_TRIGGER_RE,
+    CLOSED_EXTRACTION_CONTRACT_VERSION,
+    CLOSED_EXTRACTION_RESPONSE_SCHEMA,
+    CLOSED_PREDICATES,
+    CLOSED_PREDICATE_SET_VERSION,
     COMPARATIVE_CUE_RE,
     CORE_PATHWAY_HINT_RE,
     EXTRACTION_MAX_CLAIMS_PER_PACKET,
@@ -38,6 +46,7 @@ from backend.stages.claim_extraction.contract import (
     GENERIC_ENTITIES,
     NON_EMPIRICAL_RE,
     PURPOSE_ONLY_RE,
+    closed_predicate_whitelist_digest,
     valid_relation_wording,
 )
 from backend.stages.pdf_parsing.packets import (
@@ -49,6 +58,54 @@ from backend.stages.pdf_parsing.packets import (
     source_article_identifiers,
     source_paper_title,
 )
+
+
+_DESCRIPTIVE_SUMMARY_RE = re.compile(r'\b(?:rang\w*|varied\s+from|averag\w*|mean\b)\b', re.I)
+_UNSUPPORTED_CLOSED_RELATION_WARNINGS = frozenset({
+    'possible_unsupported_closed_relation', 'possible_passive_role_reversal_failure', 'possible_agent_role_reversal',
+})
+_CLOSED_PREDICATE_LOOKUP = {}
+for _alias, _entry in CLOSED_PREDICATES.items():
+    for _variant in (
+        _alias,
+        _entry['display_label'],
+        _entry['id'],
+        _entry['id'].replace(':', '_'),
+        _entry['iri'],
+    ):
+        _CLOSED_PREDICATE_LOOKUP[' '.join(_variant.split()).casefold()] = _alias
+
+
+def _normalize_closed_predicate_alias(value: Any) -> Any:
+    """Normalize exact approved predicate labels, CURIEs, or IRIs to P1-P12."""
+    if not isinstance(value, str):
+        return value
+    return _CLOSED_PREDICATE_LOOKUP.get(' '.join(value.split()).casefold(), value)
+_CLOSED_CLAUSE_START_RE = re.compile(
+    r'^(?:to\s+[a-z]+|exposed\s+to|when\s+exposed|increasing\s+the\b|decreasing\s+the\b|efficiently\s+[a-z]+)\b', re.I,
+)
+_CLOSED_INLINE_UNIT_RE = re.compile(
+    r'(?:\b\d+(?:\.\d+)?\s*(?:mg|ug|µg|kg|g|ml|l|mmol|µmol|ppm)\b|[≥≤%])', re.I,
+)
+_CLOSED_BUNDLED_COMP_RE = re.compile(
+    r'^(?:higher|lower|greater|increased|decreased|improved|enhanced|reduced)\b.*\band\b', re.I,
+)
+
+
+def _closed_endpoint_hygiene_issue(candidate: dict[str, Any]) -> str | None:
+    """Reject noisy verb-clause, inline-unit, or comparative-bundle endpoints cleanly at extraction."""
+    for role in ('subject', 'object'):
+        value = str(candidate.get(role) or '').strip()
+        words = re.findall(r'[\w-]+', value)
+        if len(words) > 9:
+            return f'{role} endpoint exceeds 9 words ({len(words)} words): keep endpoints as concise noun phrases.'
+        if _CLOSED_CLAUSE_START_RE.match(value):
+            return f'{role} endpoint starts with a verb or clause phrase instead of a concise noun phrase.'
+        if _CLOSED_INLINE_UNIT_RE.search(value):
+            return f'{role} endpoint embeds numeric units or inequality symbols that belong in qualifiers.'
+        if _CLOSED_BUNDLED_COMP_RE.match(value):
+            return f'{role} endpoint bundles comparative terms with "and" instead of clean atomic concepts.'
+    return None
 
 
 def extraction_priority_sentence_numbers(sentences: list[dict[str, Any]], limit: int = 14) -> list[int]:
@@ -171,6 +228,8 @@ class _DocumentEvidence:
     document_scope: dict[str, Any] | None
     bibliography: Any
     extraction_mode: str
+    contract_version: int = EXTRACTION_CONTRACT_VERSION
+    closed_relations: bool = False
 
 
 @dataclass
@@ -181,11 +240,14 @@ class _ExtractionResults:
     rejection_records: list[dict[str, Any]] = field(default_factory=list)
 
 
-def _packet_coverage_record(packet: dict[str, Any], extraction_mode: str) -> dict[str, Any]:
+def _packet_coverage_record(packet: dict[str, Any], extraction_mode: str,
+                            contract_version: int = EXTRACTION_CONTRACT_VERSION) -> dict[str, Any]:
     record = {'packet_number': packet['packet_number'], 'section_heading': packet['section_heading'],
               'page_start': packet['page_start'], 'page_end': packet['page_end'],
               'word_count': packet['word_count'], 'extraction_mode': extraction_mode, 'status': 'not_started'}
-    record['output_contract_version'] = EXTRACTION_CONTRACT_VERSION
+    record['output_contract_version'] = contract_version
+    record.update(targeting_version=TARGETING_VERSION, reading_context_policy=READING_CONTEXT_POLICY,
+                  parsing_policy=PARSING_POLICY, anchoring_policy=ANCHORING_POLICY)
     if extraction_mode == 'target_context':
         record.update({key: packet[key] for key in (
             'target_id', 'target_number', 'target_sentence_numbers', 'target_source_sentence_ids',
@@ -231,30 +293,51 @@ def check_extraction_response(response, response_schema, allowed_numbers, target
     """Malformed endpoints are schema failures, not token-limit failures."""
     from backend.providers.structured_output import SchemaValidationError
     validate_schema(response, response_schema)
+    closed_mode = 'relation_anchor' in response_schema.get('properties', {}).get('claims', {}).get('items', {}).get('required', ())
     for index, row in enumerate(response['claims']):
-        for role in ('subject', 'relation', 'object'):
+        for role in (('subject', 'object') if closed_mode else ('subject', 'relation', 'object')):
             if not str(row.get(role) or '').strip():
                 raise SchemaValidationError(f'claims.{index}.{role}: provide nonempty source-grounded '
                     'wording; never invent an endpoint to force a single-entity observation into a triplet')
-        if not valid_relation_wording(row['relation']):
+        if not closed_mode and not valid_relation_wording(row['relation']):
             raise SchemaValidationError(f'claims.{index}.relation: use a complete written predicate, not a single-letter code')
+        if closed_mode and not str(row.get('relation_anchor') or '').strip():
+            raise SchemaValidationError(f'claims.{index}.relation_anchor: provide a nonempty verbatim anchor from the target text')
     check_target_evidence(response, allowed_numbers, target_numbers if enforce_target else None)
 
 
+def _closed_packet_schema(schema):
+    """Quarantine nonconforming relation fields per item without losing valid siblings."""
+    schema = deepcopy(schema)
+    item = schema['properties']['claims']['items']
+    item['required'].remove('predicate_alias')
+    for field in ('predicate_alias', 'relation', 'measured_comparison'):
+        item['properties'][field] = {}
+    return schema
+
+
 def _request_packet(packet, packet_record, index, total_packets, client, system, source_title,
-                    extraction_mode, claims_per_packet, response_schema, emit):
+                    extraction_mode, claims_per_packet, response_schema, emit,
+                    *, contract_version: int = EXTRACTION_CONTRACT_VERSION, closed_relations: bool = False):
     check_cancelled()
     packet_started = time.monotonic()
     packet_record['status'] = 'started'
     packet_sentences = packet['sentences']
     if hasattr(client, 'set_request_context'):
-        client.set_request_context({'extraction_contract_version': EXTRACTION_CONTRACT_VERSION,
-            **({'targeting_version': TARGETING_VERSION, 'reading_context_policy': READING_CONTEXT_POLICY}
-               if extraction_mode == 'target_context' else {})})
+        ctx = {'extraction_contract_version': contract_version,
+               'targeting_version': TARGETING_VERSION, 'reading_context_policy': READING_CONTEXT_POLICY,
+               'parsing_policy': PARSING_POLICY, 'anchoring_policy': ANCHORING_POLICY, 'extraction_mode': extraction_mode}
+        if closed_relations:
+            ctx.update(predicate_set_version=CLOSED_PREDICATE_SET_VERSION,
+                       closed_predicate_whitelist_sha256=closed_predicate_whitelist_digest())
+        client.set_request_context(ctx)
     label = (f"extraction target {index}/{total_packets} ({packet['target_id']}; packet {packet['packet_number']})"
              if extraction_mode == 'target_context' else f"extraction packet {index}/{total_packets}")
     target_numbers = packet['target_sentence_numbers'] if extraction_mode == 'target_context' else None
     allowed_numbers = sorted(set(target_numbers or range(1, len(packet_sentences) + 1)) | set(packet.get('reading_context_sentence_numbers', [])))
+    packet_schema = _closed_packet_schema(response_schema) if closed_relations else deepcopy(response_schema)
+    packet_schema['properties']['claims']['items']['properties']['evidence_sentence_ids']['items']['enum'] = (
+        list(allowed_numbers))
     emit("info", f"Extracting {packet['section_heading']} (pages {packet['page_start']}-{packet['page_end']}), "
          f"{label}; {packet.get('target_word_count', packet['word_count'])} extraction words"
          + (f"; {packet['reading_context_word_count']} nearby context words"
@@ -262,15 +345,12 @@ def _request_packet(packet, packet_record, index, total_packets, client, system,
     def check_extraction_complete(response):
         # Ownership failures are isolated by the binder per claim. They must
         # not regenerate otherwise valid target findings in the same response.
-        check_extraction_response(response, response_schema, allowed_numbers, target_numbers, enforce_target=False)
+        check_extraction_response(response, packet_schema, allowed_numbers, target_numbers, enforce_target=False)
     try:
         user = (targeted_prompt(packet, source_title) if extraction_mode == 'target_context'
                 else _whole_packet_prompt(packet, source_title))
         answer_budget = (EXTRACTION_OUTPUT_TOKENS if claims_per_packet else
                          min(12000, max(4000, packet.get('target_word_count', packet['word_count']) * 8)))
-        packet_schema = json.loads(json.dumps(response_schema))
-        packet_schema['properties']['claims']['items']['properties']['evidence_sentence_ids']['items']['enum'] = (
-            list(allowed_numbers))
         result = client.chat_json(system, user, max_tokens=answer_budget,
                                   json_schema=packet_schema, request_label=label,
                                   response_check=check_extraction_complete)
@@ -306,15 +386,107 @@ def _request_packet(packet, packet_record, index, total_packets, client, system,
     return extracted_items
 
 
+_PASSIVE_CUE_RE = re.compile(
+    r'\b(?:was|were|is|are|been|be|being)\s+(?:[A-Za-z-]+\s+){0,3}[A-Za-z-]+(?:ed|en)\s+(?:by|with)\b',
+    re.I,
+)
+_POS_CORR_RE = re.compile(r'\bpositiv(?:e|ely)\b', re.I)
+_NEG_CORR_RE = re.compile(r'\bnegativ(?:e|ely)\b', re.I)
+_CORRELATION_RE = re.compile(r'\bcorrelat(?:e[sd]?|ing|ions?)\b', re.I)
+_RELATION_DETAIL_RE = re.compile(
+    r'\b(?:significant(?:ly)?|strong(?:ly)?|weak(?:ly)?|modest(?:ly)?|moderate(?:ly)?|slight(?:ly)?|'
+    r'linear(?:ly)?|direct(?:ly)?|indirect(?:ly)?|partial(?:ly)?|mainly|largely|predominantly|high(?:est)?)\b',
+    re.I,
+)
+
+
+def _verify_passive_roles(evidence_sentences, trigger, relation_text, subject_mention, object_mention, predicate_alias):
+    """Verify whether passive source evidence was properly reversed into the forward property's subject->object order."""
+    meta = CLOSED_PREDICATES.get(predicate_alias or '')
+    if not meta or not meta.get('supports_passive_reversal'):
+        return None, False
+    passive_match = None
+    passive_sentence = ''
+    trig_passive = bool(_PASSIVE_CUE_RE.search(trigger or ''))
+    rel_passive = bool(_PASSIVE_CUE_RE.search(relation_text or ''))
+    for sent in evidence_sentences:
+        text = sent['text']
+        trig_span = source_surface_mention(text, trigger) if trigger else None
+        if not trig_span:
+            continue
+        trig_m = re.search(rf'(?<!\w){re.escape(trig_span)}(?!\w)', text, re.I)
+        for m in _PASSIVE_CUE_RE.finditer(text):
+            overlaps_trigger = bool(trig_m and not (m.end() <= trig_m.start() or m.start() >= trig_m.end()))
+            if trig_passive or rel_passive or overlaps_trigger:
+                passive_match = m
+                passive_sentence = text
+                break
+        if passive_match is not None:
+            break
+    if passive_match is None and (trig_passive or rel_passive):
+        for sent in evidence_sentences:
+            m = _PASSIVE_CUE_RE.search(sent['text'])
+            if m:
+                passive_match = m
+                passive_sentence = sent['text']
+                break
+    if passive_match is None:
+        return None, False
+    # Check whether Patient (object) precedes the passive verb and Agent (subject) follows by/with.
+    prefix = passive_sentence[:passive_match.start()]
+    suffix = passive_sentence[passive_match.end():]
+    obj_before = bool(source_surface_mention(prefix, object_mention))
+    subj_after = bool(source_surface_mention(suffix, subject_mention))
+    subj_before = bool(source_surface_mention(prefix, subject_mention))
+    obj_after = bool(source_surface_mention(suffix, object_mention))
+    if obj_before and subj_after and not (subj_before and obj_after):
+        return True, True
+    if subj_before and obj_after:
+        return False, True
+    return False, True
+
+
+def _closed_relation_detail_loss(alias: str, trigger: str, metric: str) -> tuple[str, list[str]]:
+    text = trigger
+    omitted = []
+    if alias == 'P5':
+        for label, pattern in (('positive correlation sign', _POS_CORR_RE), ('negative correlation sign', _NEG_CORR_RE),
+                               ('correlation significance', SIGNIFICANCE)):
+            if bool(pattern.search(trigger)) != bool(pattern.search(metric)):
+                omitted.append(label)
+        text = SIGNIFICANCE.sub('', text)
+        if not _CORRELATION_RE.search(trigger) or NON_SIGNIFICANCE.search(f'{trigger} {metric}'):
+            omitted.append('affirmed correlation not established')
+    if _RELATION_DETAIL_RE.search(text):
+        omitted.append('magnitude, significance, or directness qualification')
+    if (not omitted and alias == 'P3' and re.search(r'\b(?:affect\w*|influenc\w*)\b', text, re.I)
+            and not re.search(r'\bcausal(?:ly)?\b', trigger, re.I)):
+        omitted.append('non-specific causal verb qualification')
+    omitted = list(dict.fromkeys(omitted))
+    return ('broader' if omitted else 'exact'), omitted
+
+
 def _proposed_candidate(item: dict[str, Any]) -> dict[str, Any]:
     candidate = {
         'subject': str(item.get('subject', '')).strip(),
         'relation': str(item.get('relation', '')).strip(),
         'object': str(item.get('object', '')).strip(),
     }
+    alias = item.get('predicate_alias')
+    if alias is not None:
+        candidate['predicate_alias'] = str(alias).strip()
+        if candidate['predicate_alias'] in CLOSED_PREDICATES:
+            entry = CLOSED_PREDICATES[candidate['predicate_alias']]
+            candidate['relation'] = entry['display_label']
+            candidate['predicate_set_version'] = CLOSED_PREDICATE_SET_VERSION
+            candidate['proposed_relation_iri'] = entry['iri']
+            candidate['proposed_relation_id'] = entry['id']
+            candidate['proposed_relation_display_label'] = entry['display_label']
     for role in ('subject', 'object'):
         if item.get(role + '_context'):
             candidate[role + '_context'] = item[role + '_context'].strip()
+    if item.get('measured_comparison'):
+        candidate['measured_comparison'] = dict(item['measured_comparison'])
     raw_qualifiers = item.get('qualifiers')
     candidate['qualifiers'] = {
         key: str(value).strip() for key, value in raw_qualifiers.items()
@@ -329,7 +501,7 @@ def _proposed_candidate(item: dict[str, Any]) -> dict[str, Any]:
 def _proposed_anchors(item: dict[str, Any]) -> dict[str, str]:
     if 'evidence_sentence_ids' in item:
         return {role: str(item.get(role + '_anchor') or item.get(role, '')).strip() for role in ('subject', 'object')} | {
-            'relation': str(item.get('relation', '')).strip()}
+            'relation': str(item.get('relation_anchor') or item.get('relation', '')).strip()}
     return {'subject': str(item.get('subject_source_mention', '')).strip(),
             'object': str(item.get('object_source_mention', '')).strip(),
             'relation': str(item.get('relation_trigger', '')).strip()}
@@ -339,9 +511,14 @@ def _record_claim_rejection(reason, packet, candidate, item, rejection_records, 
     record = {'reason': reason, 'packet_number': packet['packet_number'],
               'section_heading': packet['section_heading'], 'proposed_claim': dict(candidate),
               'proposed_source_anchors': _proposed_anchors(item)}
+    for key in ('target_id', 'target_number', 'target_sentence_numbers', 'reading_context_sentence_numbers'):
+        if key in packet:
+            record[key] = packet[key]
     if evidence_record is not None:
         record.update(source_evidence_sentence_numbers=evidence_record['sentence_numbers'],
                       source_evidence_span=evidence_record['evidence_span'])
+        if evidence_record.get('anchor_failures'):
+            record['anchor_failures'] = evidence_record['anchor_failures']
     rejection_records.append(record)
 
 
@@ -374,55 +551,89 @@ def _bind_claim_evidence(item, candidate, packet, extraction_mode, state):
         'target_sentence_numbers': sorted(set(evidence_numbers) & set(packet.get('target_sentence_numbers', evidence_numbers))),
         'supporting_context_sentence_numbers': sorted(set(evidence_numbers) - set(packet.get('target_sentence_numbers', evidence_numbers))),
         'source_evidence_is_contiguous': evidence_numbers == list(range(evidence_numbers[0], evidence_numbers[-1] + 1)),
-        'source_evidence_fragments': [{'sentence_number': n, 'page': sentence['page'], 'text': sentence['text']}
+        'source_evidence_fragments': [{'sentence_number': n, 'page': sentence['page'], 'text': sentence['text'],
+                                       **({'appended_context': sentence['appended_context']} if sentence.get('appended_context') else {})}
                                       for n, sentence in zip(evidence_numbers, evidence_sentences)],
         'source_intervening_context': [{'sentence_number': n, 'page': packet_sentences[n - 1]['page'],
                                         'text': packet_sentences[n - 1]['text']}
-                                       for n in range(evidence_numbers[0], evidence_numbers[-1] + 1) if n not in evidence_numbers],
+                                       for n in range(evidence_numbers[0], evidence_numbers[-1] + 1)
+                                       if n not in evidence_numbers and not packet_sentences[n - 1].get('appended_context')],
         'page': evidence_sentences[0]['page'], 'page_start': packet['page_start'], 'page_end': packet['page_end'],
         'section_heading': str(evidence_sentences[0].get('section_heading') or packet['section_heading']),
         'sentence_numbers': evidence_numbers, 'evidence_span': evidence_span,
     }
     review_hints = extraction_review_hints(candidate, evidence_span)
     proposed = _proposed_anchors(item)
-    def literal_endpoint(value):
-        return next((span for sentence in evidence_sentences
-                     if (span := source_surface_mention(sentence['text'], value))), None)
-    subject_mention = literal_endpoint(proposed['subject']) or literal_endpoint(candidate['subject'])
-    object_mention = literal_endpoint(proposed['object']) or literal_endpoint(candidate['object'])
-    trigger = source_surface_mention(evidence_span, proposed['relation'])
-    minimal = 'evidence_sentence_ids' in item
+    subject_mention = object_mention = None
+    closed_mode = bool(candidate.get('predicate_alias'))
+    target_anchor_required = closed_mode or (bool(candidate.get('measured_comparison')) and 'relation_anchor' in item)
+    if target_anchor_required:
+        raw_rel_anchor = str(item.get('relation_anchor') or '').strip()
+        trigger = source_surface_mention(evidence_span, raw_rel_anchor) if raw_rel_anchor else None
+    else:
+        trigger = source_surface_mention(evidence_span, proposed['relation'])
+    minimal = 'evidence_sentence_ids' in item and not target_anchor_required
+    target_set = set(packet.get('target_sentence_numbers', evidence_numbers))
+    target_texts = [s['text'] for n, s in zip(evidence_numbers, evidence_sentences) if n in target_set]
+    trigger_in_target = bool(trigger and (extraction_mode != 'target_context'
+                                          or any(source_surface_mention(t, trigger) for t in target_texts)))
     coordination_adjustments = []
-    if minimal:
-        for role, mention in (('subject', subject_mention), ('object', object_mention)):
-            if mention:
-                continue
-            anchors, basis, definitions_used = set(), 'document_defined_abbreviation', None
-            glossary = packet.get('source_abbreviation_definitions', [])
-            documents = {r.get('document') for r in glossary if r.get('document')}
-            if len(documents) == 1:
-                matches = [match for sentence in evidence_sentences
-                           if (match := abbreviation_source_anchor(proposed[role], sentence['text'], glossary, next(iter(documents))))]
-                if len({match[0] for match in matches}) == 1:
-                    anchors = {matches[0][0]}
-                    definitions_used = matches[0][1]
-            if len(anchors) != 1:
-                continue
-            anchor = next(iter(anchors))
+    anchor_failures = []
+    for role in ('subject', 'object'):
+        match = endpoint_anchor(candidate[role], proposed[role],
+                                [s['text'] for s in evidence_sentences],
+                                packet.get('source_abbreviation_definitions', []),
+                                allow_canonical=closed_mode)
+        if match:
+            anchor, basis, definitions_used = match
             if role == 'subject':
                 subject_mention = anchor
             else:
                 object_mention = anchor
             coordination_adjustments.append({'role': role, 'mention': anchor,
-                'basis': basis, 'atomic_endpoint': proposed[role]})
+                'basis': basis, 'atomic_endpoint': candidate[role], 'policy': ANCHORING_POLICY,
+                'source_sentence_numbers': [n for n, s in zip(evidence_numbers, evidence_sentences)
+                                            if anchor in s['text']],
+                'reused_words': candidate[role].split() if basis == 'bounded_coordination' else []})
             if definitions_used:
                 coordination_adjustments[-1]['definitions'] = definitions_used
-            review_hints.append('review_abbreviation_anchor_' + role)
-    if not subject_mention or not object_mention or (not trigger and not minimal):
+            if basis != 'literal_endpoint':
+                review_hints.append('review_' + basis + '_anchor_' + role)
+        else:
+            anchor_failures.append({'role': role, 'endpoint': candidate[role],
+                'proposed_anchor': proposed[role], 'category': anchor_diagnostic(candidate[role], proposed[role],
+                    [s['text'] for s in evidence_sentences]), 'policy': ANCHORING_POLICY})
+    if not trigger and target_anchor_required:
+        anchor_failures.append({'role': 'relation', 'endpoint': candidate['relation'],
+            'proposed_anchor': proposed['relation'], 'category': 'unsupported_relation_anchor', 'policy': ANCHORING_POLICY})
+    elif target_anchor_required and not trigger_in_target:
+        anchor_failures.append({'role': 'relation', 'endpoint': candidate['relation'],
+            'proposed_anchor': proposed['relation'], 'category': 'context_only_relation_anchor', 'policy': ANCHORING_POLICY})
+    if not subject_mention or not object_mention or (not trigger and not minimal) or (target_anchor_required and not trigger_in_target):
         state.rejected['unanchored_evidence'] += 1
-        _record_claim_rejection('unanchored_evidence', packet, candidate, item, state.rejection_records, evidence_record)
+        _record_claim_rejection('unanchored_evidence', packet, candidate, item, state.rejection_records,
+                                {**evidence_record, 'anchor_failures': anchor_failures})
         return None
-    if minimal:
+    if closed_mode:
+        adjustments = coordination_adjustments
+        anchor_error = None
+        passive_ok, is_passive = _verify_passive_roles(
+            evidence_sentences, trigger or '', candidate['relation'],
+            subject_mention, object_mention, candidate.get('predicate_alias'),
+        )
+        candidate['passive_source_evidence'] = is_passive
+        if passive_ok is not None:
+            candidate['passive_role_reversal_verified'] = passive_ok
+            if not passive_ok:
+                review_hints.append('review_passive_role_reversal')
+        rel_map, detail_loss = _closed_relation_detail_loss(
+            candidate['predicate_alias'],
+            ' '.join(closed_relation_source_cue(text, trigger) for text in target_texts),
+            candidate['qualifiers'].get('metric', ''),
+        )
+        candidate['proposed_relation_mapping'] = rel_map
+        candidate['proposed_relation_detail_loss'] = detail_loss
+    elif target_anchor_required or minimal:
         adjustments = coordination_adjustments
         if not trigger:
             review_hints.append('review_nonliteral_relation_wording')
@@ -456,11 +667,14 @@ def _link_evidence_citations(evidence_record, packet, bibliography, emit):
 
 def _occurrence_key(candidate, evidence_record):
     """Only the same assertion, restrictions, and source occurrence are merged."""
-    return (normalized(candidate['subject']), candidate['relation'], normalized(candidate['object']),
-            evidence_record['page'],
-            normalized(evidence_record['evidence_span']), json.dumps(candidate['qualifiers'], sort_keys=True),
-            normalized(candidate.get('source_context', '')),
-            normalized(candidate.get('subject_context', '')), normalized(candidate.get('object_context', '')))
+    key = (normalized(candidate['subject']), candidate['relation'], normalized(candidate['object']),
+           evidence_record['page'], json.dumps(candidate.get('measured_comparison'), sort_keys=True),
+           normalized(evidence_record['evidence_span']), json.dumps(candidate['qualifiers'], sort_keys=True),
+           normalized(candidate.get('source_context', '')),
+           normalized(candidate.get('subject_context', '')), normalized(candidate.get('object_context', '')))
+    if candidate.get('predicate_alias'):
+        key += (candidate['predicate_alias'], candidate.get('proposed_relation_iri', ''))
+    return key
 
 
 def _merge_overlap_occurrence(existing, evidence_record):
@@ -522,14 +736,18 @@ def _materialize_candidate(item, candidate, evidence_record, packet, context, re
     relation_trigger, anchor_adjustments = evidence_record['relation_trigger'], evidence_record['anchor_adjustments']
     cited_numbers, cited_keys = evidence_record['citation_numbers'], evidence_record['citation_keys']
     cited_references, citation_links = evidence_record['references'], evidence_record['citation_links']
+    contract_version = context.contract_version
+    alias_suffix = f"|alias:{candidate['predicate_alias']}|{candidate.get('proposed_relation_iri', '')}" if candidate.get('predicate_alias') else ''
     candidate_id = "candidate-" + stable_hash(
         f"{document_id}|{normalized(subject)}|{relation}|{normalized(obj)}|"
-        f"v{EXTRACTION_CONTRACT_VERSION}|"
+        f"v{contract_version}|"
         f"{json.dumps(candidate['qualifiers'], sort_keys=True)}|{evidence_page}|{normalized(evidence_span)}"
+        + (json.dumps(candidate['measured_comparison'], sort_keys=True) if candidate.get('measured_comparison') else '')
         + f"|subject_context:{normalized(candidate.get('subject_context', ''))}|object_context:{normalized(candidate.get('object_context', ''))}"
-        + (f"|context:{normalized(candidate['source_context'])}" if normalized(candidate.get('source_context', '')) else ''), 32)
+        + (f"|context:{normalized(candidate['source_context'])}" if normalized(candidate.get('source_context', '')) else '')
+        + alias_suffix, 32)
     candidate.update({**evidence_details, "schema_version": SCHEMA_VERSION, "candidate_id": candidate_id,
-                      "extraction_contract_version": EXTRACTION_CONTRACT_VERSION,
+                      "extraction_contract_version": contract_version,
                       "source_document_id": document_id, "source_paper_title": source_title,
                        "source_doi": source_identifiers.get("source_doi", ""),
                        "source_pmcid": source_identifiers.get("source_pmcid", ""),
@@ -580,24 +798,47 @@ def _materialize_candidate(item, candidate, evidence_record, packet, context, re
     return candidate
 
 
-def _process_packet_claims(extracted_items, packet, context, state, emit):
+def _process_packet_claims(extracted_items, packet, context, state, emit,
+                           response_schema=EXTRACTION_RESPONSE_SCHEMA):
     for item in extracted_items:
         if not isinstance(item, dict):
             state.rejected['malformed'] += 1
             state.rejection_records.append({'reason': 'malformed', 'packet_number': packet['packet_number'],
                                             'section_heading': packet['section_heading'], 'proposed_claim': {}})
             continue
+        if context.closed_relations and (
+            'predicate_alias' not in item or 'relation' in item or 'measured_comparison' in item
+        ):
+            reason = 'invalid_finding_kind'
+            evidence = evidence_span_from_item(item, packet['sentences'])
+            evidence_record = {'sentence_numbers': evidence[0], 'evidence_span': evidence[2]} if evidence else None
+            state.rejected[reason] += 1
+            _record_claim_rejection(reason, packet, item, item, state.rejection_records, evidence_record)
+            continue
+        if context.closed_relations and isinstance(item.get('predicate_alias'), str):
+            normalized_alias = _normalize_closed_predicate_alias(item['predicate_alias'])
+            if normalized_alias != item['predicate_alias']:
+                item = {**item, 'predicate_alias': normalized_alias}
         try:
-            validate_schema({'claims': [item]}, EXTRACTION_RESPONSE_SCHEMA)
+            validate_schema({'claims': [item]}, response_schema)
         except ValueError:
-            state.rejected['malformed'] += 1
-            state.rejection_records.append({'reason': 'malformed', 'packet_number': packet['packet_number'],
+            reason = ('malformed_predicate_alias' if context.closed_relations
+                      and not any(item.get('predicate_alias') == alias for alias in CLOSED_PREDICATES)
+                      else 'malformed')
+            state.rejected[reason] += 1
+            state.rejection_records.append({'reason': reason, 'packet_number': packet['packet_number'],
                                             'section_heading': packet['section_heading'], 'proposed_claim': item})
             continue
         candidate = _proposed_candidate(item)
         if normalized(candidate['subject']) == normalized(candidate['object']):
             state.rejected['identical_endpoints'] += 1
-            _record_claim_rejection('identical_endpoints', packet, candidate, item, state.rejection_records)
+            evidence = evidence_span_from_item(item, packet['sentences'])
+            evidence_record = ({'sentence_numbers': evidence[0], 'evidence_span': evidence[2]}
+                               if evidence is not None else None)
+            _record_claim_rejection('identical_endpoints', packet, candidate, item,
+                                    state.rejection_records, evidence_record)
+            if (candidate.get('qualifiers') or {}).get('metric') and _DESCRIPTIVE_SUMMARY_RE.search(candidate['relation']):
+                state.rejection_records[-1]['descriptive_observation'] = True
             continue
         bound = _bind_claim_evidence(item, candidate, packet, context.extraction_mode, state)
         if bound is None:
@@ -605,36 +846,91 @@ def _process_packet_claims(extracted_items, packet, context, state, emit):
         evidence_record, review_hints = bound
         _link_evidence_citations(evidence_record, packet, context.bibliography, emit)
         key = _occurrence_key(candidate, evidence_record)
+        resolved = _materialize_candidate(item, dict(candidate), evidence_record, packet, context, review_hints)
+        if context.closed_relations and not resolved.get('measured_comparison'):
+            warnings = [w for w in resolved['extraction_warnings'] if w['code'] in _UNSUPPORTED_CLOSED_RELATION_WARNINGS]
+            reason = ''
+            if warnings:
+                reason = 'unsupported_closed_relation'
+                candidate['extraction_warnings'] = warnings
+            elif resolved['proposed_relation_mapping'] != 'exact':
+                reason = 'non_exact_closed_relation'
+                candidate['proposed_relation_detail_loss'] = resolved.get('proposed_relation_detail_loss', [])
+            elif hygiene := _closed_endpoint_hygiene_issue(resolved):
+                reason = 'noisy_endpoint_rejected'
+                candidate['extraction_warnings'] = [
+                    *resolved['extraction_warnings'],
+                    {'code': 'noisy_endpoint', 'message': hygiene, 'source_text': resolved.get('source_evidence_span', '')},
+                ]
+            elif resolved['extraction_warnings']:
+                reason = 'extraction_quality_rejected'
+                candidate['extraction_warnings'] = resolved['extraction_warnings']
+            if reason:
+                state.rejected[reason] += 1
+                _record_claim_rejection(reason, packet, candidate, item, state.rejection_records, evidence_record)
+                continue
         if key in state.seen_occurrences:
             _merge_overlap_occurrence(state.seen_occurrences[key], evidence_record)
             state.rejected['overlap_occurrence_deduplicated'] += 1
             _record_claim_rejection('overlap_occurrence_deduplicated', packet, candidate, item,
                                     state.rejection_records, evidence_record)
             continue
-        candidate = _materialize_candidate(item, candidate, evidence_record, packet, context, review_hints)
-        state.candidates.append(candidate)
-        state.seen_occurrences[key] = candidate
+        state.candidates.append(resolved)
+        state.seen_occurrences[key] = resolved
 
 
-def _load_cached_packet_claims(cache_dir: Path | None, extraction_mode: str) -> dict[str, list[dict[str, Any]]]:
+def _load_cached_packet_claims(cache_dir: Path | None, extraction_mode: str,
+                               *, contract_version: int = EXTRACTION_CONTRACT_VERSION,
+                               response_schema=EXTRACTION_RESPONSE_SCHEMA,
+                               closed_relations: bool = False) -> dict[str, list[dict[str, Any]]]:
     if not cache_dir:
         return {}
     responses_dir = cache_dir / 'model_responses'
     if not responses_dir.is_dir():
         return {}
     coverage = read_jsonl(cache_dir / 'extraction_packets.jsonl')
+    validation_schema = _closed_packet_schema(response_schema) if closed_relations else response_schema
+    request_log = cache_dir / 'llm_requests.jsonl'
+    logged_names = (list(dict.fromkeys(
+        Path(r['response_artifact']).name for r in read_jsonl(request_log)
+        if r.get('stage') == 'extraction' and r.get('status') == 'ok' and r.get('response_artifact')
+    )) if closed_relations and request_log.is_file() else None)
+    legacy_metadata_verified = False
+    checkpoint_path = cache_dir / 'pipeline_checkpoint.json'
+    if logged_names and checkpoint_path.is_file():
+        checkpoint = json.loads(checkpoint_path.read_bytes())
+        legacy_metadata_verified = (checkpoint.get('extraction_contract_version') == contract_version
+            and checkpoint.get('predicate_set_version') == CLOSED_PREDICATE_SET_VERSION
+            and checkpoint.get('predicate_whitelist_sha256') == closed_predicate_whitelist_digest())
     current = {r.get('target_id') if extraction_mode == 'target_context' else f"packet_{r.get('packet_number')}"
-               for r in coverage if r.get('output_contract_version') == EXTRACTION_CONTRACT_VERSION
-               and r.get('status') == 'completed'}
+               for r in coverage if r.get('output_contract_version') == contract_version
+               and r.get('status') == 'completed' and r.get('extraction_mode') == extraction_mode
+               and r.get('targeting_version') == TARGETING_VERSION
+               and r.get('reading_context_policy') == READING_CONTEXT_POLICY
+               and r.get('parsing_policy') == PARSING_POLICY
+               and r.get('anchoring_policy') == ANCHORING_POLICY}
     target_claims = {}
-    for filename in responses_dir.iterdir():
+    # Raw response files from earlier runs can remain in the same directory.
+    filenames = (responses_dir / name for name in logged_names) if logged_names is not None else responses_dir.iterdir()
+    for filename in filenames:
         if filename.suffix != '.json':
             continue
         try:
             data = json.loads(filename.read_text(encoding='utf-8'))
             if data.get('status') != 'ok':
                 continue
-            if data.get('extraction_contract_version') != EXTRACTION_CONTRACT_VERSION:
+            if data.get('extraction_contract_version') != contract_version:
+                continue
+            if closed_relations:
+                saved_predicates = (data.get('predicate_set_version'), data.get('closed_predicate_whitelist_sha256'))
+                if (saved_predicates != (CLOSED_PREDICATE_SET_VERSION, closed_predicate_whitelist_digest())
+                        and not (saved_predicates == (None, None) and legacy_metadata_verified)):
+                    continue
+            if (data.get('targeting_version') != TARGETING_VERSION
+                    or data.get('reading_context_policy') != READING_CONTEXT_POLICY
+                    or data.get('parsing_policy') != PARSING_POLICY
+                    or data.get('anchoring_policy') != ANCHORING_POLICY
+                    or data.get('extraction_mode') != extraction_mode):
                 continue
             task = data.get('task', '')
             accepted = data.get('accepted_response')
@@ -643,8 +939,8 @@ def _load_cached_packet_claims(cache_dir: Path | None, extraction_mode: str) -> 
             claims = accepted.get('claims') or []
             # Historical responses remain archived. Reusing them as new outputs
             # would silently bypass the current extraction contract.
-            validate_schema(accepted, EXTRACTION_RESPONSE_SCHEMA)
-            if any(not valid_relation_wording(row.get('relation')) for row in claims):
+            validate_schema(accepted, validation_schema)
+            if not closed_relations and any(not valid_relation_wording(row.get('relation')) for row in claims):
                 continue
             m = re.search(r'\((target-[0-9a-f]+); packet (\d+)\)', task)
             if m:
@@ -670,7 +966,9 @@ def _iter_packet_extractions(
     response_schema: dict[str, Any],
     emit: Callable[[str, str], None],
     cached_claims: dict[str, list[dict[str, Any]]],
-    concurrency: int = 4
+    concurrency: int = 4,
+    contract_version: int = EXTRACTION_CONTRACT_VERSION,
+    closed_relations: bool = False,
 ):
     total = len(packets)
     to_request = []
@@ -701,7 +999,8 @@ def _iter_packet_extractions(
         for index, pkt, rec in to_request:
             items = _request_packet(pkt, rec, index, total, client, system,
                                     source_title, extraction_mode, claims_per_packet,
-                                    response_schema, emit)
+                                    response_schema, emit, contract_version=contract_version,
+                                    closed_relations=closed_relations)
             requested_results[index - 1] = (pkt, rec, items)
         for i in range(total):
             if i in immediate_results:
@@ -716,10 +1015,15 @@ def _iter_packet_extractions(
         for index, pkt, rec in to_request:
             check_cancelled()
             time.sleep(0.15)
-            fut = executor.submit(
-                _request_packet, pkt, rec, index, total, client,
-                system, source_title, extraction_mode, claims_per_packet,
-                response_schema, emit
+            fut = submit_work(
+                executor,
+                partial(
+                    _request_packet,
+                    pkt, rec, index, total, client,
+                    system, source_title, extraction_mode, claims_per_packet,
+                    response_schema, emit,
+                    contract_version=contract_version, closed_relations=closed_relations,
+                ),
             )
             futures[fut] = index - 1
 
@@ -748,7 +1052,11 @@ def extract_claims(pdf_path: Path, client: OpenCodeClient, max_pages: int,
                    packet_results: list[dict[str, Any]] | None = None,
                    repair_target: dict[str, Any] | None = None, bibliography=None,
                    extraction_mode: str = 'whole_packet', target_words: int = 800,
-                   resume_cache_dir: Path | None = None, scope_instructions: str | None = None
+                   resume_cache_dir: Path | None = None, scope_instructions: str | None = None,
+                   prepared_targets: bool = False,
+                   context_packets: list[dict[str, Any]] | None = None,
+                   closed_relations: bool = False,
+                   reference=None,
                    ) -> tuple[list[dict[str, Any]], dict[str, int], list[dict[str, Any]]]:
     digest = file_hash(pdf_path)
     document_id = "local-" + stable_hash(f"{pdf_path.stem}|{digest}", 32)
@@ -756,11 +1064,16 @@ def extract_claims(pdf_path: Path, client: OpenCodeClient, max_pages: int,
     source_identifiers = source_identifiers or source_article_identifiers(pdf_path)
     if extraction_mode not in {'whole_packet', 'target_context'}:
         raise ValueError('Unknown extraction mode')
+    if prepared_targets and (extraction_mode != 'target_context' or not packets or repair_target is not None):
+        raise ValueError('Frozen targets require explicit target/context packets and no repair target')
     # A claim repair already has an explicit single-claim target. Retain its
     # original packet IDs rather than scheduling unrelated new regions.
     if repair_target is not None:
         extraction_mode = 'whole_packet'
-    system = build_extraction_prompt(claims_per_packet, extraction_mode)
+    contract_version = CLOSED_EXTRACTION_CONTRACT_VERSION if closed_relations else EXTRACTION_CONTRACT_VERSION
+    base_schema = CLOSED_EXTRACTION_RESPONSE_SCHEMA if closed_relations else EXTRACTION_RESPONSE_SCHEMA
+    system = build_extraction_prompt(claims_per_packet, extraction_mode,
+                                     closed_relations=closed_relations, reference=reference)
     if scope_instructions:
         system += '\n\n' + scope_instructions
     if repair_target is not None:
@@ -785,38 +1098,69 @@ def extract_claims(pdf_path: Path, client: OpenCodeClient, max_pages: int,
                    + json.dumps(repair_target, ensure_ascii=False))
     state = _ExtractionResults()
     bibliography = pdf_bibliography(pdf_path) if bibliography is None else bibliography
-    response_schema = json.loads(json.dumps(EXTRACTION_RESPONSE_SCHEMA))
+    response_schema = json.loads(json.dumps(base_schema))
     if claims_per_packet:
         response_schema["properties"]["claims"]["maxItems"] = claims_per_packet
     packets = packets if packets is not None else list(iter_pdf_context_packets(pdf_path, max_pages))
     if not packets:
         raise ValueError("The PDF has no extractable text. OCR is required before extraction.")
-    abbreviation_glossary = packet_definitions(packets, document_id)
-    if extraction_mode == 'target_context':
+    doc_packets = context_packets if context_packets is not None else packets
+    abbreviation_glossary = packet_definitions(doc_packets, document_id)
+    if prepared_targets:
+        # Evaluation adapters may replay frozen production targets. Never
+        # resegment them or silently mix old IDs with a different context policy.
+        for packet in packets:
+            if (packet.get('targeting_version') != TARGETING_VERSION
+                    or packet.get('reading_context_policy') != READING_CONTEXT_POLICY
+                    or not packet.get('target_id') or not packet.get('target_sentence_numbers')
+                    or not (set(packet['target_sentence_numbers']) | set(packet.get('reading_context_sentence_numbers', [])))
+                    <= set(range(1, len(packet['sentences']) + 1))
+                    or packet.get('frozen_source_pdf_sha256', digest) != digest):
+                raise ValueError('Frozen production target is incompatible or has invalid sentence IDs')
+    elif extraction_mode == 'target_context':
         packets = build_extraction_targets(packets, target_words,
             abbreviation_glossary=abbreviation_glossary, document_id=document_id)
         emit('info', f"Target/context extraction: {len(packets)} targets; about {target_words} words per target; "
              "nearby paragraphs and source-defined abbreviations supplied; full packets stored; no LLM discovery pass")
     packet_results = packet_results if packet_results is not None else []
-    planned_records = [_packet_coverage_record(packet, extraction_mode) for packet in packets]
+    planned_records = [_packet_coverage_record(packet, extraction_mode, contract_version) for packet in packets]
     packet_results.extend(planned_records)
-    context = _DocumentEvidence(document_id, digest, source_title, source_identifiers, document_scope, bibliography, extraction_mode)
-    cached_claims = _load_cached_packet_claims(resume_cache_dir, extraction_mode) if resume_cache_dir else {}
+    context = _DocumentEvidence(document_id, digest, source_title, source_identifiers, document_scope, bibliography,
+                                extraction_mode, contract_version=contract_version, closed_relations=closed_relations)
+    cached_claims = (_load_cached_packet_claims(resume_cache_dir, extraction_mode,
+                                                contract_version=contract_version,
+                                                response_schema=base_schema,
+                                                closed_relations=closed_relations)
+                     if resume_cache_dir else {})
     concurrency = getattr(getattr(client, 'settings', None), 'extraction_concurrency', 1)
     for packet, packet_record, extracted_items in _iter_packet_extractions(
         packets, planned_records, client, system, source_title,
         extraction_mode, claims_per_packet, response_schema, emit,
-        cached_claims=cached_claims, concurrency=concurrency
+        cached_claims=cached_claims, concurrency=concurrency,
+        contract_version=contract_version, closed_relations=closed_relations,
     ):
         if extracted_items is None:
             continue
-        _process_packet_claims(extracted_items, packet, context, state, emit)
+        _process_packet_claims(extracted_items, packet, context, state, emit, response_schema=base_schema)
         emit("success", f"{packet['section_heading']}: {len(state.candidates)} accepted candidates so far")
     emit("info", f"Extraction complete: {len(state.candidates)} unique candidates; "
          f"{state.rejected.get('overlap_occurrence_deduplicated', 0)} overlap duplicates removed; "
          f"{sum(value for key, value in state.rejected.items() if key != 'overlap_occurrence_deduplicated')} discarded ({dict(state.rejected)})")
-    for candidate in state.candidates:
-        candidate['source_abbreviation_definitions'] = relevant_definitions(candidate, abbreviation_glossary)
-        expanded = expand_claim_names(candidate, abbreviation_glossary)
-        candidate.update(expanded)
+    finalize_source_context(state.candidates, doc_packets, context.document_id, context.digest, abbreviation_glossary)
     return state.candidates, dict(state.rejected), state.rejection_records
+
+
+def finalize_source_context(candidates, packets, document_id, pdf_sha256, abbreviation_glossary):
+    """Shared production/replay finalisation, preserving literal source anchors."""
+    for candidate in candidates:
+        candidate['source_abbreviation_definitions'] = relevant_definitions(candidate, abbreviation_glossary)
+        candidate.update(expand_claim_names(candidate, abbreviation_glossary))
+    # The source-defined expansion can reveal a pure time/measurement span.
+    # Reuse the authoritative warning function after expansion, not a rewrite.
+    from backend.domain.treatment_labels import document_treatment_labels, labels_for_claim
+    labels = document_treatment_labels(packets, document_id, pdf_sha256)
+    for candidate in candidates:
+        candidate['source_treatment_labels'] = labels_for_claim(candidate, labels)
+        candidate['extraction_warnings'] = extraction_warnings(candidate)
+        candidate['extraction_review_status'] = 'held' if candidate['extraction_warnings'] else 'not_flagged'
+    return candidates

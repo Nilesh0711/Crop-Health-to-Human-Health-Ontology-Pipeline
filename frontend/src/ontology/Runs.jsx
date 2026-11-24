@@ -5,20 +5,49 @@ import { defaultThinking } from '../lib/thinking.js'
 import { activityStage, activityStageLabel, filterActivity } from '../lib/activity.js'
 import { useData, getPdfUrl, Notice, Pagination } from './useData.jsx'
 
+const reviewWarnings = candidate => candidate?.extraction_warnings || []
+const isSymmetricClaim = candidate =>
+  candidate?.predicate_alias === 'P5' ||
+  candidate?.proposed_relation_id === 'RO:0002610' ||
+  candidate?.proposed_relation_directed === false
+const claimsPageSize = 25
+
 function SavedClaims({ pdfId }) {
   const [offset, setOffset] = useState(0)
-  const data = useData(`/pdfs/${pdfId}/claims?limit=25&offset=${offset}`)
-  const rows = data.data?.limit ? data.data.claims : data.data?.claims?.slice(offset, offset + 25)
-  return <><Notice {...data} />{rows?.map(record => {
-    const c = record.candidate
-    return <article className="compact-evidence" key={c.candidate_id}>
-      <h3>{c.subject} → {c.relation} → {c.object}</h3><blockquote>{c.source_evidence_span}</blockquote>
-      <p className="muted">Source page {c.source_page ?? 'not recorded'}</p>
-      {(c.subject_context || c.object_context) && <dl>{['subject', 'object'].filter(role => c[role + '_context']).map(role => <div key={role}><dt>{role} context</dt><dd>{c[role + '_context']}</dd></div>)}</dl>}
-      {!!Object.keys(c.qualifiers || {}).length && <details><summary>Conditions and measurements</summary><dl>{Object.entries(c.qualifiers).map(([k, v]) => <div key={k}><dt>{k.replaceAll('_', ' ')}</dt><dd>{String(v)}</dd></div>)}</dl></details>}
-      {c.source_validation && <details><summary>Historical source assessment</summary><pre>{JSON.stringify(c.source_validation, null, 2)}</pre></details>}
-    </article>
-  })}{data.data && <Pagination offset={offset} total={data.data.total || data.data.claims?.length || 0} limit={25} onChange={setOffset} />}</>
+  const data = useData(`/pdfs/${pdfId}/claims`)
+  const claims = data.data?.claims || []
+  const rows = claims.slice(offset, offset + claimsPageSize)
+
+  return <><Notice {...data} />
+    {data.data && !rows.length && <p className="muted">No saved claims.</p>}
+    {rows.map(({ candidate: c }) => {
+      const warnings = reviewWarnings(c)
+      const observation = c.measured_comparison
+      const arrow = isSymmetricClaim(c) ? '↔' : '→'
+      const qualifiers = Object.entries({
+        ...c.qualifiers,
+        ...(c.subject_context ? { subject_context: c.subject_context } : {}),
+        ...(c.object_context ? { object_context: c.object_context } : {}),
+      })
+      const sentenceList = c.source_evidence_sentence_numbers?.length ? ` · sentence ${c.source_evidence_sentence_numbers.join(', ')}` : ''
+      return <details className="run-claim" key={c.candidate_id}>
+        <summary>{observation ? `${c.subject} · ${c.relation} ${c.object}` : `${c.subject} ${arrow} ${c.relation} ${arrow} ${c.object}`}</summary>
+        {!!qualifiers.length && <>
+          <strong>Qualifiers</strong>
+          <dl className="claim-qualifiers" aria-label="Claim qualifiers">{qualifiers.map(([k, v]) => <div key={k}><dt>{k.replaceAll('_', ' ')}</dt><dd>{String(v)}</dd></div>)}</dl>
+        </>}
+        <div>
+          <strong>Source</strong>{' '}
+          {c.source_page != null && <span className="muted">Page {c.source_page}{sentenceList}{c.source_evidence_section_heading ? ` · ${c.source_evidence_section_heading}` : ''}</span>}
+          <blockquote>{c.source_evidence_span}</blockquote>
+          {c.relation_trigger && <p><strong>Source wording</strong>{' '}<q>{c.relation_trigger}</q></p>}
+        </div>
+        {(c.extraction_review_status === 'held' || warnings.length > 0) && <div className="ontology-warning" role="note">
+          <strong>Held for review</strong>
+          {warnings.length > 0 && <ul>{warnings.map((w, i) => <li key={i}>{w.message || w.code}</li>)}</ul>}
+        </div>}
+      </details>
+    })}{data.data && <Pagination offset={offset} total={claims.length} limit={claimsPageSize} onChange={setOffset} />}</>
 }
 
 const activeStatuses = ['queued', 'running', 'stopping']
@@ -87,7 +116,7 @@ function PaperRun({ paper, health, onRefresh, blocked, onBusyChange, options, se
     if (!canExecute || blocked || active) return
     onBusyChange(true); setActionError('')
     try {
-      let body = options
+      let body = action === 'ground-claims' ? { thinking: options.thinking } : options
       if (action === 'resume') {
         const recovery = await request(`/pdfs/${paper.id}/recovery`)
         if (!recovery.can_continue) throw new Error(recovery.reason || 'No compatible checkpoint is available')
@@ -108,8 +137,10 @@ function PaperRun({ paper, health, onRefresh, blocked, onBusyChange, options, se
   }
   const logs = currentJob?.logs ?? savedLogs.data ?? []
   const manualGrounding = health?.pipeline?.manual_grounding
-  const groundingAvailable = manualGrounding?.enabled ?? (health?.pipeline?.stage_status?.ontology_grounding !== 'paused')
-  const extractionReady = paper.summary?.extraction_coverage?.complete === true && paper.summary?.extracted > 0
+  const groundingAvailable = manualGrounding?.enabled === true
+  const compatibleVersions = manualGrounding?.compatible_extraction_versions || [manualGrounding?.extraction_contract_version]
+  const extractionReady = paper.summary?.extraction_coverage?.complete === true && paper.summary?.ready_to_inspect > 0 &&
+    compatibleVersions.includes(paper.summary.extraction_contract_version)
   return <div className="ontology-run-detail">
     <div className="ontology-section-heading"><h3>{paper.title || paper.name}</h3><span className="ontology-run-status">status: {statusText(currentJob?.status || paper.status)}</span></div>
     {(() => {
@@ -119,8 +150,7 @@ function PaperRun({ paper, health, onRefresh, blocked, onBusyChange, options, se
     {canExecute && <div className="ontology-run-actions">
       <button className="primary" disabled={blocked || active || !health?.model_ready} onClick={() => run('run')}>Run pipeline</button>
       {groundingAvailable && <button disabled={blocked || active || !extractionReady || manualGrounding?.ready === false}
-        title={extractionReady ? 'Ground saved claims without repeating extraction' : 'Complete extraction first'}
-        onClick={() => run('ground-claims')}>Run grounded claims</button>}
+        onClick={() => run('ground-claims')}>Ground saved claims</button>}
       <button disabled={blocked || active} onClick={() => run('resume')}>Resume saved run</button>
       {active && jobId && <button disabled={currentJob?.status === 'stopping'} onClick={stop}>Stop pipeline</button>}
     </div>}
@@ -129,6 +159,14 @@ function PaperRun({ paper, health, onRefresh, blocked, onBusyChange, options, se
     {actionError && <p className="ontology-error" role="alert">{actionError}</p>}
     {monitorError && <p className="ontology-warning" role="alert">{monitorError}</p>}
     {currentJob?.error && <p className="ontology-error" role="alert">{currentJob.error}</p>}
+    {canExecute && groundingAvailable && manualGrounding?.ready === false &&
+      <p className="ontology-warning">The configured entity grounding model is unavailable.</p>}
+    <details className="run-claims" onToggle={event => {
+      if (event.target === event.currentTarget) setShowClaims(event.currentTarget.open)
+    }}>
+      <summary>Claims</summary>
+      {showClaims && <SavedClaims key={paper.summary?.completed_at} pdfId={paper.id} />}
+    </details>
     <ActivityLog logs={logs} loading={savedLogs.loading && !currentJob} error={savedLogs.error} active={active} />
     {canExecute && <details><summary>Extraction and model settings</summary>
       <div className="ontology-settings"><label>PDF pages (0 = all)<input type="number" min="0" max="1000" value={options.max_pages} onChange={e => setOptions({ ...options, max_pages: Number(e.target.value) })} /></label>
@@ -139,12 +177,11 @@ function PaperRun({ paper, health, onRefresh, blocked, onBusyChange, options, se
       </div>
       {[['extraction', 'Claim extraction'], ...(groundingAvailable ? [['pathway_assembly', 'Ontology grounding (manual)']] : [])].map(([key, name]) => <div key={key} className="ontology-model-setting"><span>{name}: <code>{(key === 'pathway_assembly' ? manualGrounding?.model : null) || health?.pipeline?.task_models?.[key] || 'Unavailable'}</code></span>
         <label className="inline-check"><input type="checkbox" role="switch" checked={options.thinking[key]} onChange={e => setOptions({ ...options, thinking: { ...options.thinking, [key]: e.target.checked } })} />Thinking</label></div>)}
-      <p className="muted">Thinking defaults to Off for extraction and On for manual grounding. Run pipeline stops after extraction.</p>
+      <p className="muted">{groundingAvailable
+        ? 'Thinking defaults to On for extraction and manual grounding. Run pipeline stops after extraction.'
+        : 'Thinking defaults to On for bounded extraction. Run pipeline stops after extraction.'}</p>
       <p className="muted">Parallel extraction requests: {health?.pipeline?.extraction_concurrency ?? 2}.</p>
     </details>}
-    <details><summary>Saved run details</summary><pre>{JSON.stringify(paper.summary || { status: paper.status }, null, 2)}</pre></details>
-    <details onToggle={event => setShowClaims(event.currentTarget.open)}><summary>Saved extracted claims and source passages</summary>
-      {showClaims && <SavedClaims pdfId={paper.id} />}</details>
   </div>
 }
 
@@ -169,11 +206,6 @@ export default function Runs({ pdfs, health, onRefresh, loading = false, error =
     event.target.value = ''
   }
   return <section className="ontology-panel ontology-runs"><div className="ontology-section-heading"><h2>PDF runs</h2><button onClick={onRefresh} disabled={loading}>Refresh papers</button></div>
-    <p>{health?.pipeline?.stage_status?.ontology_grounding === 'manual'
-      ? 'Run pipeline extracts claims only. Use Run grounded claims to ground a completed extraction separately.'
-      : health?.pipeline?.stage_status?.ontology_grounding === 'paused'
-      ? 'Extraction-only runs: ontology grounding and later stages are paused while atomic claims are reviewed.'
-      : 'Extract claims and ground their concepts. The pipeline stops after ontology grounding.'} Source fidelity and external scientific validation stay paused.</p>
     <Notice loading={loading && !pdfs.length} error={error || uploadError} />
     {canExecute && <details><summary>Add a source PDF</summary><input type="file" accept="application/pdf" disabled={blocked} onChange={upload} /></details>}
     <div className="ontology-runs-layout"><aside className="ontology-paper-list" aria-label="All papers"><h3>All papers ({pdfs.length})</h3>

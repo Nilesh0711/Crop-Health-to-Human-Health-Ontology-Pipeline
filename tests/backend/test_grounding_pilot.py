@@ -22,12 +22,13 @@ PHOSPHATE = 'http://purl.obolibrary.org/obo/CHEBI_26020'
 
 def test_active_profile_covers_potato_nutrition_with_compact_guidance():
     reference = Catalog(RESOURCE_DIR)
-    assert len(reference.profile['allowed_classes']) == 211
-    assert len(reference.profile['allowed_object_properties']) == 19
+    assert len(reference.profile['allowed_classes']) == 212
+    assert len(reference.profile['allowed_object_properties']) == 101
     assert reference.terms['http://purl.obolibrary.org/obo/CHEBI_17632']['selectable']
     assert reference.terms[PHOSPHATE]['selectable']
     instructions = reference.extraction_instructions()
-    assert 'potato root, leaf and tuber structures' in instructions
+    assert 'potato phosphorus uptake' in instructions
+    assert 'Standalone gene identity' in instructions
     # Extraction is ontology-agnostic; the class and relation catalogue is supplied only to grounding.
     for iri in reference.profile['allowed_classes'] + reference.profile['allowed_object_properties']:
         assert iri not in instructions
@@ -81,6 +82,53 @@ def test_entity_browser_preserves_each_occurrences_own_evidence(tmp_path, monkey
         searched = client.get('/api/ontology/entities?q=Unknown%20outcome%20Q&status=all').json()
         assert searched['status_counts'] == {'grounded': 0, 'vocabulary_gap': 1, 'alignment_review': 0, 'classification': 0, 'review': 0, 'all': 1}
         assert client.get('/api/ontology/entities?document=missing').json()['status_counts']['all'] == 0
+
+
+def test_relation_registry_summarizes_grounded_unresolved_and_unused_properties(tmp_path, monkeypatch):
+    reference = Catalog(RESOURCE_DIR)
+    output = tmp_path / 'paper'
+    output.mkdir()
+    claims = [
+        claim('one', subject='phosphate', object='root length', relation='positively regulates',
+              source_evidence_span='Phosphate positively regulates root length.'),
+        claim('two', subject='phosphate', object='root length', relation='is higher than',
+              source_evidence_span='Phosphate is higher than control.'),
+        claim('three', subject='phosphate', object='root length', relation='has higher',
+              source_evidence_span='Phosphate has higher values.'),
+    ]
+    save_rows(output / 'candidates.jsonl', claims)
+    ground_claims(claims, output, reference, Grounder())
+    rebuild(tmp_path, reference)
+    monkeypatch.setattr('backend.shared.ontology_browser.catalog', lambda: reference)
+    app = FastAPI()
+    app.include_router(create_router(SimpleNamespace(ONTOLOGY_DIR=tmp_path, _lock=RLock(), _jobs={})))
+    with TestClient(app) as client:
+        grounded = client.get('/api/ontology/relations?status=grounded').json()
+        assert grounded['total'] == 1
+        assert grounded['relations'][0]['label'] == 'positively regulates'
+        assert grounded['relations'][0]['raw_variants'] == [{'label': 'positively regulates', 'count': 1}]
+        assert grounded['summary'] == {
+            'total_claims': 3,
+            'grounded_mentions': 1,
+            'broader_mentions': 0,
+            'classified_mentions': 1,
+            'classified_properties': 1,
+            'unresolved_mentions': 2,
+            'used_properties': 1,
+            'catalog_properties': 101,
+            'unused_properties': 100,
+            'unresolved_phrases': 2,
+        }
+        assert grounded['status_counts'] == {'grounded': 1, 'classification': 0, 'classified': 1, 'unresolved': 2, 'unused': 100, 'all': 3}
+
+        unresolved = client.get('/api/ontology/relations?status=unresolved&q=higher%20than').json()
+        assert unresolved['total'] == 1
+        assert unresolved['relations'][0]['label'] == 'is higher than'
+        assert unresolved['relations'][0]['occurrences'][0]['evidence'] == 'Phosphate is higher than control.'
+
+        unused = client.get('/api/ontology/relations?status=unused&limit=5').json()
+        assert unused['total'] == 100 and len(unused['relations']) == 5
+        assert all(row['status'] == 'unused' and row['occurrence_count'] == 0 for row in unused['relations'])
 
 
 def test_prepare_pilot_is_bounded_unlabelled_and_never_overwrites_labels(tmp_path):

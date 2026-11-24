@@ -1,0 +1,16 @@
+{
+  "terms": {
+    "http://purl.obolibrary.org/obo/BFO_0000050": {"iri":"http://purl.obolibrary.org/obo/BFO_0000050", "id":"BFO:0000050", "label":"part of", "definition":"A part-whole relation.", "kind":"object_property", "selectable":true},
+    "http://purl.obolibrary.org/obo/RO_0002410": {"iri":"http://purl.obolibrary.org/obo/RO_0002410", "id":"RO:0002410", "label":"causally related to", "kind":"object_property", "selectable":true, "direct_use_allowed":false}
+  },
+  "cases": [
+    {"id":"a", "scope":"in_scope", "document":"Paper A", "relation":"is part of", "mapping":"exact", "iri":"http://purl.obolibrary.org/obo/BFO_0000050"},
+    {"id":"b", "scope":"in_scope", "document":"Paper A", "relation":"is directly part of", "mapping":"broader", "iri":"http://purl.obolibrary.org/obo/BFO_0000050"},
+    {"id":"c", "scope":"in_scope", "document":"Paper B", "relation":"is part of", "mapping":"exact", "iri":"http://purl.obolibrary.org/obo/BFO_0000050"},
+    {"id":"d", "scope":"in_scope", "document":"Paper A", "relation":"may influence", "mapping":"unresolved", "iri":null},
+    {"id":"e", "scope":"in_scope", "document":"Paper B", "relation":"MAY   influence", "mapping":"unresolved", "iri":null},
+    {"id":"f", "scope":"out_of_scope", "document":"Paper A", "relation":"is part of", "mapping":"exact", "iri":"http://purl.obolibrary.org/obo/BFO_0000050"},
+    {"id":"g", "scope":"needs_review", "document":"Paper A", "relation":"might affect", "mapping":"unresolved", "iri":null}
+  ],
+  "pending": {"document_key":"Paper A", "candidate_id":"h"}
+}

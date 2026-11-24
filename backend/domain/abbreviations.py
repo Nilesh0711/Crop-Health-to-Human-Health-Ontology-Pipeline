@@ -5,10 +5,18 @@ from copy import deepcopy
 from backend.shared.storage import stable_hash
 from backend.domain.alignment import exact_in
 
-VERSION = 'source-defined-abbreviations-v4'
+VERSION = 'source-defined-abbreviations-v5'
 PARENTHESIS = re.compile(r'\(([^()\n]{1,100})\)')
 SHORT = re.compile(r'[A-Za-z][A-Za-z0-9-]{0,14}\Z')
-SCIENTIFIC_SHORT = r'[A-Z][a-z]?\.\s*[a-z][a-z0-9-]{1,39}'
+SCIENTIFIC_SHORT = r'[A-Z][a-z]?\s*\.\s*[a-z][a-z0-9-]{1,39}'
+BINOMIAL_SHORT_RE = re.compile(r'(?<!\w)([A-Z])\s*\.\s*([a-z][a-z0-9-]{2,39})(?!\w)')
+FULL_BINOMIAL_RE = re.compile(r'(?<!\w)([A-Z][a-z]{2,39})\s+([a-z][a-z0-9-]{2,39})(?!\w)')
+_NON_BINOMIAL_WORDS = frozenset({
+    'sp', 'spp', 'var', 'subsp', 'cv', 'cf', 'et', 'al', 'vs', 'fig', 'tab', 'eq',
+    'and', 'or', 'of', 'in', 'to', 'by', 'at', 'as', 'is', 'are', 'was', 'were',
+    'the', 'for', 'with', 'from', 'on', 'that', 'this', 'under', 'over', 'into',
+    'than', 'per', 'mg', 'kg', 'ha', 'ml', 'nm', 'mm', 'cm',
+})
 BEFORE_SHORT = re.compile(r'(' + SCIENTIFIC_SHORT + r'|[A-Za-z][A-Za-z0-9-]{0,14})\s*$')
 NAME_FIELDS = ('subject', 'object', 'relation', 'claim_text', 'subject_context', 'object_context',
     'qualifiers.crop_or_species', 'qualifiers.population', 'qualifiers.condition',
@@ -21,14 +29,22 @@ def _short(text):
 
 
 def alias_pattern(short):
-    # Permit typesetting spaces after a genus initial, but preserve case and
-    # token boundaries so treatment/gene identifiers are not substring-edited.
+    # Permit typesetting spaces around a genus-initial period (e.g. "P. mucilaginosus"
+    # or "P . mucilaginosus"), while preventing standalone single/short aliases such as
+    # "P" from matching the genus initial of a binomial name.
     escaped = re.escape(short)
     if re.fullmatch(SCIENTIFIC_SHORT, short):
-        escaped = re.sub(r'(?:\\ )+', r'\\s*', escaped)
-        if r'\s*' not in escaped:
-            escaped = escaped.replace(r'\.', r'\.\s*', 1)
-    return re.compile(r'(?<!\w)' + escaped + r'(?!\w)')
+        parts = re.split(r'\s*\.\s*', short, maxsplit=1)
+        escaped = re.escape(parts[0]) + r'\s*\.\s*' + re.escape(parts[1])
+        return re.compile(r'(?<!\w)' + escaped + r'(?!\w)')
+    suffix_guard = r'(?!\s*\.\s*[a-z][a-z0-9-]{1,39})' if not short.endswith('.') else ''
+    return re.compile(r'(?<!\w)' + escaped + suffix_guard + r'(?!\w)')
+
+
+_FINITE_CLAUSE_VERB_RE = re.compile(
+    r'\b(?:is|are|was|were|had|has|have|did|does|do|showed|indicated|revealed|observed)\b',
+    re.I,
+)
 
 
 def _long_form(short, preceding):
@@ -47,6 +63,7 @@ def _long_form(short, preceding):
     long = preceding[cursor + 1:].strip()
     if (len(long) <= len(short) or len(long.split()) > min(len(letters) + 5, len(letters) * 2)
             or len(letters) == 1 and (len(long.split()) != 1 or len(long) < 3)
+            or _FINITE_CLAUSE_VERB_RE.search(long)
             or alias_pattern(short).search(long)):
         return None
     return long
@@ -73,25 +90,78 @@ def document_key(claim):
     return str(claim.get('source_document_id') or claim.get('source_paper_title') or 'current-document')
 
 
+def _binomial_pair_valid(short, full, quote):
+    """True when `short` abbreviates the genus initial of a verbatim document binomial."""
+    if ' '.join(str(full or '').split()).casefold() != ' '.join(str(quote or '').split()).casefold():
+        return False
+    m_full = FULL_BINOMIAL_RE.fullmatch(' '.join(str(quote or '').split()))
+    m_short = BINOMIAL_SHORT_RE.fullmatch(' '.join(str(short or '').split()))
+    if not (m_full and m_short):
+        return False
+    genus, species = m_full[1], m_full[2]
+    initial, short_species = m_short[1], m_short[2]
+    return (species.casefold() not in _NON_BINOMIAL_WORDS
+            and genus[0] == initial and species == short_species)
+
+
+def _binomial_definitions(text_entries, document, seen_keys):
+    """Collect document-scoped `G. species` expansions only when `Genus species` appears unambiguously."""
+    short_mentions = set()
+    full_by_key = {}
+    for text, meta in text_entries:
+        if not text:
+            continue
+        for m in BINOMIAL_SHORT_RE.finditer(text):
+            if m[2].casefold() not in _NON_BINOMIAL_WORDS:
+                short_mentions.add((m[1], m[2]))
+        for m in FULL_BINOMIAL_RE.finditer(text):
+            genus, species = m[1], m[2]
+            if species.casefold() in _NON_BINOMIAL_WORDS or genus.casefold() in _NON_BINOMIAL_WORDS:
+                continue
+            quote = f'{genus} {species}'
+            key = (genus[0], species)
+            bucket = full_by_key.setdefault(key, {})
+            if quote not in bucket:
+                bucket[quote] = dict(meta)
+    rows = []
+    for key in sorted(short_mentions):
+        candidates = full_by_key.get(key) or {}
+        if len(candidates) != 1:
+            continue
+        quote, meta = next(iter(candidates.items()))
+        short = f'{key[0]}. {key[1]}'
+        dedup_key = (document, short, quote, quote)
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
+        rows.append({'abbreviation': short, 'expansion': quote, 'quote': quote,
+                     'document': document, **meta})
+    return rows
+
+
 def packet_definitions(packets, document):
     """Collect once from parsed sentences, including ones with no extracted claim."""
-    rows, seen = [], set()
+    rows, seen, binomial_entries = [], set(), []
     for packet in packets:
         for number, sentence in enumerate(packet['sentences'], 1):
             text = sentence['text']
+            meta = {'context_field': 'parsed_sentence',
+                    'packet_number': packet.get('packet_number'), 'sentence_number': number,
+                    'page': sentence.get('page'), 'context_sha256': stable_hash(text, 64)}
+            binomial_entries.append((text, meta))
             for row in definitions(text):
-                key = (row['abbreviation'], row['expansion'], row['quote'])
+                key = (document, row['abbreviation'], row['expansion'], row['quote'])
                 if key in seen:
                     continue
                 seen.add(key)
-                rows.append({**row, 'document': document, 'context_field': 'parsed_sentence',
-                    'packet_number': packet.get('packet_number'), 'sentence_number': number,
-                    'page': sentence.get('page'), 'context_sha256': stable_hash(text, 64)})
+                rows.append({**row, 'document': document, **meta})
+    rows.extend(_binomial_definitions(binomial_entries, document, seen))
     return rows
 
 
 def collect_definitions(claims):
     found, seen, contexts = [], set(), set()
+    entries_by_doc = {}
     for claim in claims:
         document = document_key(claim)
         for inherited in claim.get('source_abbreviation_definitions') or []:
@@ -107,22 +177,44 @@ def collect_definitions(claims):
             if context_key in contexts:
                 continue
             contexts.add(context_key)
+            meta = {'candidate_id': claim.get('candidate_id'), 'context_field': field,
+                    'context_sha256': fingerprint,
+                    'page': claim.get('source_page') if field == 'source_evidence_span' else None}
+            entries_by_doc.setdefault(document, []).append((text, meta))
             for row in definitions(text):
                 key = (document, row['abbreviation'], row['expansion'], row['quote'])
                 if key in seen:
                     continue
                 seen.add(key)
-                found.append({**row, 'document': document, 'candidate_id': claim.get('candidate_id'),
-                    'context_field': field, 'context_sha256': fingerprint,
-                    'page': claim.get('source_page') if field == 'source_evidence_span' else None})
+                found.append({**row, 'document': document, **meta})
+    for document, entries in entries_by_doc.items():
+        found.extend(_binomial_definitions(entries, document, seen))
     return found
 
 
+_BROKEN_HYPHEN_RE = re.compile(r'(?<=[A-Za-z]{2})\s+-\s+(?=[A-Za-z]{2})')
+_UNICODE_HYPHENS = str.maketrans({'\u2010': '-', '\u2011': '-', '\u2012': '-', '\u2013': '-', '\u2014': '-', '\u2212': '-'})
+
+
+def _clean_expansion(text):
+    return _BROKEN_HYPHEN_RE.sub('', str(text or '').translate(_UNICODE_HYPHENS))
+
+
 def relevant_definitions(claim, glossary):
+    doc = document_key(claim)
     text = ' '.join(str(claim.get(k) or '') for k in ('subject', 'relation', 'object', 'qualifiers', 'source_evidence_span'))
-    rows = [row for row in glossary if row['document'] == document_key(claim)
-        and alias_pattern(row['abbreviation']).search(text)]
-    _, ambiguous = resolved_aliases(glossary, document_key(claim))
+    doc_rows = [row for row in glossary if row['document'] == doc]
+    selected = [row for row in doc_rows if alias_pattern(row['abbreviation']).search(text)]
+    seen = {id(row) for row in selected}
+    for _ in range(4):
+        expansions_text = ' '.join(str(row.get('expansion') or '') for row in selected)
+        added = [row for row in doc_rows if id(row) not in seen and alias_pattern(row['abbreviation']).search(expansions_text)]
+        if not added:
+            break
+        selected.extend(added)
+        seen.update(id(row) for row in added)
+    rows = [row for row in doc_rows if id(row) in seen]
+    _, ambiguous = resolved_aliases(glossary, doc)
     return [{**row, 'ambiguous': row['abbreviation'] in ambiguous} for row in rows]
 
 
@@ -159,8 +251,9 @@ def compact_expanded_parentheses(text):
 def verify_name_expansion(before, after, short, full, quote, context):
     """Shared edit/provenance guard; this is not a scientific-fidelity verdict."""
     if (not all(isinstance(v, str) and v.strip() for v in (before, after, short, full, quote))
-            or short == full or not exact_in(quote, context)
-            or not exact_in(short, quote) or not exact_in(full, quote)):
+            or short == full or not exact_in(quote, context) or not exact_in(full, quote)):
+        return False
+    if not exact_in(short, quote) and not _binomial_pair_valid(short, full, quote):
         return False
     return name_replacement_matches(before, after, short, full)
 
@@ -179,28 +272,35 @@ def resolved_aliases(glossary, document):
         short, full, quote = (row.get(k, '') for k in ('abbreviation', 'expansion', 'quote'))
         if not _short(short):
             continue
-        if not any(d['abbreviation'] == short and ' '.join(d['expansion'].split()).casefold()
-                == ' '.join(full.split()).casefold() for d in definitions(quote)):
+        is_parenthetical = any(d['abbreviation'] == short and ' '.join(d['expansion'].split()).casefold()
+                == ' '.join(full.split()).casefold() for d in definitions(quote))
+        if not (is_parenthetical or _binomial_pair_valid(short, full, quote)):
             continue
         groups.setdefault(short, []).append(row)
     resolved = {}
     def canonical(text, exclude):
+        text = _clean_expansion(text)
         for _ in range(8):
             original = text
             for key, row in sorted(resolved.items(), key=lambda item: -len(item[0])):
                 if key != exclude:
-                    text = alias_pattern(key).sub(lambda _: ' '.join(row['expansion'].split()), text)
+                    text = alias_pattern(key).sub(lambda _: _clean_expansion(' '.join(row['expansion'].split())), text)
             if text == original:
                 break
-        return ' '.join(text.split()).casefold()
+        return ' '.join(_clean_expansion(text).split()).casefold()
     for _ in range(min(16, len(groups) + 1)):
         before = dict(resolved)
         for short, rows in groups.items():
             if len({canonical(row['expansion'], short) for row in rows}) == 1:
-                # Prefer a source form already spelled out over one containing
-                # another known abbreviation; no scientific rewording is made.
-                resolved[short] = min(rows, key=lambda r: sum(bool(alias_pattern(k).search(r['expansion']))
-                    for k in groups if k != short))
+                # Prefer a clean source form already spelled out over one with
+                # broken line hyphens or another known abbreviation; no rewording.
+                resolved[short] = min(
+                    rows,
+                    key=lambda r: (
+                        int(bool(_BROKEN_HYPHEN_RE.search(r['expansion']))),
+                        sum(bool(alias_pattern(k).search(r['expansion'])) for k in groups if k != short),
+                    ),
+                )
             else:
                 resolved.pop(short, None)
         if resolved == before:

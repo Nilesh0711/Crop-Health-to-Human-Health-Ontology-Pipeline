@@ -9,6 +9,8 @@ ppt/*
 docs/
 
 # Python caches and temporary test directories
+.cache/
+.vite/
 .pytest_cache/
 .pytest_tmp*/
 .pytest_temp/

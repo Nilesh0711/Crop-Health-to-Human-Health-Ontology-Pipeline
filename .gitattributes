@@ -1,3 +1,4 @@
 # Published files are integrity-checked by their exact bytes on every platform.
 deploy/render/snapshot/** -text
 deploy/pages/data/** -text
+backend/resources/ontologies/fragments/ro-release-2026-09-04.owl -text

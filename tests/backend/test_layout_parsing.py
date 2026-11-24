@@ -116,3 +116,60 @@ def test_running_headers_are_filtered_without_breaking_body_sentences():
     ]
     for sentence in body_sentences:
         assert not RUNNING_HEADER_RE.match(sentence), f"Body sentence should not match: {sentence}"
+
+
+class FontDict(dict):
+    def get_object(self):
+        return self
+
+
+def _micro_page(fragments):
+    """Single-column page: (text, is_micro_font) fragments; plain text keeps the extracted 'm'."""
+    micro = FontDict({'/FontDescriptor': FontDict({'/CharSet': '/m'})})
+    body = FontDict({'/FontDescriptor': FontDict({'/CharSet': '/m/g/a/b'})})
+
+    class Page:
+        mediabox = SimpleNamespace(width=600, height=800)
+        def extract_text(self, visitor_text=None):
+            if visitor_text:
+                for i, (text, is_micro) in enumerate(fragments):
+                    visitor_text(text, [1, 0, 0, 1, 0, 0], [1, 0, 0, 1, 50 + i * 40, 700], micro if is_micro else body, 10)
+            return ''.join(text for text, _ in fragments)
+    return Page()
+
+
+def test_micro_sign_in_a_unicode_less_symbol_font_is_restored_only_where_proven():
+    page = _micro_page([('Macrominerals mg/g and micro in terms of', False), (' m', True), ('g/g on a tuber dry weight basis.', False)])
+    text, report = page_text(page, PARSING_POLICY)
+    assert 'Macrominerals mg/g' in text          # ordinary body 'm' stays milligram
+    assert 'terms of \u00b5g/g on a tuber' in text
+    assert report['micro_sign_repaired'] == 1
+
+
+def test_symbol_glyph_not_followed_by_a_unit_is_left_unchanged_and_reported():
+    page = _micro_page([('value ', False), ('m', True), ('ixed model', False)])
+    text, report = page_text(page, PARSING_POLICY)
+    assert text == 'value mixed model'
+    assert report['micro_sign_unrepaired'] == 1 and report['micro_sign_reason'] == 'symbol_glyph_not_followed_by_unit'
+
+
+def test_previous_policy_reproduces_old_text_for_reading_saved_artifacts():
+    from backend.stages.pdf_parsing.layout import PREVIOUS_PARSING_POLICY
+    page = _micro_page([('terms of', False), (' m', True), ('g/g on', False)])
+    assert page_text(page, PREVIOUS_PARSING_POLICY)[0] == 'terms of mg/g on'
+
+
+def test_pandey_methods_and_results_keep_microgram_units_in_real_pdf():
+    from pathlib import Path
+    from pypdf import PdfReader
+    pdf = Path('pdf/Pandey_2023_Potato_Tuber_Minerals_and_Phosphorus.pdf')
+    if not pdf.exists():
+        import pytest
+        pytest.skip('Pandey PDF is not part of this checkout')
+    reader = PdfReader(str(pdf))
+    methods = ' '.join(page_text(reader.pages[2])[0].split())
+    results = ' '.join(page_text(reader.pages[4])[0].split())
+    assert 'Macrominerals were expressed in terms of mg/g' in methods
+    assert 'microminerals were expressed in terms of \u00b5g/g on a tuber dry' in methods
+    assert 'higher (8.7%) in Dalhart (20.68 \u00b5g/g) than in Springlake (19.02 \u00b5g/g)' in results
+    assert 'Dalhart (3.99 mg/g) than in Springlake (2.93 mg/' in results   # phosphorus is a macromineral

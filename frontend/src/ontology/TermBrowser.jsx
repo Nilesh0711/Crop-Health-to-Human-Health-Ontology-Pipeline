@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { closedPredicateList } from './appendixExamples.js'
 import { useData, encoded, Link, Notice, Pagination, label } from './useData.jsx'
 
-const kinds = [['class', 'Classes'], ['object_property', 'Object properties'], ['data_property', 'Data properties']]
+const kinds = [['class', 'Classes'], ['object_property', 'Object properties']]
+const extractionProperties = new Map(closedPredicateList.map(property => [property.iri, property]))
 
 const establishedOntologies = [
   {
@@ -11,7 +13,7 @@ const establishedOntologies = [
     ontobeeUrl: 'https://ontobee.org/ontology/PO',
     owlUrl: 'http://purl.obolibrary.org/obo/po.owl',
     scope: 'Plant anatomical structures, organs, vascular tissues, and morphological developmental stages.',
-    examples: 'root, potato tuber, stolon, leaf, shoot system, lateral root, xylem, phloem'
+    examples: 'seed'
   },
   {
     name: 'Plant Trait Ontology',
@@ -19,8 +21,8 @@ const establishedOntologies = [
     standard: 'OBO Foundry Standard',
     ontobeeUrl: 'https://ontobee.org/ontology/TO',
     owlUrl: 'http://purl.obolibrary.org/obo/to.owl',
-    scope: 'Plant phenotypic, nutrient sensitivity/deficiency, uptake, biochemical, root architecture, and yield traits.',
-    examples: 'nitrogen sensitivity / deficiency, phosphorus response / deficiency, potassium sensitivity / deficiency, phosphorus uptake, nitrate uptake, root length to shoot length ratio, plant height, plant fresh weight, root system phosphorus content, shoot axis tuber yield'
+    scope: 'Plant phenotypic, nutrient uptake, root architecture, phosphorus content, and yield traits.',
+    examples: 'phosphorus uptake, root morphology trait, phosphorus content, root system morphology trait, biomass yield'
   },
   {
     name: 'Gene Ontology',
@@ -28,17 +30,8 @@ const establishedOntologies = [
     standard: 'Gene Ontology Consortium',
     ontobeeUrl: 'https://ontobee.org/ontology/GO',
     owlUrl: 'http://purl.obolibrary.org/obo/go.owl',
-    scope: 'Biological processes, transmembrane transporter activities, cellular starvation responses, carbon fixation, symbiosis, and biosynthetic pathways.',
-    examples: 'phosphate transmembrane transporter activity, nitrate transmembrane transporter activity, ammonium channel activity, gene expression, carbon fixation, biological process involved in symbiotic interaction, indoleacetic acid biosynthetic process, cellular response to phosphate starvation'
-  },
-  {
-    name: 'Sequence Ontology',
-    prefix: 'SO',
-    standard: 'OBO Foundry Standard',
-    ontobeeUrl: 'https://ontobee.org/ontology/SO',
-    owlUrl: 'http://purl.obolibrary.org/obo/so.owl',
-    scope: 'Biological sequences, sequence features, and generic gene concepts.',
-    examples: 'gene'
+    scope: 'Biological processes, phosphate ion transport, organ development, and metabolic pathways.',
+    examples: 'growth, renal phosphate excretion, root system development, phosphorus utilization, phosphorus metabolic process'
   },
   {
     name: 'Chemical Entities of Biological Interest',
@@ -46,8 +39,8 @@ const establishedOntologies = [
     standard: 'EMBL-EBI / OBO Foundry',
     ontobeeUrl: 'https://ontobee.org/ontology/CHEBI',
     owlUrl: 'http://purl.obolibrary.org/obo/chebi.owl',
-    scope: 'Mineral nutrients, chemical compounds, ions, fertilizers, organophosphorus compounds, proteins, and primary/secondary plant metabolites.',
-    examples: 'phosphorus atom, phosphate(3-), organophosphorus compound, protein, nitrate, ammonium, potassium atom, starch, sucrose, fertilizer'
+    scope: 'Phosphate ions, organophosphorus compounds, phytate, and biochemical molecules.',
+    examples: 'myo-inositol hexakisphosphate, inorganic phosphate, phosphate, hormone, calcium phosphate'
   },
   {
     name: 'Environment Ontology',
@@ -55,8 +48,8 @@ const establishedOntologies = [
     standard: 'OBO Foundry Standard',
     ontobeeUrl: 'https://ontobee.org/ontology/ENVO',
     owlUrl: 'http://purl.obolibrary.org/obo/envo.owl',
-    scope: 'Environmental biomes, soil types, rhizosphere environments, and soil chemical properties.',
-    examples: 'soil, rhizosphere, fertilized soil, loam, sandy loam, acidity of soil'
+    scope: 'Soil phosphorus concentration and environmental process classes.',
+    examples: 'concentration of phosphorus molecular entity in soil, erosion, material extraction process'
   },
   {
     name: 'Plant Experimental Conditions Ontology',
@@ -64,8 +57,8 @@ const establishedOntologies = [
     standard: 'Gramene / OBO Foundry',
     ontobeeUrl: 'https://ontobee.org/ontology/PECO',
     owlUrl: 'http://purl.obolibrary.org/obo/peco.owl',
-    scope: 'Plant experimental treatments, nutrient exposures, fertilizer regimes, and growth media.',
-    examples: 'phosphorus nutrient exposure, limited phosphate exposure, nitrogen exposure, limited nitrogen exposure, NPK fertilizer exposure, plant growth medium exposure'
+    scope: 'Plant experimental treatments, nutrient exposures, phosphate limitation, and microbial inoculation.',
+    examples: 'bacterial plant exposure, phosphorus nutrient exposure, phosphate exposure, limited phosphate exposure, biotic plant exposure'
   },
   {
     name: 'Phenotype and Trait Ontology',
@@ -73,8 +66,8 @@ const establishedOntologies = [
     standard: 'OBO Foundry Standard',
     ontobeeUrl: 'https://ontobee.org/ontology/PATO',
     owlUrl: 'http://purl.obolibrary.org/obo/pato.owl',
-    scope: 'Qualitative, comparative, and phenotypic dimensional qualities.',
-    examples: 'concentration of, length, area, volume, mass, ratio'
+    scope: 'Qualitative and dimensional attributes such as efficiency, volume change, and accumulation.',
+    examples: 'efficiency, viscosity, damage, decreased efficiency, accumulation'
   },
   {
     name: 'NCBI Organismal Taxonomy',
@@ -82,8 +75,125 @@ const establishedOntologies = [
     standard: 'NCBI Taxonomy / OBO',
     ontobeeUrl: 'https://ontobee.org/ontology/NCBITaxon',
     owlUrl: 'http://purl.obolibrary.org/obo/ncbitaxon.owl',
-    scope: 'Taxonomic hierarchy of crop plants, rhizosphere bacteria, and fungi.',
-    examples: 'Solanum tuberosum, Bacillus subtilis, Bacteria, Fungi'
+    scope: 'Taxonomic hierarchy of crop plants and rhizosphere bacteria.',
+    examples: 'Bacteria, Viridiplantae'
+  },
+  {
+    name: 'Food Ontology',
+    prefix: 'FOODON',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/FOODON',
+    owlUrl: 'http://purl.obolibrary.org/obo/foodon.owl',
+    scope: 'Food products, potato tubers, culinary preparation methods, and phosphate food additives.',
+    examples: 'potato, boiling and then draining, food additive, chemical food component, bread'
+  },
+  {
+    name: 'Compositional Dietary Nutrition Ontology',
+    prefix: 'CDNO',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/CDNO',
+    owlUrl: 'http://purl.obolibrary.org/obo/cdno.owl',
+    scope: 'Dietary minerals, macro elements, and dietary phosphorus concentrations in foods.',
+    examples: 'dietary phosphorus, macro element, concentration of dietary phosphorus in material entity'
+  },
+  {
+    name: 'Medical Action Ontology',
+    prefix: 'MAXO',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/MAXO',
+    owlUrl: 'http://purl.obolibrary.org/obo/maxo.owl',
+    scope: 'Clinical interventions and human nutrition intake actions.',
+    examples: 'nutrition intake'
+  },
+  {
+    name: 'Environmental Conditions, Treatments and Exposures Ontology',
+    prefix: 'ECTO',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/ECTO',
+    owlUrl: 'http://purl.obolibrary.org/obo/ecto.owl',
+    scope: 'Human and biological exposures to dietary phosphate, phosphorus, and microbial treatments.',
+    examples: 'exposure to Bacillus subtilis, exposure to phosphate, exposure to phosphorus via ingestion, exposure to inorganic phosphate, exposure to phosphorus'
+  },
+  {
+    name: 'Clinical Measurement Ontology',
+    prefix: 'CMO',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/CMO',
+    owlUrl: 'http://purl.obolibrary.org/obo/cmo.owl',
+    scope: 'Neutral quantitative physiological and clinical biomarker measurements.',
+    examples: 'serum phosphate level, blood parathyroid hormone level, plasma ionized calcium level, body height, blood phosphate level'
+  },
+  {
+    name: 'Ontology of Biological Attributes',
+    prefix: 'OBA',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/OBA',
+    owlUrl: 'http://purl.obolibrary.org/obo/oba.owl',
+    scope: 'Biological and physiological trait attributes bridging anatomy and clinical measurements.',
+    examples: 'amount of vitamin D, growth trait, amount of fibroblast growth factor 23, carotid artery intima-media region thickness'
+  },
+  {
+    name: 'Human Phenotype Ontology',
+    prefix: 'HP',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/HP',
+    owlUrl: 'http://purl.obolibrary.org/obo/hp.owl',
+    scope: 'Clinical abnormalities and human phenotypic signs associated with mineral dysregulation.',
+    examples: 'Nephropathy, Intratubular calcium phosphate casts, Hyperphosphatemia, Calcinosis, Nephrocalcinosis'
+  },
+  {
+    name: 'Mondo Disease Ontology',
+    prefix: 'MONDO',
+    standard: 'Monarch / OBO Foundry',
+    ontobeeUrl: 'https://ontobee.org/ontology/MONDO',
+    owlUrl: 'http://purl.obolibrary.org/obo/mondo.owl',
+    scope: 'Human disease classes linking dietary and serum phosphate exposure to clinical pathologies.',
+    examples: 'nephrocalcinosis, chronic kidney disease, cardiovascular disorder, calcinosis'
+  },
+  {
+    name: 'Neuro Behavior Ontology',
+    prefix: 'NBO',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/NBO',
+    owlUrl: 'http://purl.obolibrary.org/obo/nbo.owl',
+    scope: 'Behavioral processes and feeding/consumption behaviors imported via OBO Foundry alignment.',
+    examples: 'food consumption'
+  },
+  {
+    name: 'Ontology for Nutritional Studies',
+    prefix: 'ONS',
+    standard: 'OBO Foundry / ENPADASI',
+    ontobeeUrl: 'https://ontobee.org/ontology/ONS',
+    owlUrl: 'http://purl.obolibrary.org/obo/ons.owl',
+    scope: 'Human diets, dietary patterns, and nutritional study interventions imported via FoodOn.',
+    examples: 'diet by nutritional composition'
+  },
+  {
+    name: 'Units of Measurement Ontology',
+    prefix: 'UO',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/UO',
+    owlUrl: 'http://purl.obolibrary.org/obo/uo.owl',
+    scope: 'Standardized metric and scientific units indexed alongside measurements.',
+    examples: 'None matched in this run (indexed: unit, length unit, mass unit)'
+  },
+  {
+    name: 'Crop Ontology — Potato',
+    prefix: 'CO_330',
+    standard: 'Crop Ontology Standard',
+    ontobeeUrl: 'https://cropontology.org/rdf/CO_330',
+    owlUrl: 'https://cropontology.org/rdf/CO_330',
+    scope: 'Potato-specific agronomic variables, root lengths, biomass weights, and tuber quality traits.',
+    examples: 'Biomass weight, Root length, Plant productivity, Yield (qualitative), Tuber overall quality'
+  },
+  {
+    name: 'Protein Ontology',
+    prefix: 'PR',
+    standard: 'OBO Foundry Standard',
+    ontobeeUrl: 'https://ontobee.org/ontology/PR',
+    owlUrl: 'http://purl.obolibrary.org/obo/pr.owl',
+    scope: 'Hormones and regulatory proteins involved in phosphate homeostasis.',
+    examples: 'fibroblast growth factor 23'
   },
   {
     name: 'Relation Ontology & Basic Formal Ontology',
@@ -91,75 +201,10 @@ const establishedOntologies = [
     standard: 'OBO Foundry Standard',
     ontobeeUrl: 'https://ontobee.org/ontology/RO',
     owlUrl: 'http://purl.obolibrary.org/obo/ro.owl',
-    scope: 'Causal, regulatory, associative, production, mereological, bearer-quality, process-participation, and transport object properties.',
-    examples: 'part of, has part, has quality, characteristic of, located in, participates in, has participant, transports, has input, has output, causally related to, causally upstream of (positive/negative effect), regulates (positively/negatively), produces, correlated with'
+    scope: 'Approved causal, regulatory, compositional, and dietary-input object properties.',
+    examples: 'positively regulates characteristic, negatively regulates characteristic, causes or contributes to condition, has input, has part'
   }
 ]
-
-function TreeNode({ term, kind, selected, onSelect, ancestors = [], expandedSet }) {
-  const isAncestorOfSelected = Boolean(expandedSet && expandedSet.has(term.iri))
-  const [userOpen, setUserOpen] = useState(null)
-  const [offset, setOffset] = useState(0)
-  const repeated = ancestors.includes(term.iri)
-  const rowRef = useRef(null)
-
-  // Auto-expand if this node is an ancestor of the currently selected term
-  useEffect(() => {
-    if (isAncestorOfSelected) {
-      setUserOpen(true)
-    }
-  }, [isAncestorOfSelected])
-
-  // Smooth scroll into view when selected
-  useEffect(() => {
-    if (selected === term.iri && rowRef.current) {
-      rowRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
-  }, [selected, term.iri])
-
-  const open = userOpen !== null ? userOpen : isAncestorOfSelected
-  const children = useData(open && !repeated ? `/ontology/hierarchy?kind=${kind}&parent=${encoded(term.iri)}&limit=40&offset=${offset}` : null)
-
-  return (
-    <li>
-      <div ref={rowRef} className={`ontology-tree-row ${selected === term.iri ? 'selected' : ''}`}>
-        <button
-          type="button"
-          className="tree-expander"
-          aria-label={`${open ? 'Collapse' : 'Expand'} ${term.label}`}
-          aria-expanded={open}
-          disabled={!term.has_children || repeated}
-          onClick={() => setUserOpen(!open)}
-        >
-          {term.has_children && !repeated ? (open ? '−' : '+') : '·'}
-        </button>
-        <button type="button" className="term-link" onClick={() => onSelect(term.iri)}>
-          {term.label}
-        </button>
-        {selected === term.iri && <span className="tree-selected-badge">selected</span>}
-      </div>
-      {open && !repeated && (
-        <>
-          <Notice {...children} />
-          <ul>
-            {children.data?.terms.map(child => (
-              <TreeNode
-                key={child.iri}
-                term={child}
-                kind={kind}
-                selected={selected}
-                onSelect={onSelect}
-                ancestors={[...ancestors, term.iri]}
-                expandedSet={expandedSet}
-              />
-            ))}
-          </ul>
-          {children.data && <Pagination {...children.data} onChange={setOffset} />}
-        </>
-      )}
-    </li>
-  )
-}
 
 function renderOntobeeNode(steps, index, currentTerm, children, onSelect) {
   if (index >= steps.length - 1) {
@@ -234,20 +279,22 @@ function OntobeeHierarchy({ term, onSelect }) {
 
 function TermDetails({ iri, onSelect, revision }) {
   const term = useData(iri ? `/ontology/term?iri=${encoded(iri)}` : null, revision)
-  const evidence = useData(iri ? `/ontology/assertions?iri=${encoded(iri)}&limit=10` : null, revision)
 
   if (!iri) {
     return (
       <article className="ontology-introduction">
-        <h2>Browse the potato nutrition ontology</h2>
-        <p>Search for a concept or expand the hierarchy. Select a term to read its definition and the extracted claims linked to it.</p>
-        <p className="muted">The hierarchy organizes concepts. Scientific relationships and evidence appear in tables. Source fidelity and external validation are paused.</p>
+        <h2>Reference Ontologies</h2>
+        <p>Select a class or relation on the left, or search by name or ID, to view its definition and hierarchy.</p>
       </article>
     )
   }
 
   if (!term.data) return <article><Notice {...term} /></article>
   const t = term.data
+  const extractionProperty = extractionProperties.get(t.iri)
+  const termUse = t.kind === 'object_property'
+    ? extractionProperty ? `${extractionProperty.alias} · Approved for extraction` : 'Reference property'
+    : t.selectable ? 'Selectable established ontology term' : 'Supporting ancestor term'
   const ontoPrefix = t.id && t.id.includes(':') && t.iri?.startsWith('http://purl.obolibrary.org/obo/')
     ? t.id.split(':')[0]
     : null
@@ -265,7 +312,7 @@ function TermDetails({ iri, onSelect, revision }) {
             · <Link iri={ontobeeTermUrl}>Ontobee</Link>{' '}
           </>
         )}
-        <span className="muted">{t.origin === 'project_schema' ? 'Application metadata' : t.selectable ? 'Selectable established ontology term' : 'Supporting ancestor term'}</span>
+        <span className="muted">{t.origin === 'project_schema' ? 'Application metadata' : termUse}</span>
       </p>
 
       {/* Ontobee-style Class Hierarchy */}
@@ -274,6 +321,11 @@ function TermDetails({ iri, onSelect, revision }) {
       <dl className="term-fields">
         <dt>Definition</dt>
         <dd>{t.definition || 'No textual definition supplied in this reference fragment.'}</dd>
+            {!!t.obo_unique_labels?.length && <><dt>Upstream unique labels</dt><dd>{t.obo_unique_labels.join('; ')}</dd></>}
+            {!!t.inverse_of?.length && <><dt>Inverse of</dt><dd>{t.inverse_of.map(i => <button key={i} type="button" className="term-link" onClick={() => onSelect(i)}>{label(i)}</button>)}</dd></>}
+        {!!t.usage_notes?.length && <><dt>Upstream usage notes</dt><dd>{t.usage_notes.map(note => <p key={note}>{note}</p>)}</dd></>}
+        {!!t.comments?.length && <><dt>Upstream comments</dt><dd>{t.comments.map(comment => <p key={comment}>{comment}</p>)}</dd></>}
+        {t.direct_use_allowed === false && <><dt>Application use</dt><dd>Broader classification only; direct assertion is not permitted by upstream usage guidance.</dd></>}
         {!!t.exact_synonyms?.length && (
           <>
             <dt>Exact synonyms</dt>
@@ -317,46 +369,17 @@ function TermDetails({ iri, onSelect, revision }) {
         <p className="break-word">{t.iri}</p>
         <p className="muted" style={{ fontSize: 13 }}>
           {t.origin === 'established_ontology'
-            ? 'Imported ontology term. Local files are frozen and checked by content hash.'
+            ? 'Imported from an established OBO Foundry ontology.'
             : t.origin === 'project_schema'
             ? 'Application bookkeeping metadata; not a scientific grounding class or relation.'
             : 'Locally imported reference module. Consult its recorded source and selection rationale.'}
         </p>
         <ul>
-          {t.sources.map(source => (
+          {(t.sources || []).map(source => (
             <li key={source}><Link iri={source} /></li>
           ))}
         </ul>
-        <small className="break-word muted">Reference signature: {t.catalog_signature}</small>
       </section>
-
-      <details style={{ marginTop: 20, borderTop: '1px solid #d8dde1', paddingTop: 14 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
-          Linked assertions and source evidence ({t.assertion_count})
-        </summary>
-        <div style={{ marginTop: 10 }}>
-          <Notice {...evidence} />
-          {evidence.data?.stale && <p className="ontology-warning">Saved mappings need refresh.</p>}
-          {evidence.data?.assertions.map(row => (
-            <div className="compact-evidence" key={`${row.document_key}:${row.candidate_id}`}>
-              <p><strong>{row.original_claim.subject} → {row.original_claim.relation} → {row.original_claim.object}</strong></p>
-              <p className="muted">
-                {row.document_key} · page {row.original_claim.source_page ?? 'not recorded'} · {row.scope.replaceAll('_', ' ')}
-              </p>
-              <p style={{ margin: '4px 0', fontSize: 13, fontStyle: 'italic' }}>&ldquo;{row.original_claim.source_evidence_span}&rdquo;</p>
-              {Object.keys(row.original_claim.qualifiers || {}).length > 0 && (
-                <dl>
-                  {Object.entries(row.original_claim.qualifiers).map(([key, value]) => (
-                    <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{String(value)}</dd></div>
-                  ))}
-                </dl>
-              )}
-            </div>
-          ))}
-          {evidence.data && !evidence.data.total && <p className="muted">No extracted assertions currently link to this term.</p>}
-          {evidence.data?.total > 10 && <p className="muted">Showing the first ten. Use Mapping review to browse all assertions.</p>}
-        </div>
-      </details>
     </article>
   )
 }
@@ -368,32 +391,29 @@ export default function TermBrowser({ selected, onSelect, revision, status: exte
   const [query, setQuery] = useState('')
   const [search, setSearch] = useState('')
   const [offset, setOffset] = useState(0)
-  const [onlyApplication, setOnlyApplication] = useState(true)
+  const isObjectPropTab = kind === 'object_property'
 
-  // Fetch selected term details to extract ancestors for auto-expanding hierarchy
   const selectedTerm = useData(selected ? `/ontology/term?iri=${encoded(selected)}` : null, revision)
 
-  // Sync active kind tab if selected term is an object or data property
   useEffect(() => {
-    if (selectedTerm.data?.kind && selectedTerm.data.kind !== kind) {
-      setKind(selectedTerm.data.kind)
+    const term = selectedTerm.data
+    if (term?.kind === 'class' || term?.kind === 'object_property') {
+      setKind(term.kind)
     }
-  }, [selectedTerm.data?.kind])
-
-  // Build the set of IRIs that must be expanded to reveal the selected term
-  const expandedSet = useMemo(() => {
-    if (!selectedTerm.data?.ancestors) return new Set()
-    return new Set(selectedTerm.data.ancestors)
-  }, [selectedTerm.data?.ancestors])
+  }, [selectedTerm.data])
 
   useEffect(() => {
     const timer = setTimeout(() => { setSearch(query); setOffset(0) }, 250)
     return () => clearTimeout(timer)
   }, [query])
 
-  const tree = useData(!search ? `/ontology/hierarchy?kind=${kind}&offset=${offset}&limit=40` : null, revision)
-  const found = useData(search ? `/ontology/terms?kind=${kind}&q=${encoded(search)}&selectable=${onlyApplication}&offset=${offset}&limit=40` : null, revision)
-  const data = search ? found : tree
+  const data = useData(
+    isObjectPropTab ? null : `/ontology/terms?kind=class&q=${encoded(search)}&offset=${offset}&limit=40`,
+    revision,
+  )
+  const matchingExtractionProperties = closedPredicateList.filter(property => (
+    [property.alias, property.id, property.display_label].some(value => value.toLowerCase().includes(search.trim().toLowerCase()))
+  ))
 
   return (
     <div className="ontology-view-container">
@@ -401,11 +421,11 @@ export default function TermBrowser({ selected, onSelect, revision, status: exte
       <section className="ontology-established-overview" style={{ marginBottom: 16 }}>
         <details>
           <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
-            Established Ontologies in Pipeline ({establishedOntologies.length})
+            Established reference ontologies ({establishedOntologies.length})
           </summary>
           <div style={{ marginTop: 8 }}>
             <p className="muted" style={{ margin: '3px 0 8px', fontSize: 13 }}>
-              All selectable classes are imported from established OBO Foundry ontologies as content-addressed RDF/OWL fragments from Ontobee with bounded supporting ancestors.
+              Classes are indexed from established OBO Foundry reference ontologies, and object properties reflect the approved RO/BFO extraction relations.
             </p>
             <div className="ontology-table-scroll">
               <table className="established-ontologies-table">
@@ -451,7 +471,7 @@ export default function TermBrowser({ selected, onSelect, revision, status: exte
         <aside aria-label="Ontology term navigation">
           <div className="ontology-kinds">
             {kinds.map(([key, name]) => {
-              const count = statusData?.term_counts?.[key]
+              const count = key === 'object_property' ? closedPredicateList.length : statusData?.term_counts?.[key]
               return (
                 <button
                   key={key}
@@ -459,7 +479,7 @@ export default function TermBrowser({ selected, onSelect, revision, status: exte
                   className={kind === key ? 'active' : ''}
                   onClick={() => { setKind(key); setOffset(0) }}
                 >
-                  {count != null ? `${name} (${count})` : name}
+                  {count != null ? `${name} (${count.toLocaleString()})` : name}
                 </button>
               )
             })}
@@ -470,47 +490,33 @@ export default function TermBrowser({ selected, onSelect, revision, status: exte
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Name, synonym or identifier"
+              placeholder={isObjectPropTab ? 'Relation name, alias or identifier' : 'Name, synonym or identifier'}
             />
           </label>
 
-          {search && (
-            <label className="inline-check" style={{ marginTop: 6 }}>
-              <input
-                type="checkbox"
-                checked={onlyApplication}
-                onChange={e => { setOnlyApplication(e.target.checked); setOffset(0) }}
-              />
-              Application terms only
-            </label>
-          )}
-
-          <Notice {...data} />
+          {!isObjectPropTab && <Notice {...data} />}
 
           <ul className="ontology-tree">
-            {data.data?.terms.map(term =>
-              search ? (
-                <li key={term.iri}>
-                  <button type="button" className="term-link" onClick={() => onSelect(term.iri)}>
-                    {term.label}
-                  </button>
-                  <small className="muted"> {term.id}</small>
-                </li>
-              ) : (
-                <TreeNode
-                  key={term.iri}
-                  term={term}
-                  kind={kind}
-                  selected={selected}
-                  onSelect={onSelect}
-                  expandedSet={expandedSet}
-                />
-              )
-            )}
+            {isObjectPropTab ? matchingExtractionProperties.map(property => (
+              <li key={property.iri} className={selected === property.iri ? 'ontology-tree-row selected' : 'ontology-tree-row'}>
+                <button type="button" className="term-link" onClick={() => onSelect(property.iri)}>
+                  {property.display_label}
+                </button>
+                <small className="muted"> {property.alias} · {property.id}</small>
+              </li>
+            )) : data.data?.terms?.map(term => (
+              <li key={term.iri} className={selected === term.iri ? 'ontology-tree-row selected' : 'ontology-tree-row'}>
+                <button type="button" className="term-link" onClick={() => onSelect(term.iri)}>
+                  {term.label}
+                </button>
+                <small className="muted"> {term.id}</small>
+              </li>
+            ))}
           </ul>
 
-          {data.data && !data.data.total && <p className="muted">No matching terms in this reference.</p>}
-          {data.data && <Pagination {...data.data} onChange={setOffset} />}
+          {isObjectPropTab && !matchingExtractionProperties.length && <p className="muted">No matching extraction relations.</p>}
+          {!isObjectPropTab && data.data && !data.data.total && <p className="muted">No matching terms in this reference.</p>}
+          {!isObjectPropTab && data.data && <Pagination {...data.data} onChange={setOffset} />}
         </aside>
 
         <TermDetails iri={selected} onSelect={onSelect} revision={revision} />

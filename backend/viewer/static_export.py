@@ -16,6 +16,7 @@ from backend.config.pipeline import (
 )
 from backend.domain.abbreviations import collect_definitions, expand_claim_names
 from backend.ontology.catalog import catalog
+from backend.stages.ontology_grounding.source_context import definition_context_stale
 from backend.shared.storage import stable_hash
 from backend.viewer.export import ACTIVE, check_source_files, clean, display_api, source_inventory
 from backend.viewer.snapshot import digest, manifest_id
@@ -28,9 +29,22 @@ DISPLAY_CLAIM_KEYS = frozenset({
     'object',
     'subject_context',
     'object_context',
+    'predicate_alias',
+    'predicate_set_version',
+    'proposed_relation_iri',
+    'proposed_relation_id',
+    'proposed_relation_display_label',
+    'proposed_relation_mapping',
+    'proposed_relation_directed',
+    'relation_trigger',
+    'extraction_review_status',
+    'extraction_warnings',
     'qualifiers',
+    'measured_comparison',
     'source_page',
     'source_evidence_span',
+    'source_evidence_sentence_numbers',
+    'source_evidence_section_heading',
     'claim_text',
     'source_references',
     'source_validation',
@@ -80,10 +94,14 @@ def _catalog_export(ref: Any, assertions: list[dict[str, Any]]) -> dict[str, Any
         }
         if term.get('definition'):
             entry['definition'] = term['definition']
-        for field in ('exact_synonyms', 'related_synonyms', 'broad_synonyms', 'narrow_synonyms', 'domain', 'range'):
+        for field in ('exact_synonyms', 'related_synonyms', 'broad_synonyms', 'narrow_synonyms', 'domain', 'range',
+                      'usage_notes', 'comments', 'annotation_provenance', 'allowed_mappings',
+                      'inverse_of', 'inverse_provenance', 'obo_unique_labels'):
             val = term.get(field)
             if val:
                 entry[field] = val
+        if 'direct_use_allowed' in term:
+            entry['direct_use_allowed'] = term['direct_use_allowed']
         if parents:
             entry['parents'] = parents
         if children:
@@ -91,30 +109,58 @@ def _catalog_export(ref: Any, assertions: list[dict[str, Any]]) -> dict[str, Any
         if term.get('sources'):
             entry['source_ids'] = [source_id(u) for u in term['sources']]
         terms[iri] = entry
+    for row in assertions:
+        for role in ('subject', 'object'):
+            term = row['bindings'].get(role, {}).get('retrieved_term')
+            if term and term['iri'] not in terms:
+                iri = term['iri']
+                tail = iri.rsplit('/', 1)[-1]
+                curie = (f'HGNC:{tail}' if iri.startswith('http://identifiers.org/hgnc/') else
+                         f'NCBIGene:{tail}' if iri.startswith('http://identifiers.org/ncbigene/') else
+                         tail.replace('_', ':', 1) if '/obo/' in iri and '_' in tail else tail)
+                assertion_count = sum(
+                    any(b.get('iri') == iri or b.get('canonical_iri') == iri for b in r.get('bindings', {}).values())
+                    for r in assertions
+                )
+                terms[iri] = {**term, 'canonical_iri': iri, 'selectable': False,
+                              'id': curie, 'assertion_count': assertion_count, 'origin': term.get('source')}
     return {'catalog_signature': ref.signature, 'sources': sources_list, 'terms': terms}
 
 
 def _slim_assertion(row: dict[str, Any], glossary: dict[str, Any]) -> dict[str, Any]:
     claim = _prune_claim(expand_claim_names(row.get('original_claim') or {}, glossary))
     bindings = {
-        role: {k: v for k, v in binding.items() if k != 'candidate_iris'} if isinstance(binding, dict) else binding
+        role: {k: v for k, v in binding.items() if k not in {'candidate_iris', 'candidate_terms'}} if isinstance(binding, dict) else binding
         for role, binding in row.get('bindings', {}).items()
     }
     return {
         'candidate_id': row.get('candidate_id'),
+        'claim_signature': row.get('claim_signature'),
         'document_key': row.get('document_key'),
         'scope': row.get('scope'),
         'scope_reason': row.get('scope_reason'),
         'bindings': bindings,
         'original_claim': claim,
+        'comparison_assessment': row.get('comparison_assessment'),
         'extraction_warnings': row.get('extraction_warnings', []),
         'mapping_consistency_warnings': row.get('mapping_consistency_warnings', []),
         'extraction_review': row.get('extraction_review'),
         'extraction_review_status': row.get('extraction_review_status'),
+        'property_type_check': row.get('property_type_check'),
+        'mapping_review_warnings': row.get('mapping_review_warnings', []),
         'review_history': row.get('review_history', []),
         'mapping_review': row.get('mapping_review'),
         'scientific_validation': row.get('scientific_validation'),
         'assembly_eligible': row.get('assembly_eligible'),
+        'eligibility_policy': row.get('eligibility_policy'),
+        'classification_policy': row.get('classification_policy'),
+        'inventory_signature': row.get('inventory_signature'),
+        'class_selection_policy': row.get('class_selection_policy'),
+        'annotation_policy': row.get('annotation_policy'),
+        'annotation_projection_policy': row.get('annotation_projection_policy'),
+        'property_usage_policy': row.get('property_usage_policy'),
+        'consistency_policy': row.get('consistency_policy'),
+        'policy': row.get('policy'),
     }
 
 
@@ -225,11 +271,12 @@ def export_static_site(ontology, pdf_dir, output, *, include_pdfs: bool = False,
 
             snap_path = ontology / '.ontology_grounding' / 'snapshot.json'
             snap = json.loads(snap_path.read_text(encoding='utf-8')) if snap_path.is_file() else {}
+            raw_assertions = snap.get('assertions', [])
             stale = (
                 snap.get('catalog_signature') != ref.signature
                 or snap.get('rules_signature') != ref.rules_signature
+                or any(definition_context_stale(row) for row in raw_assertions)
             )
-            raw_assertions = snap.get('assertions', [])
             glossary = collect_definitions([r.get('original_claim', {}) for r in raw_assertions])
             slim_assertions = [_slim_assertion(r, glossary) for r in raw_assertions]
 
@@ -261,6 +308,7 @@ def export_static_site(ontology, pdf_dir, output, *, include_pdfs: bool = False,
                     'limit': 25,
                     'scientific_validation': 'paused',
                     'proofs': {},
+                    **({'merged_chains': snap['merged_chains']} if snap.get('merged_chains') is not None else {}),
                 }
             else:
                 r_path = ontology / '.ontology_grounding' / 'reasoning.json'
@@ -275,12 +323,15 @@ def export_static_site(ontology, pdf_dir, output, *, include_pdfs: bool = False,
                     'stale': stale,
                     'biological_rules': ref.profile.get('biological_rules', []),
                     'scientific_validation': 'paused',
+                    **({'merged_chains': snap['merged_chains']} if snap.get('merged_chains') is not None else {}),
                 }
 
             write('pdfs.json', pdfs_catalog)
             write('ontology-status.json', status_payload)
             write('ontology-catalog.json', _catalog_export(ref, slim_assertions))
-            write('ontology-assertions.json', {'assertions': slim_assertions, 'stale': stale})
+            from backend.ontology.registry import extraction_inventory
+            write('ontology-assertions.json', {'assertions': slim_assertions, 'stale': stale,
+                                             'extraction_inventory': extraction_inventory(ontology)})
             write('ontology-entities.json', {
                 'entities': snap.get('entities', []),
                 'counts': snap.get('counts', {}),

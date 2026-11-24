@@ -129,3 +129,45 @@ def test_expanding_an_already_spelled_out_name_does_not_repeat_it():
     assert updated['object'] == 'phosphorus use efficiency'
     assert updated['source_evidence_span'] == c['source_evidence_span']
     assert expand_claim_names(updated) == updated
+
+
+def test_binomial_abbreviation_resolves_to_organism_while_standalone_letter_still_resolves():
+    packets = [
+        {'packet_number': 1, 'sentences': [
+            {'text': 'Phosphorus (P) deficiency limits yield; inoculation with Paenibacillus mucilaginosus was tested.', 'page': 1},
+            {'text': 'P . mucilaginosus releases available P from soil minerals.', 'page': 3},
+        ]},
+    ]
+    glossary = packet_definitions(packets, 'paper-hu')
+    c = claim(
+        'hu-38a209c5',
+        source_document_id='paper-hu',
+        subject='P . mucilaginosus',
+        object='available P',
+        source_evidence_span='P . mucilaginosus releases available P from soil minerals.',
+        qualifiers={'condition': 'low P soil'},
+    )
+    c['source_abbreviation_definitions'] = relevant_definitions(c, glossary)
+    assert sorted(r['abbreviation'] for r in c['source_abbreviation_definitions']) == ['P', 'P. mucilaginosus']
+    updated = expand_claim_names(c, glossary)
+    assert updated['subject'] == 'Paenibacillus mucilaginosus'
+    assert updated['object'] == 'available Phosphorus'
+    assert updated['qualifiers']['condition'] == 'low Phosphorus soil'
+    assert updated['subject_source_mention'] == 'P . mucilaginosus'
+    assert updated['source_evidence_span'] == c['source_evidence_span']
+    assert expand_claim_names(updated, glossary) == updated
+
+
+def test_standalone_letter_does_not_corrupt_unexpanded_genus_initial_or_ambiguous_binomial():
+    c = claim(
+        'ambig-genus',
+        source_document_id='paper-ambig',
+        subject='P. mucilaginosus',
+        object='B. subtilis',
+        source_evidence_span='Phosphorus (P) was measured alongside Bacillus subtilis and Brevibacillus subtilis; B. subtilis increased P uptake.',
+        qualifiers={'condition': 'P supply'},
+    )
+    updated = expand_claim_names(c)
+    assert updated['subject'] == 'P. mucilaginosus'
+    assert updated['object'] == 'B. subtilis'
+    assert updated['qualifiers']['condition'] == 'Phosphorus supply'

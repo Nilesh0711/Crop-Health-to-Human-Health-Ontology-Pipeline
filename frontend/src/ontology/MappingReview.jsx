@@ -59,7 +59,6 @@ export default function MappingReview({ revision, onRefresh, pdfs, onTerm, canRe
     if (document && !pdfs.some(p => p.title === document && p.status === 'completed')) setDocument('')
   }, [document, pdfs])
   return <section className="ontology-panel"><h2>Mapping review</h2>
-    {data.data?.counts && <p className="muted">{data.data.counts.classified_claims} claims completely classified{data.data.counts.measured_comparisons > 0 && <> · {data.data.counts.complete_measured_comparisons}/{data.data.counts.measured_comparisons} measured comparisons complete</>} · {data.data.counts.classification_review_claims} require review</p>}
     <div className="ontology-toolbar"><input aria-label="Search assertions" placeholder="Search claims" value={query} onChange={e => setQuery(e.target.value)} />
       <select aria-label="Source document" value={document} onChange={e => setDocument(e.target.value)}><option value="">All documents</option>{completedPdfs.map(p => <option key={p.id} value={p.title}>{p.title}</option>)}</select></div>
     <Notice {...data} />

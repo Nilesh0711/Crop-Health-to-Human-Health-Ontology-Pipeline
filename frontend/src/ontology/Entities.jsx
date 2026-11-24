@@ -46,12 +46,6 @@ export default function Entities({ revision, onTerm }) {
         </p>
       )}
 
-      {data.data && (
-        <p className="muted">
-          {data.data.total || 0} unique entities in view · {data.data.counts?.classified_endpoint_mentions || 0} classified endpoint mentions (exact or broader)
-        </p>
-      )}
-
       <div className="ontology-table-scroll">
         <table>
           <thead>

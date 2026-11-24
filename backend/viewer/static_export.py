@@ -57,7 +57,18 @@ def _prune_claim(claim: dict[str, Any] | Any) -> dict[str, Any] | Any:
     return {k: v for k, v in claim.items() if k in DISPLAY_CLAIM_KEYS and v not in (None, '', {}, [])}
 
 
-def _catalog_export(ref: Any, assertions: list[dict[str, Any]]) -> dict[str, Any]:
+def _curie_id(iri: str) -> str:
+    tail = iri.rsplit('/', 1)[-1]
+    if iri.startswith('http://identifiers.org/hgnc/'):
+        return f'HGNC:{tail}'
+    if iri.startswith('http://identifiers.org/ncbigene/'):
+        return f'NCBIGene:{tail}'
+    if iri.startswith('https://swisslipids.org/rdf/') and '_' in tail:
+        return tail.replace('_', ':', 1)
+    return tail.replace('_', ':', 1) if '/obo/' in iri and '_' in tail else tail
+
+
+def _catalog_export(ref: Any, assertions: list[dict[str, Any]], *, inventory: Any = None) -> dict[str, Any]:
     terms: dict[str, dict[str, Any]] = {}
     sources_index: dict[str, int] = {}
     sources_list: list[str] = []
@@ -109,21 +120,47 @@ def _catalog_export(ref: Any, assertions: list[dict[str, Any]]) -> dict[str, Any
         if term.get('sources'):
             entry['source_ids'] = [source_id(u) for u in term['sources']]
         terms[iri] = entry
+    def add_inventory_term(term_dict: dict[str, Any]) -> None:
+        iri = term_dict['iri']
+        if iri in terms:
+            return
+        assertion_count = sum(
+            any(b.get('iri') == iri or b.get('canonical_iri') == iri for b in r.get('bindings', {}).values())
+            for r in assertions
+        )
+        src_vals = term_dict.get('sources') or ([term_dict['source']] if term_dict.get('source') else [])
+        entry = {
+            **term_dict,
+            'canonical_iri': term_dict.get('canonical_iri') or iri,
+            'selectable': bool(term_dict.get('selectable')),
+            'id': _curie_id(iri),
+            'assertion_count': assertion_count,
+            'origin': 'established_ontology',
+        }
+        if src_vals and 'source_ids' not in entry:
+            entry['source_ids'] = [source_id(u) for u in src_vals]
+        terms[iri] = entry
+
+    pending_parents: list[str] = []
     for row in assertions:
         for role in ('subject', 'object'):
             term = row['bindings'].get(role, {}).get('retrieved_term')
-            if term and term['iri'] not in terms:
-                iri = term['iri']
-                tail = iri.rsplit('/', 1)[-1]
-                curie = (f'HGNC:{tail}' if iri.startswith('http://identifiers.org/hgnc/') else
-                         f'NCBIGene:{tail}' if iri.startswith('http://identifiers.org/ncbigene/') else
-                         tail.replace('_', ':', 1) if '/obo/' in iri and '_' in tail else tail)
-                assertion_count = sum(
-                    any(b.get('iri') == iri or b.get('canonical_iri') == iri for b in r.get('bindings', {}).values())
-                    for r in assertions
-                )
-                terms[iri] = {**term, 'canonical_iri': iri, 'selectable': False,
-                              'id': curie, 'assertion_count': assertion_count, 'origin': term.get('source')}
+            if term and term.get('iri'):
+                if term['iri'] not in terms:
+                    add_inventory_term(term)
+                pending_parents.extend(terms[term['iri']].get('parents') or ())
+
+    if inventory is not None:
+        seen_parents: set[str] = set()
+        while pending_parents:
+            parent_iri = pending_parents.pop()
+            if parent_iri in terms or parent_iri in seen_parents:
+                continue
+            seen_parents.add(parent_iri)
+            parent_term = inventory.get_term(parent_iri)
+            if parent_term:
+                add_inventory_term(parent_term)
+                pending_parents.extend(parent_term.get('parents') or ())
     return {'catalog_signature': ref.signature, 'sources': sources_list, 'terms': terms}
 
 
@@ -280,12 +317,22 @@ def export_static_site(ontology, pdf_dir, output, *, include_pdfs: bool = False,
             glossary = collect_definitions([r.get('original_claim', {}) for r in raw_assertions])
             slim_assertions = [_slim_assertion(r, glossary) for r in raw_assertions]
 
+            try:
+                from backend.ontology.inventory import open_inventory
+                inv = open_inventory()
+            except Exception:
+                inv = None
+            exported_catalog = _catalog_export(ref, slim_assertions, inventory=inv)
+            exported_class_count = sum(1 for t in exported_catalog['terms'].values() if t.get('kind') == 'class')
+
             status_payload = {
                 'profile': ref.profile,
                 'catalog_signature': ref.signature,
-                'reference_terms': len(ref.terms),
-                'term_counts': ref.selectable_counts,
-                'all_term_counts': ref.all_counts,
+                'reference_terms': len(exported_catalog['terms']),
+                'term_counts': {**ref.selectable_counts, 'class': exported_class_count},
+                'all_term_counts': {**ref.all_counts, 'class': exported_class_count},
+                'searchable_classes': exported_class_count,
+                'class_source': 'static_catalog',
                 'counts': snap.get('counts', {}),
                 'stale': stale,
                 'coverage': ref.manifest['coverage'],
@@ -328,7 +375,7 @@ def export_static_site(ontology, pdf_dir, output, *, include_pdfs: bool = False,
 
             write('pdfs.json', pdfs_catalog)
             write('ontology-status.json', status_payload)
-            write('ontology-catalog.json', _catalog_export(ref, slim_assertions))
+            write('ontology-catalog.json', exported_catalog)
             from backend.ontology.registry import extraction_inventory
             write('ontology-assertions.json', {'assertions': slim_assertions, 'stale': stale,
                                              'extraction_inventory': extraction_inventory(ontology)})

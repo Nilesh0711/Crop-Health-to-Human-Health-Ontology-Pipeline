@@ -292,6 +292,7 @@ test('static handler serves read-only ontology, claims, entity filters and block
   assert.equal(allClaims.assertions.find(row => row.candidate_id === 'c3').assembly_eligible, false)
   const status = await handle('/ontology/status')
   assert.equal(status.counts.mapped_claims, 1)
+  assert.equal(status.term_counts.class, 2)
   assert.equal(status.stale, true) // old saved policy remains visibly historical
 
   const broaderEntities = await handle('/ontology/entities?unique=true&status=classification&offset=0&limit=20')

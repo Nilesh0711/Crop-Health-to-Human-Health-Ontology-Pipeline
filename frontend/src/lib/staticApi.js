@@ -500,9 +500,15 @@ export function createStaticHandler(fetchJson) {
     } else if (pathname === '/ontology/status') {
       const [status, assertions, catalogData] = await Promise.all([load('ontology-status.json'), load('ontology-assertions.json'), load('ontology-catalog.json')])
       const index = getAssertionsIndex(assertions, catalogData)
-      result = { ...status, stale: Boolean(status.stale || index.stale),
-        counts: { ...status.counts, ...classificationCounts(index.rows, getCatalogIndex(catalogData).terms),
-          mapped_claims: index.rows.filter(row => row.assembly_eligible).length } }
+      const { list, terms } = getCatalogIndex(catalogData)
+      const classCount = list.filter(t => t.kind === 'class').length
+      result = {
+        ...status,
+        term_counts: { ...(status.term_counts || {}), ...(classCount ? { class: classCount } : {}) },
+        stale: Boolean(status.stale || index.stale),
+        counts: { ...status.counts, ...classificationCounts(index.rows, terms),
+          mapped_claims: index.rows.filter(row => row.assembly_eligible).length },
+      }
     } else if (pathname === '/ontology/hierarchy') {
       const { terms, visibleFor } = getCatalogIndex(await load('ontology-catalog.json'))
       const kind = params.get('kind') || 'class'
@@ -541,6 +547,13 @@ export function createStaticHandler(fetchJson) {
         return !needle || searchHaystack.get(t).includes(needle)
       })
       rows.sort((a, b) => {
+        if (!needle && kind === 'class') {
+          const aFeatured = (a.assertion_count || 0) > 0 && a.definition ? 1 : 0
+          const bFeatured = (b.assertion_count || 0) > 0 && b.definition ? 1 : 0
+          if (aFeatured !== bFeatured) return bFeatured - aFeatured
+          const countDiff = (b.assertion_count || 0) - (a.assertion_count || 0)
+          if (countDiff) return countDiff
+        }
         const aExact = needle && (a.label.toLowerCase() === needle || a.id.toLowerCase() === needle) ? 0 : 1
         const bExact = needle && (b.label.toLowerCase() === needle || b.id.toLowerCase() === needle) ? 0 : 1
         return aExact - bExact || cmp(a.label.toLowerCase(), b.label.toLowerCase()) || cmp(a.iri, b.iri)
